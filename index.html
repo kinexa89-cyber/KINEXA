@@ -140,6 +140,13 @@
   .dash-title{ display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; gap:12px }
   .dash-title h1{ font-size:22px; margin:0; letter-spacing:-.5px }
   .sec-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px }
+  .cama-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(54px,1fr)); gap:6px; margin-top:10px }
+  .cama-chip{ cursor:pointer; border:1px solid var(--lila-200); background:#fff; color:var(--tinta-60); border-radius:8px; padding:6px 3px; font-size:12px; font-weight:600; text-align:center; line-height:1.2; overflow:hidden; transition:.12s }
+  .cama-chip:hover{ border-color:var(--violeta) }
+  .cama-chip.ocupada{ background:var(--violeta); color:#fff; border-color:var(--violeta) }
+  .modal-bg{ position:fixed; inset:0; background:rgba(35,22,64,.45); display:flex; align-items:center; justify-content:center; padding:20px; z-index:50 }
+  .modal-card{ background:#fff; border-radius:14px; box-shadow:var(--sombra); padding:22px; width:100%; max-width:420px; max-height:90vh; overflow-y:auto }
+  .modal-card h2{ font-size:18px; margin:0 0 2px }
   @media (max-width:560px){ .topbar{ flex-direction:column; align-items:flex-start } .tb-right{ width:100%; justify-content:space-between } }
 
   @media (max-width:820px){
@@ -176,10 +183,29 @@ function limpiarSesion(){ TOKEN=null; USER=null; localStorage.removeItem('kinexa
 let DEMO = false;
 let CLAVE_MAESTRA = '';
 const DEMO_SECTORES = [
-  { nombre:'UTI', camas:['1','2','3','4','5','6'] },
-  { nombre:'Emergencias', camas:['A','B','C','D','E'] },
-  { nombre:'Cuidados Mínimos', camas:['1','2','3','4','5','6','7','8'] }
+  { id:1, nombre:'UTI', camas:['1','2','3','4','5','6'] },
+  { id:2, nombre:'Emergencias', camas:['A','B','C','D','E'] },
+  { id:3, nombre:'Cuidados Mínimos', camas:['1','2','3','4','5','6','7','8'] }
 ];
+let DEMO_PACIENTES = [
+  { id:9001, nombre:'Juan', apellido:'Pérez', documento:'30111222', sector_id:1, cama:'2', diagnostico:'Neumonía · ARM', fecha_ingreso:'2026-07-18' },
+  { id:9002, nombre:'María', apellido:'Gómez', documento:'28999888', sector_id:1, cama:'5', diagnostico:'Post-quirúrgico', fecha_ingreso:'2026-07-19' },
+  { id:9003, nombre:'Luis', apellido:'Sosa', documento:'33444555', sector_id:3, cama:'1', diagnostico:'Rehabilitación', fecha_ingreso:'2026-07-15' }
+];
+let SECTORES = [], PACIENTES = [];
+
+/* ── Datos: en demo trabajan en memoria; si no, contra la base ── */
+async function cargarSectores(){ if(DEMO) return DEMO_SECTORES; try{ return await rpc('kinexa_sectores',{p_token:TOKEN})||[]; }catch(e){ return []; } }
+async function cargarPacientes(){ if(DEMO) return DEMO_PACIENTES.slice(); try{ return await rpc('kinexa_pacientes',{p_token:TOKEN})||[]; }catch(e){ return []; } }
+async function guardarPaciente(p){
+  if(DEMO){ if(p.id){ const i=DEMO_PACIENTES.findIndex(x=>x.id===p.id); if(i>=0) DEMO_PACIENTES[i]={...DEMO_PACIENTES[i],...p}; } else { p.id=Date.now(); p.fecha_ingreso=new Date().toISOString().slice(0,10); DEMO_PACIENTES.push(p); } return; }
+  await rpc('kinexa_paciente_guardar',{ p_token:TOKEN, p_pac:p });
+}
+async function altaPaciente(id){
+  if(DEMO){ DEMO_PACIENTES=DEMO_PACIENTES.filter(x=>x.id!==id); return; }
+  await rpc('kinexa_paciente_alta',{ p_token:TOKEN, p_id:id });
+}
+function jsq(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
 function pantallaInicio(){
   $('#app').innerHTML = `
@@ -240,7 +266,7 @@ function empezarRegistro(){
 function entrarDemo(){
   DEMO=true;
   USER={ nombre:'Usuario', apellido:'Demo', es_admin:true, institucion_nombre:'Hospital Demo', institucion_logo:'' };
-  pantallaDashboard(DEMO_SECTORES);
+  irDashboard();
 }
 
 let paso = 1;
@@ -575,16 +601,18 @@ async function intentarLogin(){
 }
 async function salir(){ if(DEMO){ DEMO=false; USER=null; pantallaInicio(); return; } try{ await rpc('kinexa_logout',{ p_token:TOKEN }); }catch(e){} limpiarSesion(); pantallaInicio(); }
 
-/* ============ PANTALLA PRINCIPAL (provisoria) ============ */
+/* ============ PANTALLA PRINCIPAL ============ */
 async function irDashboard(){
   pantallaCargando('Cargando…');
-  let sectores=[];
-  try{ sectores = await rpc('kinexa_sectores', { p_token:TOKEN }) || []; }catch(e){ sectores=[]; }
-  pantallaDashboard(sectores);
+  const [sec, pac] = await Promise.all([cargarSectores(), cargarPacientes()]);
+  SECTORES = sec || []; PACIENTES = pac || [];
+  pantallaDashboard();
 }
-function pantallaDashboard(sectores){
+function pantallaDashboard(){
   const u=USER||{};
-  const totalCamas=sectores.reduce((a,s)=>a+((s.camas&&s.camas.length)||0),0);
+  const totalCamas=SECTORES.reduce((a,s)=>a+((s.camas&&s.camas.length)||0),0);
+  const ocupadas=PACIENTES.length;
+  const occ={}; PACIENTES.forEach(p=>{ occ[p.sector_id+'|'+p.cama]=p; });
   $('#app').innerHTML = `
     <div class="dash">
       <header class="topbar">
@@ -592,7 +620,7 @@ function pantallaDashboard(sectores){
           ${u.institucion_logo?`<img class="tb-logo" src="${u.institucion_logo}">`:isotipo(34)}
           <div>
             <div class="tb-inst">${esc(u.institucion_nombre||'')}</div>
-            <div class="tb-sub">Kine<span style="color:var(--lila)">xa</span> · ${sectores.length} sectores · ${totalCamas} camas</div>
+            <div class="tb-sub">Kine<span style="color:var(--lila)">xa</span> · ${SECTORES.length} sectores · ${ocupadas}/${totalCamas} camas ocupadas</div>
           </div>
         </div>
         <div class="tb-right">
@@ -601,21 +629,83 @@ function pantallaDashboard(sectores){
         </div>
       </header>
       <main class="dash-body"><div class="dash-inner">
-        ${DEMO?`<div class="aviso" style="background:var(--lila-50);color:var(--violeta-800);border:1px solid var(--lila-200);margin-bottom:16px">Estás en <strong>modo demo</strong>: los datos son de ejemplo y no se guardan.</div>`:''}
+        ${DEMO?`<div class="aviso" style="background:var(--lila-50);color:var(--violeta-800);border:1px solid var(--lila-200);margin-bottom:16px">Estás en <strong>modo demo</strong>: los datos son de ejemplo y no se guardan. Podés ingresar y dar de alta pacientes para probar.</div>`:''}
         <div class="dash-title">
           <h1>Mapa de camas</h1>
           ${(u.es_admin && !DEMO)?`<button class="btn btn-fantasma btn-sm" onclick="editar()">Configuración</button>`:''}
         </div>
         <div class="sec-grid">
-          ${sectores.map(s=>`
+          ${SECTORES.map(s=>`
             <div class="item" style="margin:0">
               <div class="item-top"><span class="t">${esc(s.nombre)}</span><span class="hint">${(s.camas||[]).length} camas</span></div>
-              <div class="chips">${(s.camas||[]).map(cm=>`<span class="chip">${esc(cm)}</span>`).join('')||'<span class="hint">Sin camas</span>'}</div>
-            </div>`).join('')||'<div class="vacio">Sin sectores cargados.</div>'}
+              <div class="cama-grid">
+                ${(s.camas||[]).map(cm=>{
+                  const p=occ[s.id+'|'+cm];
+                  return p
+                    ? `<div class="cama-chip ocupada" title="${esc(p.apellido)}, ${esc(p.nombre)}" onclick="verPaciente('${jsq(p.id)}')">${esc(cm)}<br><span style="font-weight:400;font-size:10px">${esc(p.apellido)}</span></div>`
+                    : `<div class="cama-chip" onclick="admitir('${jsq(s.id)}','${jsq(cm)}')">${esc(cm)}</div>`;
+                }).join('')}
+              </div>
+            </div>`).join('')||'<div class="vacio">Sin sectores cargados todavía.</div>'}
         </div>
-        <p class="hint" style="margin-top:26px">Próximo hito: traer el motor clínico (evoluciones, ARM, deglución, decanulación…). Los datos ya viven en la base central de Kinexa, aislados por institución.</p>
+        <p class="hint" style="margin-top:26px">Tocá una cama libre para ingresar un paciente, o una ocupada para verlo. Próximo paso: las evoluciones de cada paciente.</p>
       </div></main>
     </div>`;
+}
+
+/* ── Ventana emergente ── */
+function modal(html){
+  cerrarModal();
+  const m=document.createElement('div'); m.className='modal-bg'; m.id='modalBg';
+  m.innerHTML=`<div class="modal-card">${html}</div>`;
+  m.addEventListener('click', e=>{ if(e.target===m) cerrarModal(); });
+  document.body.appendChild(m);
+}
+function cerrarModal(){ const m=document.getElementById('modalBg'); if(m) m.remove(); }
+
+/* ── Ingresar paciente en una cama libre ── */
+function admitir(sectorId, cama){
+  const sec=SECTORES.find(s=>String(s.id)===String(sectorId));
+  modal(`
+    <h2>Ingresar paciente</h2>
+    <p class="hint" style="margin:0 0 14px">${esc(sec?sec.nombre:'')} · cama ${esc(cama)}</p>
+    <div class="campo"><label class="lab">Nombre</label><input class="txt" id="pName"></div>
+    <div class="campo"><label class="lab">Apellido</label><input class="txt" id="pApe"></div>
+    <div class="campo"><label class="lab">Documento</label><input class="txt" id="pDoc" inputmode="numeric"></div>
+    <div class="campo"><label class="lab">Diagnóstico / motivo</label><input class="txt" id="pDx"></div>
+    <div id="pErr" class="aviso aviso-warn" style="display:none"></div>
+    <div class="pie"><button class="btn btn-fantasma" onclick="cerrarModal()">Cancelar</button>
+      <button class="btn btn-primario" id="pBtn" onclick="confirmarAdmitir('${jsq(sectorId)}','${jsq(cama)}')">Ingresar</button></div>`);
+}
+async function confirmarAdmitir(sectorId, cama){
+  const nombre=($('#pName').value||'').trim(), apellido=($('#pApe').value||'').trim();
+  const err=$('#pErr'), btn=$('#pBtn');
+  if(!nombre||!apellido){ err.textContent='Completá al menos nombre y apellido.'; err.style.display='block'; return; }
+  btn.disabled=true; btn.textContent='Guardando…';
+  try{
+    await guardarPaciente({ nombre, apellido, documento:($('#pDoc').value||'').trim(),
+      diagnostico:($('#pDx').value||'').trim(), sector_id:parseInt(sectorId,10), cama });
+  }catch(e){ err.textContent='No se pudo guardar: '+e.message; err.style.display='block'; btn.disabled=false; btn.textContent='Ingresar'; return; }
+  cerrarModal(); irDashboard();
+}
+
+/* ── Ver paciente / dar de alta ── */
+function verPaciente(id){
+  const p=PACIENTES.find(x=>String(x.id)===String(id)); if(!p) return;
+  const sec=SECTORES.find(s=>String(s.id)===String(p.sector_id));
+  modal(`
+    <h2>${esc(p.apellido)}, ${esc(p.nombre)}</h2>
+    <p class="hint" style="margin:0 0 14px">${esc(sec?sec.nombre:'')} · cama ${esc(p.cama||'')}</p>
+    <div class="res-linea"><span class="k">Documento</span><span class="v">${esc(p.documento||'—')}</span></div>
+    <div class="res-linea"><span class="k">Diagnóstico</span><span class="v">${esc(p.diagnostico||'—')}</span></div>
+    <div class="res-linea"><span class="k">Ingreso</span><span class="v">${esc(p.fecha_ingreso||'—')}</span></div>
+    <div class="pie" style="margin-top:18px"><button class="btn btn-fantasma" onclick="cerrarModal()">Cerrar</button>
+      <button class="btn btn-fantasma" style="color:var(--err);border-color:var(--err)" onclick="darAlta('${jsq(p.id)}')">Dar de alta</button></div>`);
+}
+async function darAlta(id){
+  if(!confirm('¿Dar de alta (egresar) a este paciente? La cama queda libre.')) return;
+  try{ await altaPaciente(isNaN(parseInt(id,10))?id:parseInt(id,10)); }catch(e){ alert('No se pudo: '+e.message); return; }
+  cerrarModal(); irDashboard();
 }
 
 /* ============ EDITAR CONFIGURACIÓN (admin) ============ */
