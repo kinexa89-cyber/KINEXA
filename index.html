@@ -173,6 +173,14 @@ function guardarSesion(u){ TOKEN=u.token; USER=u; localStorage.setItem('kinexa_t
 function limpiarSesion(){ TOKEN=null; USER=null; localStorage.removeItem('kinexa_token'); localStorage.removeItem('kinexa_user'); }
 
 /* ============ PANTALLA DE INICIO ============ */
+let DEMO = false;
+let CLAVE_MAESTRA = '';
+const DEMO_SECTORES = [
+  { nombre:'UTI', camas:['1','2','3','4','5','6'] },
+  { nombre:'Emergencias', camas:['A','B','C','D','E'] },
+  { nombre:'Cuidados Mínimos', camas:['1','2','3','4','5','6','7','8'] }
+];
+
 function pantallaInicio(){
   $('#app').innerHTML = `
     <main class="lienzo login-wrap">
@@ -181,14 +189,58 @@ function pantallaInicio(){
         <div class="nombre" style="font-size:26px;font-weight:600;letter-spacing:-1px">Kine<span style="color:var(--violeta)">xa</span></div>
         <div class="login-inst" style="margin-bottom:22px">La evolución digital de la kinesiología</div>
         <button class="btn btn-primario" style="width:100%;margin-bottom:10px" onclick="pantallaLogin()">Ingresar</button>
-        <button class="btn btn-fantasma" style="width:100%" onclick="empezarRegistro()">Registrar mi institución</button>
+        <button class="btn btn-fantasma" style="width:100%;margin-bottom:10px" onclick="pantallaClaveMaestra()">Registrar mi institución</button>
+        <button class="btn btn-fantasma" style="width:100%" onclick="entrarDemo()">Probar demo</button>
       </div>
     </main>`;
 }
+
+/* ── Clave de activación (solo con la clave maestra se puede registrar) ── */
+function pantallaClaveMaestra(err){
+  $('#app').innerHTML = `
+    <main class="lienzo login-wrap">
+      <div class="panel login-card">
+        <div class="login-head">${isotipo(52)}
+          <div>
+            <div class="nombre" style="font-size:22px;font-weight:600;letter-spacing:-1px">Kine<span style="color:var(--violeta)">xa</span></div>
+            <div class="login-inst">Registrar institución</div>
+          </div>
+        </div>
+        <p style="color:var(--tinta-60);font-size:13.5px;margin:14px 0 4px">Ingresá la clave de activación que te entregaron.</p>
+        <div class="campo" style="margin-top:8px">
+          <label class="lab">Clave de activación</label>
+          <input class="txt" id="cmClave" type="password" placeholder="••••••••" onkeydown="if(event.key==='Enter')validarMaestra()">
+        </div>
+        <div id="cmError" class="aviso aviso-warn" style="display:${err?'block':'none'}">${esc(err||'')}</div>
+        <button class="btn btn-primario" id="btnCm" style="width:100%;margin-top:8px" onclick="validarMaestra()">Continuar</button>
+        <p style="text-align:center;margin-top:14px"><button class="btn btn-fantasma btn-sm" onclick="pantallaInicio()">← Volver</button></p>
+      </div>
+    </main>`;
+}
+async function validarMaestra(){
+  const clave=($('#cmClave').value||'').trim();
+  const err=$('#cmError'); const btn=$('#btnCm');
+  const fallo=m=>{ err.textContent=m; err.style.display='block'; btn.disabled=false; btn.textContent='Continuar'; };
+  if(!clave){ fallo('Ingresá la clave de activación.'); return; }
+  btn.disabled=true; btn.textContent='Verificando…';
+  let ok;
+  try{ ok = await rpc('kinexa_validar_maestra', { p_clave:clave }); }
+  catch(e){ fallo('No se pudo conectar. Reintentá.'); return; }
+  if(ok!==true){ fallo('Clave de activación incorrecta.'); return; }
+  CLAVE_MAESTRA = clave;
+  empezarRegistro();
+}
 function empezarRegistro(){
-  modoEdicion=false; uid=1;
+  DEMO=false; modoEdicion=false; uid=1;
   cfg={ institucion:{nombre:'',logo:''}, sectores:[], usuarios:[] };
   paso=1; render();
+}
+
+/* ── Modo demo (datos de ejemplo, no toca la base) ── */
+function entrarDemo(){
+  DEMO=true;
+  USER={ nombre:'Usuario', apellido:'Demo', es_admin:true, institucion_nombre:'Hospital Demo', institucion_logo:'' };
+  pantallaDashboard(DEMO_SECTORES);
 }
 
 let paso = 1;
@@ -452,7 +504,7 @@ async function finalizar(){
     }
     // ── Alta automática de institución ──
     const admin = usuarios.find(u=>u.admin);
-    const instId = await rpc('kinexa_registrar', { p_institucion:inst, p_admin:{ nombre:admin.nombre, apellido:admin.apellido, dni:admin.dni } });
+    const instId = await rpc('kinexa_registrar', { p_clave_maestra:CLAVE_MAESTRA, p_institucion:inst, p_admin:{ nombre:admin.nombre, apellido:admin.apellido, dni:admin.dni } });
     const login = await rpc('kinexa_login', { p_institucion_id:instId, p_dni:admin.dni, p_clave:admin.dni });
     if(!login || login.length===0) throw new Error('No se pudo iniciar sesión tras el registro.');
     guardarSesion(login[0]);
@@ -521,7 +573,7 @@ async function intentarLogin(){
   guardarSesion(rows[0]);
   await irDashboard();
 }
-async function salir(){ try{ await rpc('kinexa_logout',{ p_token:TOKEN }); }catch(e){} limpiarSesion(); pantallaInicio(); }
+async function salir(){ if(DEMO){ DEMO=false; USER=null; pantallaInicio(); return; } try{ await rpc('kinexa_logout',{ p_token:TOKEN }); }catch(e){} limpiarSesion(); pantallaInicio(); }
 
 /* ============ PANTALLA PRINCIPAL (provisoria) ============ */
 async function irDashboard(){
@@ -549,9 +601,10 @@ function pantallaDashboard(sectores){
         </div>
       </header>
       <main class="dash-body"><div class="dash-inner">
+        ${DEMO?`<div class="aviso" style="background:var(--lila-50);color:var(--violeta-800);border:1px solid var(--lila-200);margin-bottom:16px">Estás en <strong>modo demo</strong>: los datos son de ejemplo y no se guardan.</div>`:''}
         <div class="dash-title">
           <h1>Mapa de camas</h1>
-          ${u.es_admin?`<button class="btn btn-fantasma btn-sm" onclick="editar()">Configuración</button>`:''}
+          ${(u.es_admin && !DEMO)?`<button class="btn btn-fantasma btn-sm" onclick="editar()">Configuración</button>`:''}
         </div>
         <div class="sec-grid">
           ${sectores.map(s=>`
