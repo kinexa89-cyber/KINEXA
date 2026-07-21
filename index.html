@@ -4661,7 +4661,9 @@ function normalizarCamas(c){
 }
 // Devuelve las camas de un sector (por nombre), según lo cargado por la institución
 function camasDeSector(nombre){
-  const s = KX_SECTORES.find(x => x.nombre === nombre);
+  const norm = x => String(x || '').normalize('NFC').replace(/[\u200B-\u200D\uFEFF]/g,'').replace(/\s+/g,' ').trim().toLowerCase();
+  const key = norm(nombre);
+  const s = KX_SECTORES.find(x => norm(x.nombre) === key);
   return s ? normalizarCamas(s.camas) : [];
 }
 // Poblar el selector de institución en el login (al cargar la app)
@@ -8106,20 +8108,10 @@ async function exportarFichaNeuro(){
 let egresoTipo = null;
 let egresoPacId = null;
 
-// ── Camas válidas por sector (v3_111) ────────────────────
-function camasDeSector(sala){
-  const rango = (a,b)=>{ const r=[]; for(let i=a;i<=b;i++) r.push(String(i)); return r; };
-  const rangoAB = (a,b)=>{ const r=[]; for(let i=a;i<=b;i++){ r.push(i+'A'); r.push(i+'B'); } return r; };
-  switch(sala){
-    case 'UTI-A': return rango(1,8);
-    case 'UTI-B': return rango(9,20);
-    case 'UTI-C': return rango(21,27);
-    case 'EMERG': return rango(1,12);
-    case 'MIN-B': return rangoAB(100,131);
-    case 'MIN-C': return rangoAB(132,163);
-    default: return [];
-  }
-}
+// ── Camas por sector ─────────────────────────────────────
+// La versión válida de camasDeSector está más arriba y lee las camas de los
+// sectores de cada institución (KX_SECTORES). La vieja tabla fija del
+// Bicentenario se eliminó porque pisaba a la nueva y dejaba las camas vacías.
 // Puebla el select de cama destino solo con camas del sector elegido,
 // marcando las que ya están ocupadas por un paciente activo.
 function poblarCamasDestino(){
@@ -8472,11 +8464,15 @@ function addLog(type, msg){
   logs.unshift(entry);
   if(logs.length > 500) logs = logs.slice(0,500);
   saveLogs();
-  // Registro en la base CENTRAL, atado a la institución (aislado por token).
-  // Fire-and-forget: si no hay sesión/conexión, no rompe nada (queda el local).
+  // v3_112: además del registro local, subir a la tabla compartida 'logs' de Supabase
+  // para que la jefatura (admin) vea la actividad de TODO el equipo, no solo la de su dispositivo.
+  // Fire-and-forget: si no hay sesión/conexión o la tabla no existe, no rompe nada (queda el local).
   try {
-    if(TOKEN && !DEMO){
-      rpc('kinexa_log_add', { p_token:TOKEN, p_usuario:entry.user, p_tipo:entry.type, p_msg:entry.msg }).catch(()=>{});
+    if(typeof supaSession !== 'undefined' && supaSession){
+      supaFetch('/rest/v1/logs', {
+        method:'POST',
+        body: JSON.stringify({ tipo: entry.type, msg: entry.msg, usuario: entry.user, ts: entry.ts })
+      }).catch(()=>{});
     }
   } catch(_){}
 }
@@ -8487,24 +8483,24 @@ async function cargarActividadEquipo(){
   const el = document.getElementById('logsList');
   if(el) el.innerHTML = '<div class="empty"><i class="ti ti-loader-2"></i><p>Cargando actividad del equipo…</p></div>';
   try {
-    const rows = await rpc('kinexa_logs', { p_token:TOKEN, p_limite:300 });
+    const rows = await supaFetch('/rest/v1/logs?select=tipo,msg,usuario,ts&order=ts.desc&limit=300');
     const teamLogs = (rows||[]).map(r=>({ type:r.tipo, msg:r.msg, user:r.usuario, ts:r.ts }));
     renderLogs(teamLogs, false);
   } catch(e){
-    console.error('Actividad error:', e);
-    const cont = document.getElementById('logsList');
-    if(cont) cont.innerHTML = '<div class="empty"><i class="ti ti-wifi-off"></i><p>No se pudo cargar la actividad. Revisá la conexión e intentá de nuevo.</p></div>';
+    console.error('Actividad Supabase error:', e);
+    renderLogs(logs, true);
   }
 }
 
 async function clearLogs(){
-  // Borra la actividad de la institución en la base central (acción de jefatura).
+  // Borra el registro compartido de todo el equipo (acción de jefatura) y también el local.
   try {
-    await rpc('kinexa_logs_borrar', { p_token:TOKEN });
+    if(typeof supaSession !== 'undefined' && supaSession){
+      await supaFetch('/rest/v1/logs?id=gte.0', { method:'DELETE' });
+    }
   } catch(e){
-    console.error('No se pudo borrar la actividad:', e);
-    showToast('No se pudo borrar la actividad (ver consola)', 'error');
-    return;
+    console.error('No se pudo borrar la actividad compartida:', e);
+    showToast('No se pudo borrar la actividad compartida (ver consola)', 'error');
   }
   logs=[]; saveLogs();
   cargarActividadEquipo();
