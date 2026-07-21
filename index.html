@@ -4648,15 +4648,21 @@ function aplicarSectoresKinexa(sectores){
       KX_SECTORES.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
   }
 }
+// Normaliza las camas de un sector: acepta lista JS o texto de Postgres ({1,2,3})
+function normalizarCamas(c){
+  if(c == null) return [];
+  if(Array.isArray(c)) return c.map(String).filter(x => x !== '');
+  if(typeof c === 'string'){
+    const t = c.trim().replace(/^\{|\}$/g, '');
+    if(!t) return [];
+    return t.split(',').map(x => x.trim().replace(/^"|"$/g, '')).filter(Boolean);
+  }
+  return [];
+}
 // Devuelve las camas de un sector (por nombre), según lo cargado por la institución
 function camasDeSector(nombre){
   const s = KX_SECTORES.find(x => x.nombre === nombre);
-  if(!s) return [];
-  const c = s.camas;
-  if(Array.isArray(c)) return c.map(String);
-  const n = Number(c);
-  if(n > 0){ const out = []; for(let i=1;i<=n;i++) out.push(String(i)); return out; }
-  return [];
+  return s ? normalizarCamas(s.camas) : [];
 }
 // Poblar el selector de institución en el login (al cargar la app)
 async function cargarInstitucionesKinexa(){
@@ -4840,7 +4846,7 @@ async function abrirConfigKinexa(){
   document.getElementById('configScreen').style.display = 'block';
   try {
     const sects = await rpc('kinexa_sectores', { p_token: TOKEN });
-    (sects || []).forEach(s => addSectorRow(s.nombre, Array.isArray(s.camas)?s.camas:[], 'cfgSectores'));
+    (sects || []).forEach(s => addSectorRow(s.nombre, normalizarCamas(s.camas), 'cfgSectores'));
     if(!(sects || []).length) addSectorRow(null, null, 'cfgSectores');
   } catch(e){ console.error(e); showToast('No se pudieron cargar los sectores','error'); }
   try {
