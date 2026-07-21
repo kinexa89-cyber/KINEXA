@@ -774,6 +774,15 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <p style="font-size:10.5px;color:var(--text-light);margin-top:6px">Las personas nuevas entran la primera vez con su <strong>DNI como clave</strong>. El botón de la llave vuelve la clave de alguien a su DNI (si se la olvidó).</p>
     </div>
 
+    <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
+      <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:4px">Inteligencia artificial (opcional)</p>
+      <p style="font-size:11px;color:var(--text-light);margin-bottom:8px">Para que tu equipo pueda usar la IA (evoluciones y resúmenes automáticos), pegá acá la clave de Gemini de tu institución. Se genera <strong>gratis</strong> en Google AI Studio (aistudio.google.com) con una cuenta de Google → "Get API key". Si la dejás vacía, la IA queda desactivada para tu institución.</p>
+      <div class="form-group">
+        <label>Clave de Gemini</label>
+        <input type="text" id="cfgGeminiKey" placeholder="Pegá acá tu clave (o dejá vacío para desactivar la IA)" autocomplete="off">
+      </div>
+    </div>
+
     <button class="btn btn-primary btn-block" id="btnGuardarConfig" style="margin-top:16px" onclick="guardarConfigKinexa()"><i class="ti ti-device-floppy"></i>Guardar cambios</button>
     <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="cerrarConfigKinexa()">Cancelar</button>
   </div>
@@ -4859,6 +4868,11 @@ async function abrirConfigKinexa(){
     (users || []).forEach(u => addCfgUserRow(u));
     if(!(users || []).length) addCfgUserRow();
   } catch(e){ console.error(e); showToast('No se pudo cargar el equipo: ' + (e.message||'').slice(0,60),'error'); }
+  try {
+    const key = await rpc('kinexa_gemini_obtener', { p_token: TOKEN });
+    const inp = document.getElementById('cfgGeminiKey');
+    if(inp) inp.value = key ? String(key) : '';
+  } catch(e){ /* la clave de IA es opcional */ }
 }
 function cerrarConfigKinexa(){ document.getElementById('configScreen').style.display = 'none'; }
 
@@ -4919,6 +4933,12 @@ async function guardarConfigKinexa(){
   if(btn){ btn.disabled=true; btn.innerHTML='<i class="ti ti-loader-2"></i> Guardando…'; }
   try {
     await rpc('kinexa_setup', { p_token:TOKEN, p_config:{ sectores, usuarios } });
+    // Clave de Gemini de la institución (opcional)
+    const geminiKey = (document.getElementById('cfgGeminiKey')?.value || '').trim();
+    try {
+      await rpc('kinexa_gemini_guardar', { p_token:TOKEN, p_key:geminiKey });
+      LS.set('hbee_gemini_key', geminiKey); // aplicar de inmediato en este dispositivo
+    } catch(eKey){ console.error('gemini', eKey); }
     for(const dni of CFG_BORRAR){
       try { await rpc('kinexa_usuario_borrar', { p_token:TOKEN, p_dni:dni }); } catch(eDel){ console.error('borrar', dni, eDel); }
     }
@@ -5147,26 +5167,24 @@ function saveGeminiKey(){
 // dispositivos la descargan automáticamente al cargar los datos.
 async function guardarKeyCompartida(key){
   try {
-    await supaFetch('/rest/v1/app_config', {
-      method:'POST',
-      headers:{ 'Prefer':'resolution=merge-duplicates' },
-      body: JSON.stringify([{ key:'gemini_api_key', value:key }])
-    });
-    showToast('Key compartida con todo el equipo ✓','success');
+    await rpc('kinexa_gemini_guardar', { p_token: TOKEN, p_key: key || '' });
+    showToast('Clave de la IA guardada para tu institución ✓','success');
   } catch(e){
-    console.warn('No se pudo compartir la key:', e.message);
-    showToast('Key guardada solo en este dispositivo. Iniciá sesión y volvé a guardarla para compartirla.','error');
+    console.warn('No se pudo guardar la clave de IA:', e.message);
+    showToast('No se pudo guardar la clave de la IA (ver consola)','error');
   }
 }
 async function cargarConfigCompartida(){
   try {
-    const rows = await supaFetch('/rest/v1/app_config?key=eq.gemini_api_key&select=value');
-    if(rows && rows[0] && rows[0].value){
-      LS.set('hbee_gemini_key', String(rows[0].value).trim());
+    const key = await rpc('kinexa_gemini_obtener', { p_token: TOKEN });
+    if(key && String(key).trim()){
+      LS.set('hbee_gemini_key', String(key).trim());
+    } else {
+      // Esta institución no tiene clave cargada: limpiar la que hubiera quedado de otra
+      LS.set('hbee_gemini_key', '');
     }
   } catch(e){
-    // Tabla inexistente o sin sesión: se sigue usando la key local si la hay
-    console.warn('Config compartida no disponible:', e.message);
+    console.warn('Clave de IA no disponible:', e.message);
   }
 }
 
@@ -5177,7 +5195,7 @@ const GEMINI_MODELS = ['gemini-3.5-flash', 'gemini-3.1-flash-lite', 'gemini-flas
 
 async function llamarGemini(prompt, keyOverride){
   const apiKey = (keyOverride || LS.get('hbee_gemini_key') || '').trim();
-  if(!apiKey) throw new Error('Falta configurar la API key de Gemini en Ajustes.');
+  if(!apiKey) throw new Error('La IA no está configurada. El coordinador debe cargar la clave de Gemini en Configuración.');
   // Si ya sabemos qué modelo funcionó la última vez, probarlo primero
   const preferido = LS.get('hbee_gemini_model');
   const modelos = (preferido && !GEMINI_MODELS.includes(preferido))
@@ -5571,7 +5589,7 @@ async function generarResumenIA(){
     GEMINI_KEY = LS.get('hbee_gemini_key') || '';
   }
   if(!GEMINI_KEY){
-    cont.innerHTML = '<div class="empty"><i class="ti ti-key-off"></i><p>Todavía no hay una API key de Gemini configurada para el equipo. Pedile al administrador que la cargue una vez en Ajustes: se comparte automáticamente con todos.</p></div>';
+    cont.innerHTML = '<div class="empty"><i class="ti ti-key-off"></i><p>La IA todavía no está configurada para tu institución. Pedile al coordinador que cargue la clave de Gemini una vez en Configuración (el engranaje ⚙️, arriba a la derecha): queda lista para todo el equipo.</p></div>';
     btnRegen.disabled = false;
     return;
   }
@@ -5697,7 +5715,7 @@ async function generarInformeAlta(patientId){
     GEMINI_KEY = LS.get('hbee_gemini_key') || '';
   }
   if(!GEMINI_KEY){
-    document.getElementById('informeAltaContent').innerHTML = '<div class="empty"><i class="ti ti-key-off"></i><p>Todavía no hay una API key de Gemini configurada para el equipo. Pedile al administrador que la cargue una vez en Ajustes: se comparte automáticamente con todos.</p></div>';
+    document.getElementById('informeAltaContent').innerHTML = '<div class="empty"><i class="ti ti-key-off"></i><p>La IA todavía no está configurada para tu institución. Pedile al coordinador que cargue la clave de Gemini una vez en Configuración (el engranaje ⚙️, arriba a la derecha): queda lista para todo el equipo.</p></div>';
     return;
   }
 
