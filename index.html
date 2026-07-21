@@ -751,6 +751,34 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
   </div>
 </div>
 
+<!-- ════ CONFIGURACIÓN (admin) ════ -->
+<div id="configScreen" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(20,10,40,.55);overflow-y:auto;padding:1.2rem 1rem">
+  <div class="login-card" style="max-width:620px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
+      <h1 style="font-size:20px;margin:0">Configuración</h1>
+      <button class="btn btn-ghost btn-sm" onclick="cerrarConfigKinexa()"><i class="ti ti-x"></i></button>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Editá los sectores y camas de tu institución y gestioná tu equipo.</p>
+
+    <div style="border-top:1px solid var(--border);padding-top:12px">
+      <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:4px">Sectores y camas</p>
+      <p style="font-size:11px;color:var(--text-light);margin-bottom:8px">Cada cama es un casillero editable. Para cargar muchas de golpe usá "generar" (un número, un rango <strong>1-8</strong>, o una lista).</p>
+      <div id="cfgSectores"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addSectorRow(null,null,'cfgSectores')"><i class="ti ti-plus"></i>Agregar sector</button>
+    </div>
+
+    <div style="border-top:1px solid var(--border);margin-top:14px;padding-top:12px">
+      <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:8px">Equipo (kinesiólogos y administradores)</p>
+      <div id="cfgUsers"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addCfgUserRow()"><i class="ti ti-plus"></i>Agregar persona</button>
+      <p style="font-size:10.5px;color:var(--text-light);margin-top:6px">Las personas nuevas entran la primera vez con su <strong>DNI como clave</strong>. El botón de la llave vuelve la clave de alguien a su DNI (si se la olvidó).</p>
+    </div>
+
+    <button class="btn btn-primary btn-block" id="btnGuardarConfig" style="margin-top:16px" onclick="guardarConfigKinexa()"><i class="ti ti-device-floppy"></i>Guardar cambios</button>
+    <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="cerrarConfigKinexa()">Cancelar</button>
+  </div>
+</div>
+
 <!-- ════ APP ════ -->
 <div id="app">
 
@@ -783,6 +811,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <span class="sector-badge hide-mobile" id="sectorBadge" onclick="changeSector()" style="display:none" title="Cambiar sector">
         <i class="ti ti-map-pin"></i><span id="sectorBadgeLabel">—</span>
       </span>
+      <button class="btn-logout" id="btnConfigKx" onclick="abrirConfigKinexa()" style="display:none" title="Configuración"><i class="ti ti-settings"></i></button>
       <button class="btn-logout" onclick="doLogout()"><i class="ti ti-logout"></i></button>
     </div>
   </nav>
@@ -4670,8 +4699,8 @@ function leerLogoRegistro(input){
 }
 
 // ── Filas dinámicas de sectores y kinesiólogos ────────────
-function addSectorRow(nombre, camas){
-  const cont = document.getElementById('regSectores');
+function addSectorRow(nombre, camas, contId){
+  const cont = document.getElementById(contId || 'regSectores');
   const row = document.createElement('div');
   row.className = 'reg-sector';
   row.style.cssText = 'border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px';
@@ -4799,6 +4828,99 @@ async function doRegistrar(){
     showToast(msg,'error');
   } finally {
     if(btn){ btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i>Crear institución'; }
+  }
+}
+
+// ── Configuración (admin): editar sectores/camas y equipo ──
+let CFG_BORRAR = [];
+async function abrirConfigKinexa(){
+  CFG_BORRAR = [];
+  document.getElementById('cfgSectores').innerHTML = '';
+  document.getElementById('cfgUsers').innerHTML = '';
+  document.getElementById('configScreen').style.display = 'block';
+  try {
+    const sects = await rpc('kinexa_sectores', { p_token: TOKEN });
+    (sects || []).forEach(s => addSectorRow(s.nombre, Array.isArray(s.camas)?s.camas:[], 'cfgSectores'));
+    if(!(sects || []).length) addSectorRow(null, null, 'cfgSectores');
+  } catch(e){ console.error(e); showToast('No se pudieron cargar los sectores','error'); }
+  try {
+    const users = await rpc('kinexa_usuarios', { p_token: TOKEN });
+    (users || []).forEach(u => addCfgUserRow(u));
+    if(!(users || []).length) addCfgUserRow();
+  } catch(e){ console.error(e); showToast('No se pudo cargar el equipo: ' + (e.message||'').slice(0,60),'error'); }
+}
+function cerrarConfigKinexa(){ document.getElementById('configScreen').style.display = 'none'; }
+
+function addCfgUserRow(data){
+  const cont = document.getElementById('cfgUsers');
+  const existe = !!(data && data.dni);
+  const val = k => (data && data[k] != null) ? String(data[k]).replace(/"/g,'&quot;') : '';
+  const row = document.createElement('div');
+  row.className = 'cfg-user';
+  if(existe) row.dataset.dniOrig = data.dni;
+  row.style.cssText = 'display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;padding-bottom:8px;border-bottom:1px dashed var(--border)';
+  row.innerHTML =
+    `<input type="text" class="cfg-u-nombre" placeholder="Nombre" value="${val('nombre')}" style="flex:1;min-width:88px">`+
+    `<input type="text" class="cfg-u-apellido" placeholder="Apellido" value="${val('apellido')}" style="flex:1;min-width:88px">`+
+    `<input type="text" class="cfg-u-dni" placeholder="DNI" value="${val('dni')}" ${existe?'readonly style="flex:1;min-width:78px;background:var(--blue-50)"':'style="flex:1;min-width:78px"'}>`+
+    `<label style="display:flex;align-items:center;gap:3px;font-size:12px;color:var(--text-muted);margin:0"><input type="checkbox" class="cfg-u-admin" ${(data && data.es_admin)?'checked':''}> Admin</label>`+
+    (existe?`<button class="btn btn-ghost btn-sm" style="padding:3px 7px" title="Restablecer clave al DNI" onclick="resetClaveUsuario('${String(data.dni).replace(/'/g,"\\'")}')"><i class="ti ti-key"></i></button>`:'')+
+    `<button class="btn btn-ghost btn-sm" style="padding:3px 7px" title="Quitar" onclick="quitarCfgUser(this)"><i class="ti ti-trash"></i></button>`;
+  cont.appendChild(row);
+}
+function quitarCfgUser(btn){
+  const row = btn.closest('.cfg-user');
+  if(row.dataset.dniOrig) CFG_BORRAR.push(row.dataset.dniOrig);
+  row.remove();
+}
+async function resetClaveUsuario(dni){
+  if(!confirm('¿Volver la clave de esta persona a su DNI ('+dni+')? Va a tener que entrar con el DNI como clave.')) return;
+  try {
+    await rpc('kinexa_usuario_reset_clave', { p_token:TOKEN, p_dni:dni });
+    showToast('Clave restablecida al DNI','success');
+  } catch(e){ showToast('No se pudo restablecer: ' + (e.message||'').slice(0,60),'error'); }
+}
+
+async function guardarConfigKinexa(){
+  const sectores = [];
+  document.querySelectorAll('#cfgSectores .reg-sector').forEach(r=>{
+    const nombre = r.querySelector('.reg-sec-nombre').value.trim();
+    const camas = [...r.querySelectorAll('.reg-cama-in')].map(i=>i.value.trim()).filter(Boolean);
+    if(nombre) sectores.push({ nombre, camas });
+  });
+  if(!sectores.length){ showToast('Tiene que quedar al menos un sector','error'); return; }
+
+  const usuarios = []; let hayAdmin = false, ok = true;
+  document.querySelectorAll('#cfgUsers .cfg-user').forEach(r=>{
+    const nombre = r.querySelector('.cfg-u-nombre').value.trim();
+    const apellido = r.querySelector('.cfg-u-apellido').value.trim();
+    const dni = r.querySelector('.cfg-u-dni').value.trim();
+    const admin = r.querySelector('.cfg-u-admin').checked;
+    if(!nombre && !apellido && !dni) return;
+    if(!nombre || !apellido || !dni){ ok = false; return; }
+    if(admin) hayAdmin = true;
+    usuarios.push({ nombre, apellido, dni, admin });
+  });
+  if(!ok){ showToast('Completá nombre, apellido y DNI de cada persona','error'); return; }
+  if(!hayAdmin){ showToast('Tiene que quedar al menos un administrador','error'); return; }
+
+  const btn = document.getElementById('btnGuardarConfig');
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="ti ti-loader-2"></i> Guardando…'; }
+  try {
+    await rpc('kinexa_setup', { p_token:TOKEN, p_config:{ sectores, usuarios } });
+    for(const dni of CFG_BORRAR){
+      try { await rpc('kinexa_usuario_borrar', { p_token:TOKEN, p_dni:dni }); } catch(eDel){ console.error('borrar', dni, eDel); }
+    }
+    CFG_BORRAR = [];
+    try { const sects = await rpc('kinexa_sectores', { p_token:TOKEN }); aplicarSectoresKinexa(sects); } catch(e2){}
+    showToast('Cambios guardados ✓','success');
+    cerrarConfigKinexa();
+    if(typeof renderAll === 'function') renderAll();
+  } catch(e){
+    console.error('Config:', e);
+    showToast('No se pudo guardar: ' + (e.message||'').slice(0,70),'error');
+  } finally {
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i>Guardar cambios'; }
   }
 }
 // ═════════════════════════════════════════════════════════
@@ -5247,6 +5369,8 @@ function changeSector(){
 
 function launchApp(){
   document.getElementById('app').style.display = 'flex';
+  const btnCfg = document.getElementById('btnConfigKx');
+  if(btnCfg) btnCfg.style.display = (currentUser && currentUser.role === 'admin') ? '' : 'none';
   const av = document.getElementById('navAvatar');
   av.textContent = currentUser.name.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();
   document.getElementById('navName').textContent = currentUser.name;
