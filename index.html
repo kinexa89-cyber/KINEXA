@@ -651,7 +651,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- ════ LOGIN ════ -->
-<div id="loginScreen">
+<div id="loginScreen" style="display:none">
   <div class="login-card">
     <div class="login-logo">
       <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCI+CiAgPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiByeD0iMjEiIGZpbGw9IiM3QzNBRUQiLz4KICA8ZyBmaWxsPSJub25lIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgICA8cmVjdCB4PSIzMiIgeT0iMjciIHdpZHRoPSI5IiBoZWlnaHQ9IjQ2IiByeD0iNC41IiBmaWxsPSIjRkZGRkZGIiBzdHJva2U9Im5vbmUiLz4KICAgIDxwb2x5bGluZSBwb2ludHM9IjQxLDUwIDY2LDI5IiBzdHJva2Utd2lkdGg9IjguNSIvPgogICAgPHBvbHlsaW5lIHBvaW50cz0iNDEsNTAgNjYsNzMiIHN0cm9rZS13aWR0aD0iOC41Ii8+CiAgPC9nPgogIDxjaXJjbGUgY3g9IjcwLjUiIGN5PSIyNi41IiByPSI0LjUiIGZpbGw9IiNDNEI1RkQiLz4KPC9zdmc+" alt="HBEE" style="width:76px;height:76px;border-radius:18px;object-fit:cover;margin-bottom:.9rem;box-shadow:0 6px 20px rgba(0,0,0,.22)">
@@ -679,10 +679,75 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <label for="loginRecordar" style="font-size:12px;color:var(--text-muted);cursor:pointer;margin:0;line-height:1.4">Recordar mi sesión en esta computadora<br><span style="font-size:10.5px;color:var(--text-light)">No lo actives en computadoras compartidas</span></label>
     </div>
     <button class="btn btn-primary btn-block" id="btnLogin" onclick="doLogin()"><i class="ti ti-login"></i>Ingresar</button>
+    <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="mostrarInicio()"><i class="ti ti-arrow-left"></i>Volver</button>
 
     <div style="text-align:center;margin-top:1.4rem;padding-top:.9rem;border-top:1px solid var(--border)">
       <p style="font-size:10.5px;color:var(--text-light)">Desarrollado por <strong style="color:var(--text-muted)">Lic. Rodríguez Daniel</strong></p>
     </div>
+  </div>
+</div>
+
+<!-- ════ INICIO (elegir Ingresar / Registrar) ════ -->
+<div id="inicioScreen" style="display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1rem">
+  <div class="login-card" style="text-align:center">
+    <div class="login-logo">
+      <svg viewBox="0 0 100 100" width="72" height="72" style="margin-bottom:.9rem"><rect x="2" y="2" width="96" height="96" rx="21" fill="#7C3AED"/><g fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round"><rect x="32" y="27" width="9" height="46" rx="4.5" fill="#FFFFFF" stroke="none"/><polyline points="41,50 66,29" stroke-width="8.5"/><polyline points="41,50 66,73" stroke-width="8.5"/></g><circle cx="70.5" cy="26.5" r="4.5" fill="#C4B5FD"/></svg>
+      <h1>Kinexa</h1>
+      <p style="font-size:13px;font-weight:600;color:var(--blue-600);margin-top:3px">La evolución digital de la kinesiología</p>
+    </div>
+    <button class="btn btn-primary btn-block" style="margin-top:1.2rem" onclick="mostrarLoginKx()"><i class="ti ti-login"></i>Ingresar</button>
+    <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="mostrarRegistro()"><i class="ti ti-building-hospital"></i>Registrar mi institución</button>
+    <div style="text-align:center;margin-top:1.4rem;padding-top:.9rem;border-top:1px solid var(--border)">
+      <p style="font-size:10.5px;color:var(--text-light)">Desarrollado por <strong style="color:var(--text-muted)">Lic. Rodríguez Daniel</strong></p>
+    </div>
+  </div>
+</div>
+
+<!-- ════ REGISTRO DE INSTITUCIÓN ════ -->
+<div id="registerScreen" style="display:none;align-items:flex-start;justify-content:center;min-height:100vh;padding:1.2rem 1rem;overflow-y:auto">
+  <div class="login-card" style="max-width:520px">
+    <div class="login-logo" style="margin-bottom:.6rem">
+      <svg viewBox="0 0 100 100" width="52" height="52" style="margin-bottom:.5rem"><rect x="2" y="2" width="96" height="96" rx="21" fill="#7C3AED"/><g fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round"><rect x="32" y="27" width="9" height="46" rx="4.5" fill="#FFFFFF" stroke="none"/><polyline points="41,50 66,29" stroke-width="8.5"/><polyline points="41,50 66,73" stroke-width="8.5"/></g><circle cx="70.5" cy="26.5" r="4.5" fill="#C4B5FD"/></svg>
+      <h1>Registrar institución</h1>
+      <p style="font-size:12px;color:var(--text-muted);margin-top:3px">Cargá tu hospital, sus sectores y tu equipo.</p>
+    </div>
+
+    <div class="form-group">
+      <label>Clave de activación</label>
+      <input type="password" id="regMaestra" placeholder="La clave que te habilita a registrar">
+    </div>
+    <div class="form-group">
+      <label>Nombre de la institución</label>
+      <input type="text" id="regInstNombre" placeholder="Ej: Hospital San Martín">
+    </div>
+    <div class="form-group">
+      <label>Logo (opcional)</label>
+      <input type="file" id="regLogoFile" accept="image/*" onchange="leerLogoRegistro(this)">
+      <div id="regLogoPreview" style="margin-top:6px"></div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);margin:14px 0 10px;padding-top:12px">
+      <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:8px">Administrador (jefatura)</p>
+      <div class="form-group"><label>Nombre</label><input type="text" id="regAdminNombre" placeholder="Nombre"></div>
+      <div class="form-group"><label>Apellido</label><input type="text" id="regAdminApellido" placeholder="Apellido"></div>
+      <div class="form-group"><label>DNI</label><input type="text" id="regAdminDni" placeholder="Sin puntos (será tu clave la primera vez)"></div>
+    </div>
+
+    <div style="border-top:1px solid var(--border);margin:10px 0;padding-top:12px">
+      <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:4px">Sectores y camas</p>
+      <p style="font-size:11px;color:var(--text-light);margin-bottom:8px">En camas podés poner un número (ej: <strong>8</strong> = camas 1 a 8) o una lista separada por comas (ej: <strong>100A, 100B, 101A</strong>).</p>
+      <div id="regSectores"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addSectorRow()"><i class="ti ti-plus"></i>Agregar sector</button>
+    </div>
+
+    <div style="border-top:1px solid var(--border);margin:10px 0;padding-top:12px">
+      <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:8px">Kinesiólogos (opcional)</p>
+      <div id="regKines"></div>
+      <button class="btn btn-ghost btn-sm" onclick="addKineRow()"><i class="ti ti-plus"></i>Agregar kinesiólogo</button>
+    </div>
+
+    <button class="btn btn-primary btn-block" id="btnRegistrar" style="margin-top:14px" onclick="doRegistrar()"><i class="ti ti-device-floppy"></i>Crear institución</button>
+    <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="mostrarInicio()"><i class="ti ti-arrow-left"></i>Volver</button>
   </div>
 </div>
 
@@ -4576,6 +4641,121 @@ async function cargarInstitucionesKinexa(){
     }
   } catch(e){ console.error('No se pudieron cargar las instituciones', e); }
 }
+
+// ── Navegación entre pantallas de acceso ──────────────────
+function ocultarPantallasAuth(){
+  ['inicioScreen','loginScreen','registerScreen','sectorScreen','changePassScreen'].forEach(id=>{
+    const e = document.getElementById(id); if(e) e.style.display='none';
+  });
+}
+function mostrarInicio(){ ocultarPantallasAuth(); document.getElementById('app').style.display='none'; document.getElementById('inicioScreen').style.display='flex'; }
+function mostrarLoginKx(){ ocultarPantallasAuth(); document.getElementById('loginScreen').style.display='flex'; cargarInstitucionesKinexa(); }
+function mostrarRegistro(){
+  ocultarPantallasAuth();
+  document.getElementById('registerScreen').style.display='flex';
+  if(!document.querySelector('#regSectores .reg-sector')) addSectorRow();
+}
+
+// ── Logo: archivo -> base64 (queda en un global) ──────────
+let REG_LOGO = '';
+function leerLogoRegistro(input){
+  const f = input.files && input.files[0];
+  if(!f){ REG_LOGO=''; document.getElementById('regLogoPreview').innerHTML=''; return; }
+  const r = new FileReader();
+  r.onload = () => {
+    REG_LOGO = r.result;
+    document.getElementById('regLogoPreview').innerHTML = `<img src="${REG_LOGO}" style="height:46px;border-radius:8px;border:1px solid var(--border)">`;
+  };
+  r.readAsDataURL(f);
+}
+
+// ── Filas dinámicas de sectores y kinesiólogos ────────────
+function addSectorRow(nombre, camas){
+  const cont = document.getElementById('regSectores');
+  const row = document.createElement('div');
+  row.className = 'reg-sector';
+  row.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;align-items:center';
+  row.innerHTML =
+    `<input type="text" class="reg-sec-nombre" placeholder="Sector (ej: UTI A)" value="${nombre?String(nombre).replace(/"/g,'&quot;'):''}" style="flex:2">`+
+    `<input type="text" class="reg-sec-camas" placeholder="Camas (ej: 8)" value="${camas?String(camas).replace(/"/g,'&quot;'):''}" style="flex:1">`+
+    `<button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()" title="Quitar"><i class="ti ti-trash"></i></button>`;
+  cont.appendChild(row);
+}
+function addKineRow(){
+  const cont = document.getElementById('regKines');
+  const row = document.createElement('div');
+  row.className = 'reg-kine';
+  row.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;align-items:center;flex-wrap:wrap';
+  row.innerHTML =
+    `<input type="text" class="reg-k-nombre" placeholder="Nombre" style="flex:1;min-width:90px">`+
+    `<input type="text" class="reg-k-apellido" placeholder="Apellido" style="flex:1;min-width:90px">`+
+    `<input type="text" class="reg-k-dni" placeholder="DNI" style="flex:1;min-width:90px">`+
+    `<button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()" title="Quitar"><i class="ti ti-trash"></i></button>`;
+  cont.appendChild(row);
+}
+
+// Camas: un número -> 1..N ; una lista separada por comas -> tal cual
+function parseCamas(str){
+  const s = (str||'').trim();
+  if(!s) return [];
+  if(/^\d+$/.test(s)){ const n=parseInt(s,10); const out=[]; for(let i=1;i<=n;i++) out.push(String(i)); return out; }
+  return s.split(/[,\n]/).map(x=>x.trim()).filter(Boolean);
+}
+
+// ── Alta de institución (usa las funciones que ya tiene la base) ──
+async function doRegistrar(){
+  const maestra = document.getElementById('regMaestra').value.trim();
+  const instNombre = document.getElementById('regInstNombre').value.trim();
+  const aNombre = document.getElementById('regAdminNombre').value.trim();
+  const aApellido = document.getElementById('regAdminApellido').value.trim();
+  const aDni = document.getElementById('regAdminDni').value.trim();
+  if(!maestra){ showToast('Ingresá la clave de activación','error'); return; }
+  if(!instNombre){ showToast('Ponele nombre a la institución','error'); return; }
+  if(!aNombre || !aApellido || !aDni){ showToast('Completá los datos del administrador','error'); return; }
+
+  const sectores = [];
+  document.querySelectorAll('#regSectores .reg-sector').forEach(r=>{
+    const nombre = r.querySelector('.reg-sec-nombre').value.trim();
+    const camas = parseCamas(r.querySelector('.reg-sec-camas').value);
+    if(nombre) sectores.push({ nombre, camas });
+  });
+  if(!sectores.length){ showToast('Agregá al menos un sector','error'); return; }
+
+  const usuarios = [{ nombre:aNombre, apellido:aApellido, dni:aDni, admin:true }];
+  document.querySelectorAll('#regKines .reg-kine').forEach(r=>{
+    const nombre = r.querySelector('.reg-k-nombre').value.trim();
+    const apellido = r.querySelector('.reg-k-apellido').value.trim();
+    const dni = r.querySelector('.reg-k-dni').value.trim();
+    if(nombre && apellido && dni) usuarios.push({ nombre, apellido, dni, admin:false });
+  });
+
+  const inst = { nombre:instNombre, logo: REG_LOGO || '' };
+  const btn = document.getElementById('btnRegistrar');
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="ti ti-loader-2"></i> Creando…'; }
+  try {
+    // 1) Crear institución + admin (valida la clave de activación)
+    const instId = await rpc('kinexa_registrar', { p_clave_maestra:maestra, p_institucion:inst, p_admin:{ nombre:aNombre, apellido:aApellido, dni:aDni } });
+    // 2) Entrar como ese admin (la primera clave es el propio DNI)
+    const login = await rpc('kinexa_login', { p_institucion_id: Number(instId), p_dni:aDni, p_clave:aDni });
+    const s = Array.isArray(login) ? login[0] : login;
+    if(!s || !s.token) throw new Error('No se pudo iniciar sesión después del registro.');
+    guardarSesionKx({ token:s.token, user:aDni, name:(aNombre+' '+aApellido).trim(), role:'admin', institucion_id:Number(instId) });
+    // 3) Guardar sectores y kinesiólogos
+    await rpc('kinexa_setup', { p_token:TOKEN, p_config:{ institucion:inst, sectores, usuarios } });
+    // 4) Cargar sectores y entrar a la app
+    try { const sects = await rpc('kinexa_sectores', { p_token:TOKEN }); aplicarSectoresKinexa(sects); } catch(eSec){ aplicarSectoresKinexa([]); }
+    showToast('Institución creada ✓','success');
+    startSession(USER);
+  } catch(e){
+    console.error('Registro:', e);
+    const msg = (e.message||'').includes('activaci') || (e.message||'').includes('incorrecta')
+      ? 'Clave de activación incorrecta.'
+      : 'No se pudo crear la institución: ' + (e.message||'').slice(0,80);
+    showToast(msg,'error');
+  } finally {
+    if(btn){ btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i>Crear institución'; }
+  }
+}
 // ═════════════════════════════════════════════════════════
 const SUPA_URL = 'https://mahtdvrakymuwiapcxjj.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1haHRkdnJha3ltdXdpYXBjeGpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMjMxMzcsImV4cCI6MjA5Njg5OTEzN30.2ozV6aouldSjqEwKpYnzQdEDdNqu_DGa0qJS6RoPxOo';
@@ -4952,7 +5132,7 @@ cargarInstitucionesKinexa();
 tryRestoreSession();
 function startSession(user){
   currentUser = user;
-  document.getElementById('loginScreen').style.display = 'none';
+  ocultarPantallasAuth();
   // Los kinesiólogos eligen sector; los admin entran viendo todos los sectores
   if(user.role === 'kine'){
     document.getElementById('sectorGreeting').textContent = `Bienvenido/a, ${user.name}`;
@@ -5059,12 +5239,9 @@ function doLogout(){
   currentUser = null;
   currentSector = null;
   document.getElementById('app').style.display = 'none';
-  document.getElementById('sectorScreen').style.display = 'none';
-  const cps = document.getElementById('changePassScreen');
-  if(cps) cps.style.display = 'none';
-  document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
+  mostrarInicio();
 }
 
 // ════════════════════════════════════════════════════════
