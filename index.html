@@ -735,7 +735,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 
     <div style="border-top:1px solid var(--border);margin:10px 0;padding-top:12px">
       <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:4px">Sectores y camas</p>
-      <p style="font-size:11px;color:var(--text-light);margin-bottom:8px">En camas podés poner un número (ej: <strong>8</strong> = camas 1 a 8) o una lista separada por comas (ej: <strong>100A, 100B, 101A</strong>).</p>
+      <p style="font-size:11px;color:var(--text-light);margin-bottom:8px">Cada cama es un casillero editable: escribile el nombre que quieras (<strong>1A</strong>, <strong>2081</strong>, lo que sea). Para cargar muchas de golpe usá "generar": un número (<strong>8</strong> = 1 a 8), un rango (<strong>1-8</strong>) o una lista (<strong>2081,2082,2083</strong>). Después las editás una por una.</p>
       <div id="regSectores"></div>
       <button class="btn btn-ghost btn-sm" onclick="addSectorRow()"><i class="ti ti-plus"></i>Agregar sector</button>
     </div>
@@ -4674,12 +4674,57 @@ function addSectorRow(nombre, camas){
   const cont = document.getElementById('regSectores');
   const row = document.createElement('div');
   row.className = 'reg-sector';
-  row.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;align-items:center';
+  row.style.cssText = 'border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px';
   row.innerHTML =
-    `<input type="text" class="reg-sec-nombre" placeholder="Sector (ej: UTI A)" value="${nombre?String(nombre).replace(/"/g,'&quot;'):''}" style="flex:2">`+
-    `<input type="text" class="reg-sec-camas" placeholder="Camas (ej: 8)" value="${camas?String(camas).replace(/"/g,'&quot;'):''}" style="flex:1">`+
-    `<button class="btn btn-ghost btn-sm" onclick="this.parentElement.remove()" title="Quitar"><i class="ti ti-trash"></i></button>`;
+    `<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">`+
+      `<input type="text" class="reg-sec-nombre" placeholder="Sector (ej: UTI A)" value="${nombre?String(nombre).replace(/"/g,'&quot;'):''}" style="flex:1">`+
+      `<button class="btn btn-ghost btn-sm" onclick="this.closest('.reg-sector').remove()" title="Quitar sector"><i class="ti ti-trash"></i></button>`+
+    `</div>`+
+    `<div class="reg-camas" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>`+
+    `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">`+
+      `<button class="btn btn-ghost btn-sm" onclick="addCamaBox(this)"><i class="ti ti-plus"></i>Agregar cama</button>`+
+      `<span style="font-size:11px;color:var(--text-light)">o generar de golpe:</span>`+
+      `<input type="text" class="reg-cama-gen" placeholder="8 · 1-8 · 2081,2082" style="width:130px">`+
+      `<button class="btn btn-ghost btn-sm" onclick="generarCamasBoxes(this)">Crear</button>`+
+    `</div>`;
   cont.appendChild(row);
+  // Camas iniciales (si vinieron) o un casillero vacío para empezar
+  if(Array.isArray(camas) && camas.length){
+    camas.forEach(c => addCamaBox(row.querySelector('[onclick="addCamaBox(this)"]'), c));
+  } else {
+    addCamaBox(row.querySelector('[onclick="addCamaBox(this)"]'));
+  }
+}
+// Un casillero de cama (editable) con su botón de quitar
+function addCamaBox(btn, valor){
+  const sector = btn.closest('.reg-sector');
+  const cont = sector.querySelector('.reg-camas');
+  const box = document.createElement('span');
+  box.className = 'reg-cama';
+  box.style.cssText = 'display:inline-flex;align-items:center;gap:2px';
+  box.innerHTML =
+    `<input type="text" class="reg-cama-in" value="${valor!=null?String(valor).replace(/"/g,'&quot;'):''}" placeholder="Cama" style="width:72px">`+
+    `<button class="btn btn-ghost btn-sm" style="padding:3px 7px" onclick="this.parentElement.remove()" title="Quitar cama"><i class="ti ti-x"></i></button>`;
+  cont.appendChild(box);
+  if(valor==null){ const inp = box.querySelector('.reg-cama-in'); if(inp) inp.focus(); }
+}
+// Número (8 -> 1..8), rango (1-8) o lista (2081,2082) -> arma varios casilleros
+function parseGenCamas(str){
+  const s = (str||'').trim();
+  if(!s) return [];
+  let m = s.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+  if(m){ const a=+m[1], b=+m[2], out=[]; if(a<=b) for(let i=a;i<=b;i++) out.push(String(i)); return out; }
+  if(/^\d+$/.test(s)){ const n=+s, out=[]; for(let i=1;i<=n;i++) out.push(String(i)); return out; }
+  return s.split(/[,\n]/).map(x=>x.trim()).filter(Boolean);
+}
+function generarCamasBoxes(btn){
+  const sector = btn.closest('.reg-sector');
+  const gen = sector.querySelector('.reg-cama-gen');
+  const nombres = parseGenCamas(gen.value);
+  if(!nombres.length){ showToast('Poné un número (8), un rango (1-8) o una lista (2081,2082)','error'); return; }
+  const addBtn = sector.querySelector('[onclick="addCamaBox(this)"]');
+  nombres.forEach(n => addCamaBox(addBtn, n));
+  gen.value = '';
 }
 function addKineRow(){
   const cont = document.getElementById('regKines');
@@ -4716,7 +4761,7 @@ async function doRegistrar(){
   const sectores = [];
   document.querySelectorAll('#regSectores .reg-sector').forEach(r=>{
     const nombre = r.querySelector('.reg-sec-nombre').value.trim();
-    const camas = parseCamas(r.querySelector('.reg-sec-camas').value);
+    const camas = [...r.querySelectorAll('.reg-cama-in')].map(i=>i.value.trim()).filter(Boolean);
     if(nombre) sectores.push({ nombre, camas });
   });
   if(!sectores.length){ showToast('Agregá al menos un sector','error'); return; }
