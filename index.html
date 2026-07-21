@@ -781,6 +781,17 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <label>Clave de Gemini</label>
         <input type="text" id="cfgGeminiKey" placeholder="Pegá acá tu clave (o dejá vacío para desactivar la IA)" autocomplete="off">
       </div>
+      <details style="font-size:11.5px;color:var(--text-muted);margin-top:-2px">
+        <summary style="cursor:pointer;color:var(--blue-600);font-weight:600">¿Cómo obtengo la clave? (paso a paso)</summary>
+        <ol style="margin:8px 0 0;padding-left:18px;line-height:1.7">
+          <li>Entrá a <strong>aistudio.google.com</strong> e iniciá sesión con la cuenta de Google (Gmail) de tu institución.</li>
+          <li>Tocá <strong>"Get API key"</strong> (arriba a la izquierda).</li>
+          <li>Tocá <strong>"Create API key"</strong>. Si te pide un proyecto, dejá el que ofrece o creá uno nuevo.</li>
+          <li>Te va a mostrar la clave (un texto largo que empieza con algo tipo <em>AQ.Ab8R…</em>). <strong>Copiala en el momento</strong>, porque después Google la tapa.</li>
+          <li>Pegala arriba, en "Clave de Gemini", y tocá "Guardar cambios".</li>
+        </ol>
+        <p style="margin:8px 0 0">Es <strong>gratis</strong> (no pide tarjeta). Conviene usar el Gmail de la institución y no uno personal, así la cuota y los datos son de cada hospital. Si perdés la clave, no pasa nada: entrás de nuevo, la borrás y creás otra.</p>
+      </details>
     </div>
 
     <button class="btn btn-primary btn-block" id="btnGuardarConfig" style="margin-top:16px" onclick="guardarConfigKinexa()"><i class="ti ti-device-floppy"></i>Guardar cambios</button>
