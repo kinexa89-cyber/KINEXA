@@ -4638,8 +4638,11 @@ function aplicarSectoresKinexa(sectores){
   SECTORES = KX_SECTORES.map(s => s.nombre);
   const cont = document.getElementById('sectorBtns');
   if(cont){
+    const btnTodos = (USER && USER.role === 'admin')
+      ? `<button class="sector-btn" onclick="selectSector(null)" style="grid-column:1/-1;background:rgba(255,255,255,.15)"><i class="ti ti-layout-grid"></i><span>Ver todos los sectores</span></button>`
+      : '';
     cont.innerHTML = KX_SECTORES.length
-      ? KX_SECTORES.map(s => `<button class="sector-btn" onclick="selectSector('${String(s.nombre).replace(/'/g,"\\'")}')" data-sala="${s.nombre}"><i class="ti ti-bed"></i><span>${s.nombre}</span></button>`).join('')
+      ? btnTodos + KX_SECTORES.map(s => `<button class="sector-btn" onclick="selectSector('${String(s.nombre).replace(/'/g,"\\'")}')" data-sala="${s.nombre}"><i class="ti ti-bed"></i><span>${s.nombre}</span></button>`).join('')
       : '<p style="grid-column:1/-1;text-align:center;color:#fff;font-size:13px">Esta institución todavía no tiene sectores cargados.</p>';
   }
   const fSala = document.getElementById('fSala');
@@ -5308,14 +5311,9 @@ tryRestoreSession();
 function startSession(user){
   currentUser = user;
   ocultarPantallasAuth();
-  // Los kinesiólogos eligen sector; los admin entran viendo todos los sectores
-  if(user.role === 'kine'){
-    document.getElementById('sectorGreeting').textContent = `Bienvenido/a, ${user.name}`;
-    document.getElementById('sectorScreen').style.display = 'flex';
-  } else {
-    currentSector = null;
-    launchApp();
-  }
+  // Todos eligen en qué sector van a trabajar hoy (el admin además puede elegir "ver todos")
+  document.getElementById('sectorGreeting').textContent = `Bienvenido/a, ${user.name}`;
+  document.getElementById('sectorScreen').style.display = 'flex';
 }
 
 async function guardarNuevaPass(){
@@ -5365,7 +5363,7 @@ async function guardarNuevaPass(){
 }
 
 function selectSector(sala){
-  currentSector = sala;
+  currentSector = sala || null;
   document.getElementById('sectorScreen').style.display = 'none';
   launchApp();
 }
@@ -5388,6 +5386,9 @@ function launchApp(){
   if(currentSector){
     badge.style.display = 'inline-flex';
     badgeLabel.textContent = SALA_LABEL[currentSector] || currentSector;
+  } else if(currentUser && currentUser.role === 'admin'){
+    badge.style.display = 'inline-flex';
+    badgeLabel.textContent = 'Todos los sectores';
   } else {
     badge.style.display = 'none';
   }
