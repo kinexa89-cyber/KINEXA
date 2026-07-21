@@ -8472,15 +8472,11 @@ function addLog(type, msg){
   logs.unshift(entry);
   if(logs.length > 500) logs = logs.slice(0,500);
   saveLogs();
-  // v3_112: además del registro local, subir a la tabla compartida 'logs' de Supabase
-  // para que la jefatura (admin) vea la actividad de TODO el equipo, no solo la de su dispositivo.
-  // Fire-and-forget: si no hay sesión/conexión o la tabla no existe, no rompe nada (queda el local).
+  // Registro en la base CENTRAL, atado a la institución (aislado por token).
+  // Fire-and-forget: si no hay sesión/conexión, no rompe nada (queda el local).
   try {
-    if(typeof supaSession !== 'undefined' && supaSession){
-      supaFetch('/rest/v1/logs', {
-        method:'POST',
-        body: JSON.stringify({ tipo: entry.type, msg: entry.msg, usuario: entry.user, ts: entry.ts })
-      }).catch(()=>{});
+    if(TOKEN && !DEMO){
+      rpc('kinexa_log_add', { p_token:TOKEN, p_usuario:entry.user, p_tipo:entry.type, p_msg:entry.msg }).catch(()=>{});
     }
   } catch(_){}
 }
@@ -8491,24 +8487,24 @@ async function cargarActividadEquipo(){
   const el = document.getElementById('logsList');
   if(el) el.innerHTML = '<div class="empty"><i class="ti ti-loader-2"></i><p>Cargando actividad del equipo…</p></div>';
   try {
-    const rows = await supaFetch('/rest/v1/logs?select=tipo,msg,usuario,ts&order=ts.desc&limit=300');
+    const rows = await rpc('kinexa_logs', { p_token:TOKEN, p_limite:300 });
     const teamLogs = (rows||[]).map(r=>({ type:r.tipo, msg:r.msg, user:r.usuario, ts:r.ts }));
     renderLogs(teamLogs, false);
   } catch(e){
-    console.error('Actividad Supabase error:', e);
-    renderLogs(logs, true);
+    console.error('Actividad error:', e);
+    const cont = document.getElementById('logsList');
+    if(cont) cont.innerHTML = '<div class="empty"><i class="ti ti-wifi-off"></i><p>No se pudo cargar la actividad. Revisá la conexión e intentá de nuevo.</p></div>';
   }
 }
 
 async function clearLogs(){
-  // Borra el registro compartido de todo el equipo (acción de jefatura) y también el local.
+  // Borra la actividad de la institución en la base central (acción de jefatura).
   try {
-    if(typeof supaSession !== 'undefined' && supaSession){
-      await supaFetch('/rest/v1/logs?id=gte.0', { method:'DELETE' });
-    }
+    await rpc('kinexa_logs_borrar', { p_token:TOKEN });
   } catch(e){
-    console.error('No se pudo borrar la actividad compartida:', e);
-    showToast('No se pudo borrar la actividad compartida (ver consola)', 'error');
+    console.error('No se pudo borrar la actividad:', e);
+    showToast('No se pudo borrar la actividad (ver consola)', 'error');
+    return;
   }
   logs=[]; saveLogs();
   cargarActividadEquipo();
