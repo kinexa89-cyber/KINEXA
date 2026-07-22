@@ -8423,7 +8423,7 @@ const EVO_LABELS = {
 // dedicadas de la tarjeta, o son internos/de control.
 const EVO_SKIP_CAMPOS = new Set([
   'id','patientId','date','hora','turno','kine','kineUser','tipo','tipo_evo','editedAt','editedBy',
-  'armDia','tecnicas','logros','obs','frecuencia','tolerancia','noAtencion','conciencia',
+  'armDia','tecnicas','logros','obs','frecuencia','tolerancia','noAtencion','conciencia','orientacion',
   // mecánica (ya en sección Mecánica ventilatoria)
   'modo','vt','vtkg','fr','frReal','peep','fio2','ppico','pplat','dp','crs',
   // EAB (ya en su sección)
@@ -8449,6 +8449,31 @@ const EVO_SKIP_CAMPOS = new Set([
   'rinsp2','flujo2','mp2','er2','ct2','p012','deltaPocc2',
   // sin uso o duplicados
   'vr','aaGrad','aaRatio','er','ct','tas','tad',
+  // ── v3_113: campos ahora mostrados en secciones ordenadas dedicadas ──
+  // Guardia / contadores (van como badges en el encabezado)
+  'utiDia','diasHosp',
+  // Signos vitales
+  'fc','tam','pic','etco2','spo2Mon','frMon',
+  // Ventilación / interfaz / O₂
+  'interfaz','interfazEsp','armDiametro','tetADS','posicionARM','pronoCiclo','cuffLeak',
+  'cnFlujo','mvFio2','mrFlujo','cnafFlujo','cnafFio2',
+  'vniModo','vniPi','vniVt','vniFr','vniPeep','vniFio2','vniMascara',
+  // Neurológico / Sedoanalgesia
+  'ventSed','dolorAuto','dolorEscala','sedacion','analgesia','bnm','vasoact','otrosFarmacos',
+  // Mecánica ventilatoria (setting inicial)
+  'ti','pc','peept','rinsp','flujo','mp','p01','deltaPocc',
+  // EAB
+  'hco3','lactato',
+  // Secreciones
+  'secTrqCant','secTrqCal','lof','secLOFcant','secLOFcal','secVAAcant','secVAAcal',
+  // Movilización / AKM
+  'akm1',
+  // Vía aérea / Cuff
+  'cuffM','cuffT','cuffN','tipoCan','canDI','canDE','estadoBajon','oclusionCanula',
+  'tolDesinf','tolOclusion','tolValvula','blueTest','calidadVoz','deglusion',
+  // Evaluación específica por grupo
+  'auscult','tos','spo2Reposo','frResp','neuroConciencia','neuroFAC','tctScore',
+  'qxDiaPOP','qxCarga','qxHerida','ampNivel','ampMunon','ampVendaje',
 ]);
 
 function fmtValorEvo(v){
@@ -8526,6 +8551,16 @@ function otrosDatosEvoHTML(e){  const items = [];
   return `<div class="evo-section-subtitle">Otros datos registrados</div><div class="evo-grid">${items.join('')}</div>`;
 }
 
+// Arma una sección con título y grilla a partir de pares [valor, etiqueta].
+// Filtra vacíos y devuelve '' si no hay nada para mostrar.
+function evoSeccionGrid(titulo, pares){
+  const items = pares.filter(([v]) => v!=='' && v!==undefined && v!==null && !(Array.isArray(v) && v.length===0));
+  if(!items.length) return '';
+  return `<div class="evo-section-subtitle">${titulo}</div><div class="evo-grid">${
+    items.map(([v,k]) => `<div class="evo-item"><div class="k">${k}</div><div class="v">${escapeHTML(fmtValorEvo(v))}</div></div>`).join('')
+  }</div>`;
+}
+
 function evoCardHTML(e, i){
   // Eventos especiales (traslado, alta, óbito)
   if(e.tipo==='traslado'||e.tipo==='alta'||e.tipo==='obito'){
@@ -8540,21 +8575,114 @@ function evoCardHTML(e, i){
       <div style="font-size:13px;font-weight:500">${escapeHTML(e.obs||'')}</div>
     </div></div>`;
   }
+  // ── Badges legados (algunas evoluciones viejas los tienen) ──
   const tolBadge = e.tolerancia ? `<span class="badge ${e.tolerancia.startsWith('Buena')?'badge-teal':e.tolerancia.startsWith('Regular')?'badge-amber':'badge-red'}" style="font-size:10px">${e.tolerancia.split(' ')[0]}</span>` : '';
   const tags = e.tecnicas?.length ? e.tecnicas.map(t=> (t||'').toLowerCase().includes('aspirado traqueal')
     ? `<span class="badge badge-asp" style="font-size:10px;margin-right:2px;margin-bottom:2px"><i class="ti ti-droplet-filled"></i> ${t}</span>`
     : `<span class="badge badge-blue" style="font-size:10px;margin-right:2px;margin-bottom:2px">${t}</span>`).join('') : '';
   const logros = e.logros?.length ? e.logros.map(l=>`<span class="badge badge-teal" style="font-size:10px;margin:1px">${l}</span>`).join('') : '';
-  const VM = [[e.modo,'Modo'],[e.vt,'VT (ml)'],[e.vtkg,'ml/kg'],[e.fr,'FR set'],[e.frReal,'FR real'],[e.peep,'PEEP'],[e.fio2,'FiO₂%'],[e.ppico,'Ppico'],[e.pplat,'Pplat'],[e.dp,'DP'],[e.crs,'Crs']].filter(([v])=>v!==''&&v!==undefined&&v!==null);
-  const EAB = [[e.ph,'pH'],[e.pco2,'pCO₂'],[e.po2,'pO₂'],[e.spo2,'SpO₂%'],[e.pafi,'PAFI']].filter(([v])=>v!==''&&v!==undefined&&v!==null);
-  const NEURO = [[e.rass,'RASS'],[e.cpot,'CPOT'],[e.camicu,'CAM-ICU'],[e.akm1,'AKM'],[e.fac?e.fac.split(' ')[0]:'','FAC'],[e.eva,'EVA']].filter(([v])=>v!==''&&v!==undefined&&v!==null);
+
+  // Etiquetas de interfaz especial (aire ambiente, VNI, CNAF, dispositivos O₂…)
+  const INTERFAZ_ESP_LABEL = { VAN_AA:'Aire ambiente', VAN_O2:'VAN con O₂', CNAF:'CNAF', VNI:'VNI', TQT_O2:'TQT espontáneo + O₂', TQT_AA:'TQT espontáneo', CN:'Cánula nasal', MV:'Máscara Venturi', MR:'Máscara reservorio' };
+
+  // Valores combinados
+  const interfazTxt = e.interfaz
+    ? (e.interfaz + (e.interfazEsp ? ' · ' + (INTERFAZ_ESP_LABEL[e.interfazEsp]||e.interfazEsp) : ''))
+    : (e.interfazEsp ? (INTERFAZ_ESP_LABEL[e.interfazEsp]||e.interfazEsp) : '');
+  const posicionTxt = e.posicionARM ? (e.posicionARM + (e.pronoCiclo ? ' ('+e.pronoCiclo+')' : '')) : '';
+  const taTxt = (e.tas!==''&&e.tas!=null && e.tad!==''&&e.tad!=null) ? `${e.tas}/${e.tad}` : '';
+  const dolorTxt = e.dolorAuto ? (e.dolorAuto + (e.dolorEscala ? ' — '+e.dolorEscala : '')) : '';
+  const tctTxt = (e.tctScore!=null && e.tctScore!=='') ? (e.tctScore + ' / 12') : '';
+
+  // ══ Secciones en el MISMO ORDEN que el formulario ══
+  // 1) Signos vitales (monitor)
+  const secVitales = evoSeccionGrid('Signos vitales', [
+    [e.fc,'FC (lpm)'], [taTxt,'TA (mmHg)'], [e.tam,'TAM'], [e.spo2Mon,'SpO₂ mon (%)'],
+    [e.frMon,'FR mon (rpm)'], [e.pic,'PIC (mmHg)'], [e.etco2,'EtCO₂ (mmHg)']
+  ]);
+  // 2) Ventilación / interfaz + O₂ + VNI
+  const secVent = evoSeccionGrid('Ventilación / Interfaz', [
+    [interfazTxt,'Interfaz'], [e.armDiametro,'Diámetro TET/cán. (mm)'], [e.tetADS,'TET a ADS (cm)'],
+    [posicionTxt,'Posición'], [e.cuffLeak,'Cuff leak test'],
+    [e.cnFlujo,'Cánula nasal (L/min)'], [e.mvFio2,'Venturi FiO₂ (%)'], [e.mrFlujo,'Reservorio (L/min)'],
+    [e.cnafFlujo,'CNAF flujo (L/min)'], [e.cnafFio2,'CNAF FiO₂ (%)'],
+    [e.vniModo,'VNI modo'], [e.vniPi,'VNI Pi'], [e.vniVt,'VNI Vt'], [e.vniFr,'VNI FR'],
+    [e.vniPeep,'VNI PEEP'], [e.vniFio2,'VNI FiO₂ (%)'], [e.vniMascara,'VNI máscara']
+  ]);
+  // 3) Neurológico / Sedoanalgesia
+  const secNeuro = evoSeccionGrid('Neurológico / Sedoanalgesia', [
+    [e.rass,'RASS'], [e.cpot,'CPOT'], [e.camicu,'CAM-ICU'], [e.ventSed,'Relación pac.-vent.'],
+    [dolorTxt,'Dolor'], [e.sedacion,'Sedación'], [e.analgesia,'Analgesia'], [e.bnm,'BNM'],
+    [e.vasoact,'Vasoactivos'], [e.otrosFarmacos,'Otros fármacos']
+  ]);
+  // 4) Mecánica ventilatoria — setting inicial
+  const secVM = evoSeccionGrid('Mecánica ventilatoria', [
+    [e.modo,'Modo'], [e.vt,'VT (ml)'], [e.vtkg,'ml/kg'], [e.fr,'FR set'], [e.frReal,'FR real'],
+    [e.peep,'PEEP'], [e.fio2,'FiO₂ %'], [e.ti,'Ti (s)'], [e.pc,'PC'], [e.ppico,'Ppico'],
+    [e.pplat,'Pplat'], [e.peept,'PEEP total'], [e.dp,'DP'], [e.crs,'Crs'], [e.rinsp,'R insp.'],
+    [e.flujo,'Flujo'], [e.mp,'Poder mec.'], [e.er,'Er'], [e.ct,'Ct'], [e.p01,'P0.1'], [e.deltaPocc,'ΔPocc']
+  ]);
+  // 4b) Mecánica — post modificación (solo si se marcó el cambio de setting)
+  const secVM2 = e.modSetting ? evoSeccionGrid('Mecánica — post modificación', [
+    [e.modo2,'Modo'], [e.vt2,'VT (ml)'], [e.vtkg2,'ml/kg'], [e.fr2,'FR set'], [e.peep2,'PEEP'],
+    [e.fio22,'FiO₂ %'], [e.ti2,'Ti (s)'], [e.pc2,'PC'], [e.ppico2,'Ppico'], [e.pplat2,'Pplat'],
+    [e.peept2,'PEEP total'], [e.dp2,'DP'], [e.crs2,'Crs'], [e.rinsp2,'R insp.'], [e.flujo2,'Flujo'],
+    [e.mp2,'Poder mec.'], [e.er2,'Er'], [e.ct2,'Ct'], [e.p012,'P0.1'], [e.deltaPocc2,'ΔPocc']
+  ]) : '';
+  // 5) EAB
+  const secEAB = evoSeccionGrid('EAB', [
+    [e.ph,'pH'], [e.pco2,'pCO₂'], [e.po2,'pO₂'], [e.hco3,'HCO₃'], [e.spo2,'SpO₂ %'],
+    [e.pafi,'PAFI'], [e.lactato,'Lactato']
+  ]);
+  const secEABExtra = Array.isArray(e.eabExtra) ? e.eabExtra.map(x=>evoSeccionGrid('EAB'+(x.hora?' · '+x.hora:''), [
+    [x.ph,'pH'],[x.pco2,'pCO₂'],[x.po2,'pO₂'],[x.hco3,'HCO₃'],[x.spo2,'SpO₂ %'],[x.pafi,'PAFI'],[x.lactato,'Lact']
+  ])).join('') : '';
+  // 6) Secreciones
+  const secSec = evoSeccionGrid('Secreciones', [
+    [e.secTrqCant,'Traqueales (cant.)'], [e.secTrqCal,'Traqueales (cal.)'],
+    [e.lof,'Aspiración LOF'], [e.secLOFcant,'LOF (cant.)'], [e.secLOFcal,'LOF (cal.)'],
+    [e.secVAAcant,'VAA (cant.)'], [e.secVAAcal,'VAA (cal.)']
+  ]);
+  // 7) PVE / Extubación + TQT/T  (helper existente)
+  const secPVE = fmtPVEResumen(e);
+  const secTQT = e.pveTQTColocado==='Si'
+    ? `<div class="evo-section-subtitle">TQT/T</div><div class="evo-grid"><div class="evo-item"><div class="k">Duración/plan</div><div class="v">${PVE_TQT_DURACION_LABEL[e.pveTQTDuracion]||'—'}</div></div>${e.pveTQTNocheReconexion ? `<div class="evo-item"><div class="k">Reconexión</div><div class="v">${e.pveTQTNocheReconexion==='Si'?'Sí':'No'}</div></div>` : ''}${e.pveTQTMotivo && e.pveTQTMotivo.length ? `<div class="evo-item"><div class="k">Motivo reconexión</div><div class="v">${e.pveTQTMotivo.join(', ')}</div></div>` : ''}</div>`
+    : (e.pveTQTColocado==='No' ? `<div class="evo-section-subtitle">TQT/T</div><div class="evo-grid"><div class="evo-item"><div class="k">Colocación</div><div class="v">No</div></div></div>` : '');
+  // 8) Movilización / AKM
+  const secAKM = evoSeccionGrid('Movilización / AKM', [ [e.akm1,'AKM'] ]);
+  // 9) Fuerza muscular / músculos respiratorios (helper existente)
+  const secFuerza = fmtFuerzaResumen(e);
+  // 10) Vía aérea / Presión de cuff
+  const secCuff = evoSeccionGrid('Vía aérea / Cuff', [
+    [e.cuffM,'Cuff mañana'], [e.cuffT,'Cuff tarde'], [e.cuffN,'Cuff noche'],
+    [e.tipoCan,'Tipo cánula'], [e.canDI,'Cánula DI'], [e.canDE,'Cánula DE'],
+    [e.estadoBajon,'Estado balón'], [e.oclusionCanula,'Oclusión cánula'],
+    [e.tolDesinf,'Tolera desinflado'], [e.tolOclusion,'Tolera oclusión'],
+    [e.tolValvula,'Tolera válvula fon.'], [e.blueTest,'Blue test'],
+    [e.calidadVoz,'Calidad de voz'], [e.deglusion,'Deglución']
+  ]);
+  // 11) Proceso de Decanulación (helper existente)
+  const secDec = fmtDecanulacionResumen(e);
+  // 12) Evaluación específica por grupo (respiratorio / neuro / qx / amputado)
+  const secGrupo = evoSeccionGrid('Evaluación específica', [
+    [e.auscult,'Auscultación'], [e.tos,'Tos'], [e.spo2Reposo,'SpO₂ reposo (%)'], [e.frResp,'FR (resp.)'],
+    [e.neuroConciencia,'Conciencia'], [e.neuroFAC,'FAC'], [tctTxt,'TCT'],
+    [e.qxDiaPOP,'Día POP'], [e.qxCarga,'Carga'], [e.qxHerida,'Herida qx'],
+    [e.ampNivel,'Nivel amputación'], [e.ampMunon,'Estado muñón'], [e.ampVendaje,'Vendaje']
+  ]);
+  // 13) Catch-all: cualquier campo con etiqueta que no haya entrado arriba
+  //     (protege datos de evoluciones viejas / campos que se agreguen a futuro)
+  const secOtros = otrosDatosEvoHTML(e);
+
   return `<div class="evo-entry ${i===0?'latest':''}">
     <div class="evo-card">
       <div class="evo-card-header">
         <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">
-          <span class="evo-date">${fmtDate(e.date)}</span>
+          <span class="evo-date">${fmtDate(e.date)}${e.hora?' · '+e.hora:''}</span>
           <span class="badge badge-gray" style="font-size:10px">${e.turno||''}</span>
           ${tolBadge}
+          ${e.diasHosp ? `<span class="badge badge-gray" style="font-size:10px">Internación día ${e.diasHosp}</span>` : ''}
+          ${e.utiDia ? `<span class="badge badge-blue" style="font-size:10px">Sector día ${e.utiDia}</span>` : ''}
           ${e.armDia ? `<span class="badge badge-amber" style="font-size:10px">ARM día ${e.armDia}</span>` : ''}
           ${e.frecuencia?`<span class="badge badge-purple" style="font-size:10px">${e.frecuencia==='manana'?'Mañana':e.frecuencia==='cada3'?'Cada 3d':e.frecuencia==='cada5'?'Cada 5d':'Sin criterio'}</span>`:''}
         </div>
@@ -8562,19 +8690,22 @@ function evoCardHTML(e, i){
       </div>
       ${e.noAtencion && e.noAtencion!=='Sí se realizó atención' ? `<div style="font-size:12px;color:var(--amber-600);font-weight:600;margin-bottom:4px">⚠ ${e.noAtencion}</div>` : ''}
       ${e.conciencia ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">${e.conciencia}${e.orientacion?'. '+e.orientacion:''}</div>` : ''}
-      ${e.interfazO2 ? `<div style="font-size:12px;color:var(--blue-700);margin-bottom:4px"><i class="ti ti-lungs"></i> ${e.interfazO2}${e.flujoO2?' — '+e.flujoO2:''}${e.spo2&&!EAB.length?' · SpO₂ '+e.spo2+'%':''}</div>` : ''}
-      ${VM.length ? `<div class="evo-section-subtitle">Mecánica ventilatoria</div><div class="evo-grid">${VM.map(([v,k])=>`<div class="evo-item"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}</div>` : ''}
-      ${EAB.length ? `<div class="evo-section-subtitle">EAB</div><div class="evo-grid">${EAB.map(([v,k])=>`<div class="evo-item"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}</div>` : ''}
-      ${Array.isArray(e.eabExtra) ? e.eabExtra.map(x=>{
-        const items=[[x.ph,'pH'],[x.pco2,'pCO₂'],[x.po2,'pO₂'],[x.hco3,'HCO₃'],[x.spo2,'SpO₂%'],[x.pafi,'PAFI'],[x.lactato,'Lact']].filter(([v])=>v!==''&&v!==undefined&&v!==null);
-        return items.length ? `<div class="evo-section-subtitle">EAB${x.hora?' · '+x.hora:''}</div><div class="evo-grid">${items.map(([v,k])=>`<div class="evo-item"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}</div>` : '';
-      }).join('') : ''}
-      ${NEURO.length ? `<div class="evo-section-subtitle">Neurológico / Sedación</div><div class="evo-grid">${NEURO.map(([v,k])=>`<div class="evo-item"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('')}</div>` : ''}
-      ${fmtPVEResumen(e)}
-      ${fmtFuerzaResumen(e)}
-      ${e.pveTQTColocado==='Si' ? `<div class="evo-section-subtitle">TQT/T</div><div class="evo-grid"><div class="evo-item"><div class="k">Duración/plan</div><div class="v">${PVE_TQT_DURACION_LABEL[e.pveTQTDuracion]||'—'}</div></div>${e.pveTQTNocheReconexion ? `<div class="evo-item"><div class="k">Reconexión</div><div class="v">${e.pveTQTNocheReconexion==='Si'?'Sí':'No'}</div></div>` : ''}${e.pveTQTMotivo && e.pveTQTMotivo.length ? `<div class="evo-item"><div class="k">Motivo reconexión</div><div class="v">${e.pveTQTMotivo.join(', ')}</div></div>` : ''}</div>` : (e.pveTQTColocado==='No' ? `<div class="evo-section-subtitle">TQT/T</div><div class="evo-grid"><div class="evo-item"><div class="k">Colocación</div><div class="v">No</div></div></div>` : '')}
-      ${fmtDecanulacionResumen(e)}
-      ${otrosDatosEvoHTML(e)}
+      ${secVitales}
+      ${secVent}
+      ${secNeuro}
+      ${secVM}
+      ${secVM2}
+      ${secEAB}
+      ${secEABExtra}
+      ${secSec}
+      ${secPVE}
+      ${secTQT}
+      ${secAKM}
+      ${secFuerza}
+      ${secCuff}
+      ${secDec}
+      ${secGrupo}
+      ${secOtros}
       ${tags ? `<div style="margin-top:6px">${tags}</div>` : ''}
       ${logros ? `<div style="margin-top:4px">${logros}</div>` : ''}
       ${e.obs ? `<div class="evo-obs">${escapeHTML(e.obs)}</div>` : ''}
