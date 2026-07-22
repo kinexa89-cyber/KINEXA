@@ -802,6 +802,40 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
   </div>
 </div>
 
+<!-- ════ CAMBIAR MI CLAVE (cualquier usuario) ════ -->
+<div id="miClaveScreen" style="display:none;position:fixed;inset:0;z-index:2100;background:rgba(20,10,40,.55);overflow-y:auto;padding:1.2rem 1rem">
+  <div class="login-card" style="max-width:430px;margin:0 auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
+      <h1 style="font-size:19px;margin:0">Cambiar mi clave</h1>
+      <button class="btn btn-ghost btn-sm" onclick="cerrarCambiarMiClave()"><i class="ti ti-x"></i></button>
+    </div>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Elegí una clave nueva para tu usuario. Necesitás saber tu clave actual.</p>
+    <div class="form-group">
+      <label>Clave actual</label>
+      <div style="position:relative">
+        <input type="password" id="miClaveActual" placeholder="Tu clave de ahora" autocomplete="current-password" style="padding-right:40px">
+        <button type="button" onclick="toggleVerClave('miClaveActual', this)" title="Ver / ocultar" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:6px;display:flex"><i class="ti ti-eye"></i></button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Clave nueva</label>
+      <div style="position:relative">
+        <input type="password" id="miClaveNueva" placeholder="Mínimo 4 caracteres" autocomplete="new-password" style="padding-right:40px">
+        <button type="button" onclick="toggleVerClave('miClaveNueva', this)" title="Ver / ocultar" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:6px;display:flex"><i class="ti ti-eye"></i></button>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Repetí la clave nueva</label>
+      <div style="position:relative">
+        <input type="password" id="miClaveNueva2" placeholder="Volvé a escribirla" autocomplete="new-password" style="padding-right:40px" onkeydown="if(event.key==='Enter')guardarMiClave()">
+        <button type="button" onclick="toggleVerClave('miClaveNueva2', this)" title="Ver / ocultar" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:6px;display:flex"><i class="ti ti-eye"></i></button>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-block" id="btnGuardarMiClave" style="margin-top:8px" onclick="guardarMiClave()"><i class="ti ti-device-floppy"></i>Guardar clave nueva</button>
+    <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="cerrarCambiarMiClave()">Cancelar</button>
+  </div>
+</div>
+
 <!-- ════ APP ════ -->
 <div id="app">
 
@@ -835,6 +869,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <i class="ti ti-map-pin"></i><span id="sectorBadgeLabel">—</span>
       </span>
       <button class="btn-logout" id="btnConfigKx" onclick="abrirConfigKinexa()" style="display:none" title="Configuración"><i class="ti ti-settings"></i></button>
+      <button class="btn-logout" onclick="abrirCambiarMiClave()" title="Cambiar mi clave"><i class="ti ti-lock"></i></button>
       <button class="btn-logout" onclick="doLogout()"><i class="ti ti-logout"></i></button>
     </div>
   </nav>
@@ -4946,6 +4981,35 @@ function toggleVerClave(id, btn){
   inp.type = mostrar ? 'text' : 'password';
   const icon = btn && btn.querySelector('i');
   if(icon) icon.className = mostrar ? 'ti ti-eye-off' : 'ti ti-eye';
+}
+
+// Cambiar mi propia clave (cualquier usuario) — valida la clave actual en la base
+function abrirCambiarMiClave(){
+  ['miClaveActual','miClaveNueva','miClaveNueva2'].forEach(id=>{
+    const e = document.getElementById(id); if(e){ e.value=''; e.type='password'; }
+  });
+  document.getElementById('miClaveScreen').style.display = 'block';
+}
+function cerrarCambiarMiClave(){ document.getElementById('miClaveScreen').style.display = 'none'; }
+async function guardarMiClave(){
+  const actual = document.getElementById('miClaveActual').value;
+  const nueva  = document.getElementById('miClaveNueva').value;
+  const nueva2 = document.getElementById('miClaveNueva2').value;
+  if(!actual){ showToast('Ingresá tu clave actual','error'); return; }
+  if((nueva||'').trim().length < 4){ showToast('La clave nueva debe tener al menos 4 caracteres','error'); return; }
+  if(nueva !== nueva2){ showToast('Las dos claves nuevas no coinciden','error'); return; }
+  const btn = document.getElementById('btnGuardarMiClave');
+  if(btn){ btn.disabled=true; btn.innerHTML='<i class="ti ti-loader-2"></i> Guardando…'; }
+  try {
+    const ok = await rpc('kinexa_cambiar_clave', { p_token:TOKEN, p_actual:actual, p_nueva:nueva });
+    if(ok === true){
+      showToast('Clave cambiada ✓','success');
+      cerrarCambiarMiClave();
+    } else {
+      showToast('La clave actual no es correcta','error');
+    }
+  } catch(e){ showToast('No se pudo cambiar la clave: ' + (e.message||'').slice(0,60),'error'); }
+  finally { if(btn){ btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i>Guardar clave nueva'; } }
 }
 
 async function guardarConfigKinexa(){
