@@ -9414,12 +9414,11 @@ async function eliminarPaciente(id){
   if(!confirm(`¿Eliminar a ${p?.apellido}, ${p?.nombre}? Se borrarán también sus evoluciones.`)) return;
   const nid = Number(id);
   try {
-    // v3_100: borrar de verdad en Supabase (antes solo se re-subían los demás,
-    // así que el paciente volvía a aparecer al recargar).
-    await supaFetch('/rest/v1/evoluciones?patient_id=eq.'+nid, { method:'DELETE' });
-    await supaFetch('/rest/v1/pacientes?id=eq.'+nid, { method:'DELETE' });
+    // v3_115: borrar de verdad en la base de Kinexa (paciente + sus evoluciones).
+    // Antes apuntaba al proyecto viejo, así que el paciente reaparecía al recargar.
+    await rpc('kinexa_paciente_borrar', { p_token: TOKEN, p_paciente_id: String(nid) });
   } catch(err){
-    console.error('Error al eliminar en Supabase:', err);
+    console.error('Error al eliminar en Kinexa:', err);
     showToast('Error al eliminar en la nube: ' + (err.message||'').slice(0,60), 'error');
     return; // no tocar lo local si falló la nube, para no desincronizar
   }
@@ -11234,10 +11233,9 @@ async function borrarTodosLosPacientes(){
 
   setSyncStatus('syncing');
   try {
-    // Borrar en Supabase. Primero evoluciones (por la FK a pacientes), luego pacientes.
-    // El filtro "id=gte.0" abarca todas las filas (los id son bigint >= 0).
-    await supaFetch('/rest/v1/evoluciones?id=gte.0', { method:'DELETE' });
-    await supaFetch('/rest/v1/pacientes?id=gte.0', { method:'DELETE' });
+    // v3_115: borra TODOS los registros (pacientes + evoluciones) de la institución
+    // actual en la base de Kinexa. Antes apuntaba al proyecto viejo y no limpiaba nada.
+    await rpc('kinexa_borrar_todo', { p_token: TOKEN });
 
     // Limpiar en memoria y local
     patients = [];
