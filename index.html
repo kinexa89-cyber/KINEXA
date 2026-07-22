@@ -672,7 +672,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     </div>
     <div class="form-group">
       <label>Clave</label>
-      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      <div style="position:relative">
+        <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:40px">
+        <button type="button" onclick="toggleVerClave('loginPass', this)" title="Ver / ocultar clave" style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text-muted);padding:6px;display:flex"><i class="ti ti-eye"></i></button>
+      </div>
     </div>
     <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:14px">
       <input type="checkbox" id="loginRecordar" style="width:16px;height:16px;margin-top:2px;accent-color:var(--blue-600);cursor:pointer;flex-shrink:0">
@@ -4570,12 +4573,6 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-group">
           <select id="egresoSectorDestino" onchange="poblarCamasDestino()">
             <option value="">Seleccioná el sector destino...</option>
-            <option value="UTI-A">UTI A (camas 1–8)</option>
-            <option value="UTI-B">UTI B (camas 9–20)</option>
-            <option value="UTI-C">UTI C (camas 21–27)</option>
-            <option value="EMERG">Emergencia (camas 1–12)</option>
-            <option value="MIN-B">Cuidados Mínimos B (100A–131B)</option>
-            <option value="MIN-C">Cuidados Mínimos C (132A–163B)</option>
           </select>
         </div>
         <div class="form-group">
@@ -4668,6 +4665,12 @@ function aplicarSectoresKinexa(sectores){
   const fSala = document.getElementById('fSala');
   if(fSala){
     fSala.innerHTML = '<option value="">Elegí la sala</option>' +
+      KX_SECTORES.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
+  }
+  // Selector de sector destino en Egreso/Traslado interno
+  const egSel = document.getElementById('egresoSectorDestino');
+  if(egSel){
+    egSel.innerHTML = '<option value="">Seleccioná el sector destino...</option>' +
       KX_SECTORES.map(s => `<option value="${s.nombre}">${s.nombre}</option>`).join('');
   }
 }
@@ -4900,7 +4903,7 @@ function addCfgUserRow(data){
     `<input type="text" class="cfg-u-apellido" placeholder="Apellido" value="${val('apellido')}" style="flex:1;min-width:88px">`+
     `<input type="text" class="cfg-u-dni" placeholder="DNI" value="${val('dni')}" ${existe?'readonly style="flex:1;min-width:78px;background:var(--blue-50)"':'style="flex:1;min-width:78px"'}>`+
     `<label style="display:flex;align-items:center;gap:3px;font-size:12px;color:var(--text-muted);margin:0"><input type="checkbox" class="cfg-u-admin" ${(data && data.es_admin)?'checked':''}> Admin</label>`+
-    (existe?`<button class="btn btn-ghost btn-sm" style="padding:3px 7px" title="Restablecer clave al DNI" onclick="resetClaveUsuario('${String(data.dni).replace(/'/g,"\\'")}')"><i class="ti ti-key"></i></button>`:'')+
+    (existe?`<button class="btn btn-ghost btn-sm" style="padding:3px 7px" title="Cambiar clave" onclick="cambiarClaveUsuario('${String(data.dni).replace(/'/g,"\\'")}','${String((data.nombre||'')+' '+(data.apellido||'')).trim().replace(/'/g,"\\'")}')"><i class="ti ti-key"></i></button>`:'')+
     `<button class="btn btn-ghost btn-sm" style="padding:3px 7px" title="Quitar" onclick="quitarCfgUser(this)"><i class="ti ti-trash"></i></button>`;
   cont.appendChild(row);
 }
@@ -4915,6 +4918,34 @@ async function resetClaveUsuario(dni){
     await rpc('kinexa_usuario_reset_clave', { p_token:TOKEN, p_dni:dni });
     showToast('Clave restablecida al DNI','success');
   } catch(e){ showToast('No se pudo restablecer: ' + (e.message||'').slice(0,60),'error'); }
+}
+
+// El admin cambia la clave de una persona: escribe una nueva, o vacío para volver al DNI
+async function cambiarClaveUsuario(dni, nombre){
+  const nueva = prompt('Nueva clave para ' + (nombre||('DNI '+dni)) + ':\n\n(Dejá vacío y Aceptar para volver la clave a su DNI ' + dni + ')');
+  if(nueva === null) return; // canceló
+  const val = nueva.trim();
+  try {
+    if(!val){
+      await rpc('kinexa_usuario_reset_clave', { p_token:TOKEN, p_dni:dni });
+      showToast('Clave restablecida al DNI','success');
+    } else if(val.length < 4){
+      showToast('La clave debe tener al menos 4 caracteres','error');
+    } else {
+      await rpc('kinexa_usuario_set_clave', { p_token:TOKEN, p_dni:dni, p_clave:val });
+      showToast('Clave actualizada ✓','success');
+    }
+  } catch(e){ showToast('No se pudo cambiar la clave: ' + (e.message||'').slice(0,60),'error'); }
+}
+
+// Mostrar / ocultar el contenido de un campo de clave (el "ojito")
+function toggleVerClave(id, btn){
+  const inp = document.getElementById(id);
+  if(!inp) return;
+  const mostrar = inp.type === 'password';
+  inp.type = mostrar ? 'text' : 'password';
+  const icon = btn && btn.querySelector('i');
+  if(icon) icon.className = mostrar ? 'ti ti-eye-off' : 'ti ti-eye';
 }
 
 async function guardarConfigKinexa(){
