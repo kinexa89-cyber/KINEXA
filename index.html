@@ -528,6 +528,12 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
   .hide-mobile{ display:none; }
   table{ font-size:11px; }
   th,td{ padding:8px 9px; }
+  /* Dashboard: en pantallas angostas los 6 botones de acción no entran en la
+     misma línea y se encimaban. Se pasan a una fila propia a todo el ancho
+     y pueden acomodarse en varias líneas sin superponerse. */
+  .patient-row{ align-items:flex-start; }
+  .p-actions{ width:100%; flex-wrap:wrap; gap:8px; margin-top:4px; }
+  .btn-evolve{ flex:1 1 auto; justify-content:center; }
 }
 @media(min-width:900px){
   .stats-grid{ grid-template-columns:repeat(4,1fr); }
@@ -1671,6 +1677,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-group"><label>PIC (mmHg)</label><input type="number" id="ePIC" inputmode="numeric" placeholder="Si tiene sensor"></div>
       </div>
       <div class="form-row">
+        <div class="form-group"><label>Temperatura (°C)</label><input type="number" id="eTemp" inputmode="decimal" step="0.1" placeholder="36.5"></div>
         <div class="form-group"><label>EtCO₂ (mmHg)</label><input type="number" id="eEtCO2" inputmode="numeric" placeholder="Si tiene capnografía"></div>
       </div>
     </div>
@@ -6175,7 +6182,7 @@ function construirTextoEvo(evo, p){
     add('SpO2 (%)', evo.spo2); add('PAFI', evo.pafi); add('Lactato', evo.lactato);
     add('FC (lpm)', evo.fc);
     add('TA (mmHg)', (evo.tas!=='' && evo.tad!=='' && evo.tas!=null && evo.tad!=null) ? `${evo.tas}/${evo.tad}` : '');
-    add('TAM (mmHg)', evo.tam); add('PIC (mmHg)', evo.pic); add('EtCO2 (mmHg)', evo.etco2);
+    add('TAM (mmHg)', evo.tam); add('Temperatura (°C)', evo.temp); add('PIC (mmHg)', evo.pic); add('EtCO2 (mmHg)', evo.etco2);
     add('RASS', evo.rass); add('CPOT', evo.cpot); add('CAM-ICU', evo.camicu);
     add('Relación paciente-ventilador', evo.ventSed);
     add('Dolor (autorreporte)', evo.dolorAuto); add('Escala de dolor', evo.dolorEscala);
@@ -8453,7 +8460,7 @@ const EVO_SKIP_CAMPOS = new Set([
   // Guardia / contadores (van como badges en el encabezado)
   'utiDia','diasHosp',
   // Signos vitales
-  'fc','tam','pic','etco2','spo2Mon','frMon',
+  'fc','tam','pic','etco2','spo2Mon','frMon','temp',
   // Ventilación / interfaz / O₂
   'interfaz','interfazEsp','armDiametro','tetADS','posicionARM','pronoCiclo','cuffLeak',
   'cnFlujo','mvFio2','mrFlujo','cnafFlujo','cnafFio2',
@@ -8597,7 +8604,7 @@ function evoCardHTML(e, i){
   // ══ Secciones en el MISMO ORDEN que el formulario ══
   // 1) Signos vitales (monitor)
   const secVitales = evoSeccionGrid('Signos vitales', [
-    [e.fc,'FC (lpm)'], [taTxt,'TA (mmHg)'], [e.tam,'TAM'], [e.spo2Mon,'SpO₂ mon (%)'],
+    [e.fc,'FC (lpm)'], [taTxt,'TA (mmHg)'], [e.tam,'TAM'], [e.temp,'Temp (°C)'], [e.spo2Mon,'SpO₂ mon (%)'],
     [e.frMon,'FR mon (rpm)'], [e.pic,'PIC (mmHg)'], [e.etco2,'EtCO₂ (mmHg)']
   ]);
   // 2) Ventilación / interfaz + O₂ + VNI
@@ -9543,7 +9550,7 @@ function openEvolucion(patientId){
   const nFields = ['eModo','eVT','eVTkg','eFR','eFRreal','ePEEP','eFiO2','eTi','ePC',
     'ePpico','ePplat','ePEEPt','eDP','eCrs','eRinsp','eFlujo','eMP','eER','eCT',
     'ePH','ePCO2','ePO2','eHCO3','eSpO2','ePAFI','eInterfaz',
-    'eFC','eTAS','eTAD','eTAM','eSpO2Mon','eFRMon','ePIC','eEtCO2',
+    'eFC','eTAS','eTAD','eTAM','eSpO2Mon','eFRMon','ePIC','eEtCO2','eTemp',
     'eRASS','eCPOT','eCAMICU','eVentSed','eDolorAuto','eDolorEscala','eOtrosFarmacos',
     'eAKM1','eMRC',
     'ePVE','ePVETipo','ePVEtmin','ePVEresult','eInterfazPE',
@@ -9859,7 +9866,7 @@ const EVO_FIELD_MAP = {
   vniModo:'eVNIModo', vniPi:'eVNIPi', vniVt:'eVNIVt', vniFr:'eVNIFr', vniPeep:'eVNIPeep', vniFio2:'eVNIFio2', vniMascara:'eVNIMascara',
   modo:'eModo', vt:'eVT', vtkg:'eVTkg', fr:'eFR', frReal:'eFRreal', peep:'ePEEP',
   fc:'eFC', tas:'eTAS', tad:'eTAD', tam:'eTAM', spo2Mon:'eSpO2Mon', frMon:'eFRMon',
-  pic:'ePIC', etco2:'eEtCO2', fio2:'eFiO2', ti:'eTi', pc:'ePC',
+  pic:'ePIC', etco2:'eEtCO2', temp:'eTemp', fio2:'eFiO2', ti:'eTi', pc:'ePC',
   vr:'eVR', aaGrad:'eAAGrad', aaRatio:'eAaRatio', lactato:'eLactato',
   p01:'eP01', deltaPocc:'eDeltaPocc',
   ppico:'ePpico', pplat:'ePplat', peept:'ePEEPt', dp:'eDP', crs:'eCrs',
@@ -10064,7 +10071,7 @@ async function guardarEvolucion(){
     cnafFlujo:GN('eCNAFflujo'), cnafFio2:GN('eCNAFfio2'),
     vniModo:G('eVNIModo'), vniPi:GN('eVNIPi'), vniVt:GN('eVNIVt'), vniFr:GN('eVNIFr'), vniPeep:GN('eVNIPeep'), vniFio2:GN('eVNIFio2'), vniMascara:G('eVNIMascara'),
     modo:G('eModo'), vt:GN('eVT'), vtkg:GN('eVTkg'), fr:GN('eFR'), frReal:GN('eFRreal'), peep:GN('ePEEP'),
-    fc:GN('eFC'), tas:GN('eTAS'), tad:GN('eTAD'), tam:G('eTAM'), spo2Mon:GN('eSpO2Mon'), frMon:GN('eFRMon'), pic:GN('ePIC'), etco2:GN('eEtCO2'),
+    fc:GN('eFC'), tas:GN('eTAS'), tad:GN('eTAD'), tam:G('eTAM'), spo2Mon:GN('eSpO2Mon'), frMon:GN('eFRMon'), pic:GN('ePIC'), etco2:GN('eEtCO2'), temp:GN('eTemp'),
     fio2:GN('eFiO2'), ti:GN('eTi'), pc:GN('ePC'),
     vr:GN('eVR'), aaGrad:GN('eAAGrad'), aaRatio:GN('eAaRatio'), lactato:GN('eLactato'),
     p01:GN('eP01'), deltaPocc:GN('eDeltaPocc'),
@@ -10193,7 +10200,7 @@ async function guardarEvolucion(){
   const nFields = ['eVT','eVTkg','eFR','eFRreal','ePEEP','eFiO2','eTi','ePC','ePpico','ePplat','ePEEPt','eDP','eCrs','eRinsp','eFlujo',
     'eMP','eER','eCT','ePH','ePCO2','ePO2','eHCO3','eSpO2','ePAFI',
     'eOtrosFarmacos','ePVEtmin','eCuffM','eCuffT','eCuffN','eCanDI','eCanDE','eObs',
-    'eFC','eTAS','eTAD','eTAM','eSpO2Mon','eFRMon','ePIC','eEtCO2','eDolorEscala'];
+    'eFC','eTAS','eTAD','eTAM','eSpO2Mon','eFRMon','ePIC','eEtCO2','eTemp','eDolorEscala'];
   nFields.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   ['eModo','eInterfaz','eRASS','eCPOT','eCAMICU','eVentSed','eDolorAuto','eAKM1','eMRC',
    'ePVE','ePVETipo','ePVEresult','eExtubacion','eInterfazPE','eOclusionCanula','eDeglusion','eTipoCan','eEstadoBajon','eSecTrqCant','eSecTrqCal','eLOF',
@@ -10985,7 +10992,7 @@ function exportarDatos(){
     'Tipo Evo','Dia Hosp','Dia Sector','Dia ARM',
     'Interfaz','Modo','VT ml','VT ml/kg PCP','FR','PEEP','FiO2','Ppico','Pplat','DP','Crs',
     'pH','pCO2','pO2','SpO2','PAFI',
-    'FC','TAS','TAD','TAM','SpO2 Monitor','FR Monitor','PIC','EtCO2',
+    'FC','TAS','TAD','TAM','Temperatura','SpO2 Monitor','FR Monitor','PIC','EtCO2',
     'RASS','CPOT','CAM-ICU','Dolor Autopercibido','Escala Dolor',
     'Sedacion','Analgesia','BNM','Vasoactivos','Otros Farmacos',
     'AKM','MRC','PVE','Tipo PVE','Tiempo PVE','Result PVE','Extubacion','N PVEs Acum',
@@ -11005,7 +11012,7 @@ function exportarDatos(){
       e.vt||'', e.vtkg||'', e.fr||'', e.peep||'', e.fio2||'',
       e.ppico||'', e.pplat||'', e.dp||'', e.crs||'',
       e.ph||'', e.pco2||'', e.po2||'', e.spo2||'', e.pafi||'',
-      e.fc||'', e.tas||'', e.tad||'', e.tam||'', e.spo2Mon||'', e.frMon||'', e.pic||'', e.etco2||'',
+      e.fc||'', e.tas||'', e.tad||'', e.tam||'', e.temp||'', e.spo2Mon||'', e.frMon||'', e.pic||'', e.etco2||'',
       e.rass||'', e.cpot||'', e.camicu||'', e.dolorAuto||'', e.dolorEscala||'',
       joinArr(e.sedacion), joinArr(e.analgesia),
       joinArr(e.bnm), joinArr(e.vasoact), e.otrosFarmacos||'',
