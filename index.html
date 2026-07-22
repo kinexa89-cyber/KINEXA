@@ -689,6 +689,9 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     </div>
     <button class="btn btn-primary btn-block" id="btnLogin" onclick="doLogin()"><i class="ti ti-login"></i>Ingresar</button>
     <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="mostrarInicio()"><i class="ti ti-arrow-left"></i>Volver</button>
+    <div style="text-align:center;margin-top:10px">
+      <button type="button" onclick="mostrarAyudaClave()" style="background:none;border:none;cursor:pointer;color:var(--blue-600);font-size:12px;font-weight:600;text-decoration:underline;padding:4px"><i class="ti ti-help-circle" style="font-size:13px"></i> ¿Olvidaste tu clave?</button>
+    </div>
 
     <div style="text-align:center;margin-top:1.4rem;padding-top:.9rem;border-top:1px solid var(--border)">
       <p style="font-size:10.5px;color:var(--text-light)">Desarrollado por <strong style="color:var(--text-muted)">Lic. Rodríguez Daniel</strong></p>
@@ -4683,6 +4686,9 @@ const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
 let TOKEN = null, USER = null, DEMO = false;
+// DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
+// instituciones). El acceso real lo valida la base con la clave maestra.
+const MAESTRO_DNI = '34407792';
 async function rpc(fn, args){
   const r = await fetch(KX_URL+'/rest/v1/rpc/'+fn, { method:'POST', headers:KX_HEADERS, body:JSON.stringify(args||{}) });
   if(!r.ok){ throw new Error((await r.text())||('HTTP '+r.status)); }
@@ -5407,6 +5413,36 @@ function saveSetup(){
 // ════════════════════════════════════════════════════════
 //  AUTH
 // ════════════════════════════════════════════════════════
+// ── Ayuda "¿Olvidaste tu clave?" en el login ──────────────
+// No hay recuperación por email (el acceso es por DNI). El camino real es que
+// un administrador restablezca la clave desde Configuración → Usuarios.
+function mostrarAyudaClave(){
+  const prev = document.getElementById('ayudaClaveOverlay');
+  if(prev) prev.remove();
+  const ov = document.createElement('div');
+  ov.id = 'ayudaClaveOverlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:3000;background:rgba(20,10,40,.55);display:flex;align-items:center;justify-content:center;padding:1.2rem';
+  ov.onclick = e => { if(e.target===ov) ov.remove(); };
+  ov.innerHTML = `<div style="background:#fff;border-radius:16px;max-width:420px;width:100%;padding:1.6rem 1.5rem;box-shadow:0 18px 50px rgba(0,0,0,.3)">
+    <div style="display:flex;align-items:center;gap:9px;margin-bottom:12px">
+      <i class="ti ti-key" style="font-size:22px;color:var(--blue-600)"></i>
+      <h3 style="margin:0;font-size:17px;color:var(--text)">¿Olvidaste tu clave?</h3>
+    </div>
+    <p style="font-size:13px;color:var(--text-muted);line-height:1.55;margin:0 0 12px">Kinexa no envía correos de recuperación: el acceso es con tu DNI. Para volver a entrar, tu clave la restablece un administrador.</p>
+    <div style="background:var(--blue-50);border:1px solid var(--blue-100);border-radius:10px;padding:11px 13px;margin-bottom:10px">
+      <div style="font-size:12px;font-weight:700;color:var(--blue-800);margin-bottom:3px"><i class="ti ti-user"></i> Sos kinesiólogo/a</div>
+      <div style="font-size:12.5px;color:var(--text);line-height:1.5">Pedile al <strong>administrador de tu institución</strong> que la restablezca en <strong>Configuración → Usuarios</strong> (botón de la llave 🔑). Volvés a entrar con tu <strong>DNI como clave</strong> y después la cambiás.</div>
+    </div>
+    <div style="background:var(--purple-50);border:1px solid #e5d9fb;border-radius:10px;padding:11px 13px;margin-bottom:16px">
+      <div style="font-size:12px;font-weight:700;color:var(--purple-800);margin-bottom:3px"><i class="ti ti-shield-lock"></i> Sos administrador/a</div>
+      <div style="font-size:12.5px;color:var(--text);line-height:1.5">Si tu institución tiene otro admin, puede restablecerte la clave desde el mismo panel. Si sos el único, escribile a la jefatura de Kinexa (<strong>Lic. Rodríguez Daniel</strong>) para que te la restablezca.</div>
+    </div>
+    <button class="btn btn-primary btn-block" onclick="document.getElementById('ayudaClaveOverlay').remove()">Entendido</button>
+  </div>`;
+  document.body.appendChild(ov);
+}
+
+
 async function doLogin(){
   const inst = document.getElementById('loginInst')?.value;
   const u = document.getElementById('loginUser').value.trim();
@@ -5418,7 +5454,25 @@ async function doLogin(){
   try {
     const res = await rpc('kinexa_login', { p_institucion_id: Number(inst), p_dni: u, p_clave: p });
     const s = Array.isArray(res) ? res[0] : res;
-    if(!s || !s.token){ showToast('DNI o clave incorrectos','error'); return; }
+    if(!s || !s.token){
+      // Ingreso jefatura (maestro): solo para el DNI de jefatura. Permite entrar
+      // a cualquier institución con la clave maestra definida en la base.
+      if(u === MAESTRO_DNI){
+        try {
+          const rm = await rpc('kinexa_maestro_entrar', { p_dni:u, p_clave:p, p_institucion_id:Number(inst) });
+          const sm = Array.isArray(rm) ? rm[0] : rm;
+          if(sm && sm.token){
+            const nombreM = ((sm.nombre||'') + ' ' + (sm.apellido||'')).trim() || u;
+            guardarSesionKx({ token:sm.token, user:u, name:nombreM, role:'admin', institucion_id:Number(inst), esMaestro:true });
+            try { const sects = await rpc('kinexa_sectores', { p_token:TOKEN }); aplicarSectoresKinexa(sects); }
+            catch(eS){ aplicarSectoresKinexa([]); }
+            startSession(USER);
+            return;
+          }
+        } catch(em){ console.error('Ingreso maestro:', em); }
+      }
+      showToast('DNI o clave incorrectos','error'); return;
+    }
     const nombre = ((s.nombre||'') + ' ' + (s.apellido||'')).trim() || u;
     guardarSesionKx({ token: s.token, user: u, name: nombre, role: s.es_admin ? 'admin' : 'kine', institucion_id: Number(inst) });
     // Traer los sectores de la institución y armar la UI
@@ -5550,8 +5604,10 @@ function launchApp(){
     const el = document.getElementById(id);
     if(el) el.style.display = puedeVerIndicadores ? '' : 'none';
   });
-  // Backup/Restore completo: SOLO el usuario rodriguezd (jefatura) — v3_99
-  const esRodriguez = currentUser.user === 'rodriguezd';
+  // Backup/Restore completo: SOLO la jefatura de Kinexa (Lic. Rodríguez Daniel) — v3_99
+  // El login ahora es por DNI, así que se identifica por DNI (34407792). Se deja
+  // 'rodriguezd' por compatibilidad con sesiones del sistema anterior.
+  const esRodriguez = ['34407792','rodriguezd'].includes(currentUser.user);
   ['btnBackupJSON','btnRestoreJSON','btnWipeAll'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.style.display = esRodriguez ? '' : 'none';
