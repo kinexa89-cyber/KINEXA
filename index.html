@@ -1789,6 +1789,9 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           </button>
         </div>
 
+        <!-- v3_117: días de ventilación espontánea (si estuvo en ARM antes) -->
+        <div id="eVEdiasHint" style="display:none;margin-top:8px;background:var(--teal-50);border:1px solid var(--teal-100);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--teal-800);line-height:1.5"></div>
+
         <!-- Sub: VAN con O2 -->
         <div id="eSubVANO2" style="display:none" class="dec-sublevel">
           <div class="dec-label">Dispositivo</div>
@@ -6082,6 +6085,7 @@ function construirTextoEvo(evo, p){
   } else {
     add('Día de ARM', evo.armDia); add('Día en el sector', evo.utiDia); add('Días de internación', evo.diasHosp);
     add('Interfaz', evo.interfaz); add('Detalle de interfaz', evo.interfazEsp);
+    add('Día de ventilación espontánea (sin ARM)', evo.diasVE);
     add('Diámetro de TET/cánula', evo.armDiametro); add('TET a nivel de ADS (cm)', evo.tetADS);
     add('Posición', evo.posicionARM); add('Ciclo de prono', evo.pronoCiclo);
     add('Cuff leak test', evo.cuffLeak);
@@ -7364,7 +7368,72 @@ function setARMStatus(enARM){
     // Esconder TQT block hasta que elija interfaz con TQT
     document.getElementById('tqtBlock').style.display = 'none';
   }
+  // v3_117: el aviso de días sin ARM solo aplica al elegir TQT espontáneo
+  actualizarHintVE(currentEvoPacId, false);
   actualizarCuidadosVAA();
+}
+
+// ── v3_117: días de ventilación espontánea (sin ARM) ──────────────
+// Devuelve la fecha en que el paciente salió de ARM, o null si nunca estuvo
+// o no se puede determinar. Orden de preferencia:
+//   1) La evolución más reciente donde se registró la extubación/desconexión.
+//   2) El campo finARM de la ficha del paciente.
+//   3) La primera evolución en ventilación espontánea posterior a la última en ARM.
+function fechaSalidaARM(patientId){
+  const p = patients.find(x => x.id === patientId);
+  const evos = evoluciones
+    .filter(e => e.patientId === patientId && !e.tipo)
+    .sort((a,b) => String(a.date + (a.hora||'')).localeCompare(String(b.date + (b.hora||''))));
+
+  const enARM = e => !e.interfazEsp && (e.interfaz === 'TET' || e.interfaz === 'TQT');
+  const espontanea = e => !!e.interfazEsp;
+
+  // ¿Estuvo alguna vez en ARM?
+  const huboARM = !!(p && p.inicioARM) || evos.some(enARM);
+  if(!huboARM) return null;
+
+  // 1) Última extubación registrada
+  const conExtub = evos.filter(e => esEvoConExtubacion(e));
+  if(conExtub.length) return conExtub[conExtub.length-1].date;
+
+  // 2) Fin de ARM cargado en la ficha
+  if(p && p.finARM) return p.finARM;
+
+  // 3) Primera evolución espontánea después de la última en ARM
+  let idxUltARM = -1;
+  evos.forEach((e,i)=>{ if(enARM(e)) idxUltARM = i; });
+  if(idxUltARM >= 0){
+    for(let i = idxUltARM+1; i < evos.length; i++){
+      if(espontanea(evos[i])) return evos[i].date;
+    }
+    return null; // sigue en ARM
+  }
+  return null;
+}
+
+// Días de ventilación espontánea a hoy (el día de la salida cuenta como día 1)
+function diasVentilacionEspontanea(patientId, fechaRef){
+  const f = fechaSalidaARM(patientId);
+  if(!f) return null;
+  const ref = fechaRef || today();
+  const d = daysBetween(f, ref);
+  // El día en que sale de ARM es el día 0; al día siguiente, día 1.
+  return (d === null || d < 0) ? null : d;
+}
+
+// Muestra/oculta el aviso de días sin ARM en el formulario de evolución
+function actualizarHintVE(patientId, mostrar){
+  const el = document.getElementById('eVEdiasHint');
+  if(!el) return;
+  if(!mostrar){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  const dias = diasVentilacionEspontanea(patientId);
+  const f = fechaSalidaARM(patientId);
+  if(dias === null || !f){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  el.innerHTML = `<i class="ti ti-lungs" style="margin-right:5px"></i>`
+    + (dias === 0
+        ? `<strong>Día 0 de ventilación espontánea</strong> (salió de ARM hoy, ${fmtDate(f)}).`
+        : `<strong>Día ${dias} de ventilación espontánea</strong> (sin ARM desde el ${fmtDate(f)}).`);
+  el.style.display = 'block';
 }
 
 function setInterfazEsp(tipo){
@@ -7384,6 +7453,8 @@ function setInterfazEsp(tipo){
     abrirAcordeon('accTQT');
     abrirAcordeon('accDecanulacion');
   }
+  // v3_117: si el paciente estuvo en ARM, mostrar los días de ventilación espontánea
+  actualizarHintVE(currentEvoPacId, esTQT);
   document.getElementById('eInterfazEsp').value = tipo;
   // Mapear a un valor de interfaz legible
   const mapaInterfaz = { VAN_AA:'Aire ambiente', VAN_O2:'VAN con O₂', CNAF:'CNAF', VNI:'VNI', TQT_O2:'TQT espontáneo + O₂', TQT_AA:'TQT espontáneo' };
@@ -8381,7 +8452,7 @@ const EVO_SKIP_CAMPOS = new Set([
   // Signos vitales
   'fc','tam','pic','etco2','spo2Mon','frMon','temp',
   // Ventilación / interfaz / O₂
-  'interfaz','interfazEsp','armDiametro','tetADS','posicionARM','pronoCiclo','cuffLeak',
+  'interfaz','interfazEsp','diasVE','armDiametro','tetADS','posicionARM','pronoCiclo','cuffLeak',
   'cnFlujo','mvFio2','mrFlujo','cnafFlujo','cnafFio2',
   'vniModo','vniPi','vniVt','vniFr','vniPeep','vniFio2','vniMascara',
   // Neurológico / Sedoanalgesia
@@ -8525,7 +8596,7 @@ function evoCardHTML(e, i){
   ]);
   // 2) Ventilación / interfaz + O₂ + VNI
   const secVent = evoSeccionGrid('Ventilación / Interfaz', [
-    [interfazTxt,'Interfaz'], [e.armDiametro,'Diámetro TET/cán. (mm)'], [e.tetADS,'TET a ADS (cm)'],
+    [interfazTxt,'Interfaz'], [e.diasVE,'Día de vent. espontánea'], [e.armDiametro,'Diámetro TET/cán. (mm)'], [e.tetADS,'TET a ADS (cm)'],
     [posicionTxt,'Posición'], [e.cuffLeak,'Cuff leak test'],
     [e.cnFlujo,'Cánula nasal (L/min)'], [e.mvFio2,'Venturi FiO₂ (%)'], [e.mrFlujo,'Reservorio (L/min)'],
     [e.cnafFlujo,'CNAF flujo (L/min)'], [e.cnafFio2,'CNAF FiO₂ (%)'],
@@ -9582,6 +9653,7 @@ function openEvolucion(patientId){
     diasARM = diasARM !== null ? diasARM + 1 : 0;
   }
   document.getElementById('eARM').value = diasARM || '';
+  actualizarHintVE(patientId, false); // se muestra recién si eligen TQT espontáneo
 
   // Contadores visuales
   const counters = document.getElementById('evoDayCounters');
@@ -9981,6 +10053,9 @@ async function guardarEvolucion(){
     armDia:GN('eARM'), utiDia:GN('eUTI'),
     interfaz:G('eInterfazPrincipal') || G('eInterfaz'),
     interfazEsp:G('eInterfazEsp'),
+    // v3_117: días de ventilación espontánea (solo si es TQT sin ARM y estuvo en ARM antes)
+    diasVE: (['TQT_O2','TQT_AA'].includes(G('eInterfazEsp'))
+              ? (diasVentilacionEspontanea(currentEvoPacId, date) ?? '') : ''),
     armDiametro:G('eARMdiametro'),
     tetADS:G('eTETads'),
     posicionARM:G('ePosicionARM')||'supino',
