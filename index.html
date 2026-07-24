@@ -197,7 +197,7 @@ tr:hover td{ background:var(--blue-50); }
 @keyframes overlayIn{ from{opacity:0} to{opacity:1} }
 @keyframes modalIn{ from{opacity:0; transform:translateY(12px) scale(.985)} to{opacity:1; transform:none} }
 .modal{ background:#fff; border-radius:var(--radius-xl); padding:1.5rem;
-  width:720px; max-width:100%; margin:auto; box-shadow:var(--shadow-lg); }
+  width:720px; max-width:100%; min-width:0; margin:auto; box-shadow:var(--shadow-lg); }
 .modal-sm{ width:460px; }
 .modal-header{ display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:1.2rem; }
 .modal-header h3{ font-size:17px; font-weight:700; color:var(--blue-900); }
@@ -206,7 +206,7 @@ tr:hover td{ background:var(--blue-50); }
   font-size:22px; line-height:1; padding:2px; flex-shrink:0; margin-left:8px; }
 .modal-close:hover{ color:var(--text); }
 .modal-footer{ display:flex; gap:8px; justify-content:flex-end; padding-top:1rem;
-  border-top:1px solid var(--border); margin-top:.5rem; }
+  border-top:1px solid var(--border); margin-top:.5rem; flex-wrap:wrap; }
 
 /* ─── TAGS / CHIPS DE TÉCNICAS ─── */
 .tag-group{ display:flex; flex-wrap:wrap; gap:5px; }
@@ -534,6 +534,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
   .patient-row{ align-items:flex-start; }
   .p-actions{ width:100%; flex-wrap:wrap; gap:8px; margin-top:4px; }
   .btn-evolve{ flex:1 1 auto; justify-content:center; }
+  /* Pie de los modales: en pantallas angostas los botones se acomodan en
+     varias filas y ocupan el ancho, en vez de salirse del cuadro. */
+  .modal-footer{ justify-content:stretch; }
+  .modal-footer .btn{ flex:1 1 auto; justify-content:center; min-width:0; }
 }
 @media(min-width:900px){
   .stats-grid{ grid-template-columns:repeat(4,1fr); }
@@ -676,6 +680,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 
     <div style="text-align:center;margin-top:1.4rem;padding-top:.9rem;border-top:1px solid var(--border)">
       <p style="font-size:10.5px;color:var(--text-light)">Desarrollado por <strong style="color:var(--text-muted)">Lic. Rodríguez Daniel</strong></p>
+      <p style="font-size:10px;color:var(--text-light);margin-top:3px">Kinexa <span class="appVersionTag"></span></p>
     </div>
   </div>
 </div>
@@ -692,6 +697,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="mostrarRegistro()"><i class="ti ti-building-hospital"></i>Registrar mi institución</button>
     <div style="text-align:center;margin-top:1.4rem;padding-top:.9rem;border-top:1px solid var(--border)">
       <p style="font-size:10.5px;color:var(--text-light)">Desarrollado por <strong style="color:var(--text-muted)">Lic. Rodríguez Daniel</strong></p>
+      <p style="font-size:10px;color:var(--text-light);margin-top:3px">Kinexa <span class="appVersionTag"></span></p>
     </div>
   </div>
 </div>
@@ -1052,6 +1058,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <option value="post_qx">🔪 Post-quirúrgico</option>
           <option value="amputado">🦾 Amputado</option>
           <option value="quemado">🔥 Quemado</option>
+          <option value="trauma">🦴 Trauma</option>
           <option value="otro">📋 Otro</option>
           <option value="crm">🫀 POP CRM (Cirugía de Revascularización Miocárdica)</option>
         </select>
@@ -1335,6 +1342,15 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
               <label class="ant-chip"><input type="checkbox" id="fQuemPerine" value="perine">Periné</label>
               <label class="ant-chip"><input type="checkbox" id="fQuemViaAerea" value="via_aerea">Vía aérea</label>
             </div>
+          </div>
+        </div>
+
+        <!-- Trauma -->
+        <div id="fGrupoTrauma" style="display:none">
+          <div class="form-group">
+            <label>Lesiones</label>
+            <textarea id="fTraumaLesiones" rows="4" placeholder="Detallá las lesiones del paciente. Ej.: Fractura de fémur derecho (clavo endomedular), fractura costal 4.ª a 7.ª izquierda, TEC leve, contusión pulmonar bilateral..."></textarea>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Escribí libremente todas las lesiones y su tratamiento (quirúrgico, ortesis, reposo, etc.).</div>
           </div>
         </div>
 
@@ -4669,6 +4685,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
+const APP_VERSION = 'v3_123';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -5431,6 +5448,7 @@ function startSession(user){
   ocultarPantallasAuth();
   // Todos eligen en qué sector van a trabajar hoy (el admin además puede elegir "ver todos")
   document.getElementById('sectorGreeting').textContent = `Bienvenido/a, ${user.name}`;
+  { const sg=document.getElementById('sectorGreeting'); if(sg) sg.title = 'Kinexa '+APP_VERSION; }
   document.getElementById('sectorScreen').style.display = 'flex';
 }
 
@@ -5671,6 +5689,7 @@ async function generarResumenIA(){
     `Edad: ${p.edad||'—'} años, sexo: ${p.genero||'—'}`,
     `Sala: ${SALA_LABEL[p.sala]||p.sala}, cama ${p.cama||'—'}`,
     p.tipoKine ? `Grupo: ${tipoLabel}` : '',
+    (p.tipoKine==='trauma' && p.grupoTraumaLesiones) ? `Lesiones: ${p.grupoTraumaLesiones}` : '',
     `Diagnóstico principal: ${p.diagnostico||'—'}`,
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
@@ -5806,6 +5825,7 @@ async function generarInformeAlta(patientId){
     `Edad: ${p.edad||'—'} años, sexo: ${p.genero||'—'}`,
     `Sala: ${SALA_LABEL[p.sala]||p.sala}, cama ${p.cama||'—'}`,
     p.tipoKine ? `Grupo: ${tipoLabel}` : '',
+    (p.tipoKine==='trauma' && p.grupoTraumaLesiones) ? `Lesiones: ${p.grupoTraumaLesiones}` : '',
     `Diagnóstico principal: ${p.diagnostico||'—'}`,
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
@@ -6470,7 +6490,7 @@ const ES_MINIMOS = sala => /m[ií]nimos?/i.test(sala || '');
 const TIPO_KINE_LABEL = {
   respiratorio:'🫁 Respiratorio', neurologico:'🧠 Neurológico',
   pre_qx:'🔪 Pre-quirúrgico', post_qx:'🔪 Post-quirúrgico',
-  amputado:'🦾 Amputado', quemado:'🔥 Quemado',
+  amputado:'🦾 Amputado', quemado:'🔥 Quemado', trauma:'🦴 Trauma',
   post_uti:'🏥 Post UTI', otro:'📋 Otro'
 };
 
@@ -6537,13 +6557,13 @@ function populateCama(sala, selected){
 function onGrupoChange(grupo){
   const bloques = {
     respiratorio:'fGrupoResp', neurologico:'fGrupoNeuro',
-    quemado:'fGrupoQuemado', amputado:'fGrupoAmputado',
+    quemado:'fGrupoQuemado', amputado:'fGrupoAmputado', trauma:'fGrupoTrauma',
     post_uti:'fGrupoPostUTI', pre_qx:'fGrupoQx', post_qx:'fGrupoQx', crm:'fGrupoCRM'
   };
   const wrapper = document.getElementById('fGrupoEspecifico');
   const hayBloque = !!bloques[grupo];
   wrapper.style.display = hayBloque ? 'block' : 'none';
-  ['fGrupoResp','fGrupoNeuro','fGrupoQuemado','fGrupoAmputado','fGrupoPostUTI','fGrupoQx','fGrupoCRM'].forEach(id => {
+  ['fGrupoResp','fGrupoNeuro','fGrupoQuemado','fGrupoAmputado','fGrupoTrauma','fGrupoPostUTI','fGrupoQx','fGrupoCRM'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
   });
@@ -6819,14 +6839,6 @@ function calcTCTEvo(){
 function onModoChange(val){
   const box = document.getElementById('ePCCSVBox');
   if(box) box.style.display = val==='PC-CSV' ? 'block' : 'none';
-  if(val!=='PC-CSV'){
-    ['eP01','eDeltaPocc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
-  }
-}
-
-function onModoChange(val){
-  const box = document.getElementById('ePCCSVBox');
-  if(box) box.style.display = val==='PC-CSV' ? 'block' : 'none';
   if(val!=='PC-CSV'){['eP01','eDeltaPocc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});}
   autoCalculate();
 }
@@ -6957,9 +6969,11 @@ function resetGrupoFields(){
   });
   // Campos amputado
   ['fAmpNivel','fAmpMotivo','fAmpCausa'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  // Campos trauma
+  { const el=document.getElementById('fTraumaLesiones'); if(el) el.value=''; }
   // Ocultar wrapper
   const w=document.getElementById('fGrupoEspecifico'); if(w) w.style.display='none';
-  ['fGrupoResp','fGrupoNeuro','fGrupoQuemado','fGrupoAmputado','fGrupoPostUTI','fGrupoCRM'].forEach(id=>{
+  ['fGrupoResp','fGrupoNeuro','fGrupoQuemado','fGrupoAmputado','fGrupoTrauma','fGrupoPostUTI','fGrupoQx','fGrupoCRM'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });
 }
@@ -9198,6 +9212,7 @@ function openEditPaciente(id){
   if(p.tipoKine==='amputado'){
     M('fAmpNivel',p.grupoAmpNivel||''); M('fAmpMotivo',p.grupoAmpMotivo||''); M('fAmpCausa',p.grupoAmpCausa||'');
   }
+  if(p.tipoKine==='trauma'){ M('fTraumaLesiones', p.grupoTraumaLesiones||''); }
   if(p.tipoKine==='post_uti' && p.grupoMRC){
     MRC_CAMPOS.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=p.grupoMRC[id]||''; });
     calcMRCIngreso();
@@ -9289,6 +9304,7 @@ async function guardarPaciente(){
     peso, talla, imc, pcp: pcp!==null ? +pcp.toFixed(1) : null,
     sala:G('fSala'), cama:G('fCama'),
     tipoKine:G('fTipoKine'), estFx:G('fEstFx'),
+    grupoTraumaLesiones:G('fTraumaLesiones'),
     // Campos por grupo
     grupoRespARM: G('fRespARM')||null,
     grupoRespO2Dep: G('fRespO2Dep')||null,
@@ -10315,17 +10331,125 @@ function renderIndicadores(){
 
   el.innerHTML = `
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
-    <div style="display:flex;gap:4px;background:var(--gray-100);padding:4px;border-radius:8px">
-      <button class="btn btn-sm ${vistaActual==='mensual'?'btn-primary':'btn-ghost'}" onclick="cambiarVistaInd('mensual')"><i class="ti ti-calendar-stats"></i> Vista mensual</button>
+    <div style="display:flex;gap:4px;background:var(--gray-100);padding:4px;border-radius:8px;flex-wrap:wrap">
+      <button class="btn btn-sm ${vistaActual==='mensual'?'btn-primary':'btn-ghost'}" onclick="cambiarVistaInd('mensual')"><i class="ti ti-calendar-stats"></i> Resumen</button>
+      <button class="btn btn-sm ${vistaActual==='demografia'?'btn-primary':'btn-ghost'}" onclick="cambiarVistaInd('demografia')"><i class="ti ti-chart-pie"></i> Demografía</button>
+      <button class="btn btn-sm ${vistaActual==='prestaciones'?'btn-primary':'btn-ghost'}" onclick="cambiarVistaInd('prestaciones')"><i class="ti ti-checklist"></i> Prestaciones</button>
       <button class="btn btn-sm ${vistaActual==='pacientes'?'btn-primary':'btn-ghost'}" onclick="cambiarVistaInd('pacientes')"><i class="ti ti-users"></i> Por paciente</button>
     </div>
-    ${vistaActual==='mensual' ? `<input type="month" id="indMesSel" value="${mesSel}" onchange="cambiarMesInd(this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:13px">` : ''}
-    <button class="btn btn-sm btn-ghost" onclick="exportarIndicadores('${vistaActual}','${mesSel}')"><i class="ti ti-table-export"></i> Exportar Excel</button>
+    ${vistaActual!=='pacientes' ? `<input type="month" id="indMesSel" value="${mesSel}" onchange="cambiarMesInd(this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:13px">` : ''}
+    <button class="btn btn-sm btn-success" onclick="exportarIndicadoresCompleto('${mesSel}')"><i class="ti ti-table-export"></i> Exportar TODO a Excel</button>
   </div>
   <div id="indBody"></div>`;
 
   if(vistaActual==='mensual') renderIndMensual(mesSel);
+  else if(vistaActual==='demografia') renderIndDemografia(mesSel);
+  else if(vistaActual==='prestaciones') renderIndPrestaciones(mesSel);
   else renderIndPacientes();
+}
+
+// ── Helpers de armado de tablas para las vistas nuevas ──
+function indTabla(titulo, icono, filasHTML, columnas){
+  return `<div class="card" style="margin-bottom:12px;overflow-x:auto">
+    <div class="card-header"><div class="card-header-title"><i class="ti ${icono}" style="color:var(--blue-400)"></i> ${titulo}</div></div>
+    <div class="card-body" style="padding:0">
+    <table style="width:100%;border-collapse:collapse;font-size:12px">
+      ${columnas ? `<thead><tr style="background:var(--blue-50)">${columnas.map((c,i)=>`<th style="text-align:${i===0?'left':'center'};padding:8px ${i===0?'12px':'8px'};border-bottom:2px solid var(--blue-100)">${c}</th>`).join('')}</tr></thead>` : ''}
+      <tbody>${filasHTML}</tbody>
+    </table></div></div>`;
+}
+function indFila2(label, valor, extra){
+  return `<tr><td style="padding:7px 12px;border-bottom:1px solid rgba(0,0,0,.04);font-weight:600">${label}</td><td style="padding:7px 8px;border-bottom:1px solid rgba(0,0,0,.04);text-align:center;font-weight:700;color:var(--blue-700)">${valor}</td>${extra!==undefined?`<td style="padding:7px 8px;border-bottom:1px solid rgba(0,0,0,.04);text-align:center;color:var(--text-muted)">${extra}</td>`:''}</tr>`;
+}
+
+// ── Vista Demografía ──
+function renderIndDemografia(mesStr){
+  const body = document.getElementById('indBody');
+  if(!body) return;
+  const d = calcDemografia(mesStr);
+  const eq = calcEquipo(mesStr);
+  const T = d.total;
+
+  body.innerHTML = `
+  <div class="kpi-row" style="margin-bottom:16px">
+    <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-users"></i></div><div class="kpi-content"><div class="label">Pacientes del mes</div><div class="value">${T}</div><div class="sub">Ingresos: ${d.ingresos}</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-home-check"></i></div><div class="kpi-content"><div class="label">Egresos</div><div class="value">${d.egresosTot}</div><div class="sub">Altas ${d.altas} · Óbitos ${d.obitos} · Traslados ${d.traslados}</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon red"><i class="ti ti-heart-off"></i></div><div class="kpi-content"><div class="label">Mortalidad</div><div class="value">${d.mortalidad}</div><div class="sub">Óbitos / egresos del mes</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon amber"><i class="ti ti-calendar-time"></i></div><div class="kpi-content"><div class="label">Estancia promedio</div><div class="value">${d.estanciaStats.prom??'—'}</div><div class="sub">días (mediana ${d.estanciaStats.mediana??'—'})</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon purple"><i class="ti ti-stethoscope"></i></div><div class="kpi-content"><div class="label">Kinesiólogos activos</div><div class="value">${eq.cantKines}</div><div class="sub">${eq.totalEvos} evoluciones</div></div></div>
+  </div>
+
+  ${indTabla('Pacientes por sector — '+mesStr,'ti-bed',
+    SECTORES.map(s=>indFila2(SECTOR_LBL(s), d.porSector[s]||0, pctTxt(d.porSector[s]||0, T))).join('') +
+    indFila2('<strong>TOTAL</strong>', T, '100%'),
+    ['Sector','Pacientes','%'])}
+
+  ${indTabla('Distribución por sexo','ti-friends',
+    indFila2('Masculino', d.sexo.Masculino, pctTxt(d.sexo.Masculino,T)) +
+    indFila2('Femenino', d.sexo.Femenino, pctTxt(d.sexo.Femenino,T)) +
+    (d.sexo.Otro?indFila2('Otro', d.sexo.Otro, pctTxt(d.sexo.Otro,T)):'') +
+    (d.sexo.SinDato?indFila2('Sin dato', d.sexo.SinDato, pctTxt(d.sexo.SinDato,T)):''),
+    ['Sexo','Pacientes','%'])}
+
+  ${indTabla('Edad','ti-calendar',
+    indFila2('Promedio', d.edadStats.prom??'—','') +
+    indFila2('Mediana', d.edadStats.mediana??'—','') +
+    indFila2('Mínima / Máxima', (d.edadStats.min??'—')+' / '+(d.edadStats.max??'—'),'') +
+    d.franjas.map(f=>indFila2('Franja '+f.label+' años', f.n, pctTxt(f.n,T))).join(''),
+    ['Edad','Valor','%'])}
+
+  ${indTabla('Estado nutricional (IMC)','ti-scale',
+    indFila2('IMC promedio', d.imcStats.prom??'—','') +
+    Object.entries(d.catIMC).map(([k,v])=>indFila2(k, v, pctTxt(v, d.imcStats.n))).join('') +
+    indFila2('Con IMC registrado', d.imcStats.n, pctTxt(d.imcStats.n,T)),
+    ['Categoría','Pacientes','%'])}
+
+  ${indTabla('Antecedentes (% sobre pacientes del mes)','ti-clipboard-list',
+    d.antecedentes.filter(a=>a.n>0).sort((a,b)=>b.n-a.n).map(a=>indFila2(a.label, a.n, pctTxt(a.n,T))).join('') || indFila2('Sin antecedentes registrados','—',''),
+    ['Antecedente','Pacientes','%'])}
+
+  ${indTabla('Grupos de patología (frecuencia)','ti-category',
+    d.grupos.sort((a,b)=>b.n-a.n).map(g=>indFila2(g.label, g.n, pctTxt(g.n,T))).join('') +
+    (d.sinGrupo?indFila2('(sin grupo asignado)', d.sinGrupo, pctTxt(d.sinGrupo,T)):''),
+    ['Grupo','Pacientes','%'])}
+
+  ${d.causasTop.length ? indTabla('Causas de VM más frecuentes','ti-lungs',
+    d.causasTop.map(([c,n])=>indFila2(escapeHTML(c), n, '')).join(''),
+    ['Causa','Pacientes','']) : ''}
+
+  ${indTabla('Equipo del mes — evoluciones por kinesiólogo/a','ti-users-group',
+    eq.kines.map(([k,n])=>indFila2(escapeHTML(k), n, pctTxt(n, eq.totalEvos))).join('') || indFila2('Sin evoluciones','—',''),
+    ['Kinesiólogo/a','Evoluciones','%'])}
+
+  ${indTabla('Evoluciones por turno','ti-clock',
+    Object.entries(eq.porTurno).filter(([k,v])=>v>0).map(([k,v])=>indFila2(k, v, pctTxt(v, eq.totalEvos))).join(''),
+    ['Turno','Evoluciones','%'])}`;
+}
+
+// ── Vista Prestaciones (todas las técnicas) ──
+function renderIndPrestaciones(mesStr){
+  const body = document.getElementById('indBody');
+  if(!body) return;
+  const conteo = conteoTecnicasEnMes(mesStr);
+  const evalEst = evalEstructuradasEnMes(mesStr);
+  const entries = Object.entries(conteo).sort((a,b)=>b[1]-a[1]);
+  const totalTecnicas = entries.reduce((s,[,n])=>s+n,0);
+  const totalPrestGen = prestacionesGeneralesEnMes('', mesStr);
+
+  body.innerHTML = `
+  <div class="kpi-row" style="margin-bottom:16px">
+    <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-checklist"></i></div><div class="kpi-content"><div class="label">Técnicas registradas</div><div class="value">${totalTecnicas}</div><div class="sub">${entries.length} técnicas distintas</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-clipboard-check"></i></div><div class="kpi-content"><div class="label">Prestaciones generales</div><div class="value">${totalPrestGen}</div><div class="sub">ARM/TQT ×6 · resto ×2</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon purple"><i class="ti ti-notes"></i></div><div class="kpi-content"><div class="label">Evoluciones del mes</div><div class="value">${evolucionesEnMes('',mesStr)}</div><div class="sub">registros clínicos</div></div></div>
+  </div>
+
+  ${indTabla('Evaluaciones y procedimientos estructurados — '+mesStr,'ti-report-medical',
+    Object.entries(evalEst).map(([k,v])=>indFila2(k, v)).join(''),
+    ['Evaluación / procedimiento','Cantidad'])}
+
+  ${indTabla('TODAS las técnicas registradas — '+mesStr+' (ordenadas por frecuencia)','ti-list-numbers',
+    entries.map(([t,n])=>indFila2(escapeHTML(t), n, pctTxt(n,totalTecnicas))).join('') || indFila2('Sin técnicas registradas este mes','—',''),
+    ['Técnica','Veces','% del total'])}`;
 }
 
 function cambiarVistaInd(vista){
@@ -10507,6 +10631,180 @@ function pveEnMes(sala, mesStr){
   });
 }
 
+// ════════════════════════════════════════════════════════
+//  MOTOR CENTRAL DE INDICADORES (v3_120)
+//  Todas las métricas salen de acá; la pantalla y el Excel
+//  usan los mismos cálculos para que nunca difieran.
+// ════════════════════════════════════════════════════════
+const pctTxt = (n, total) => total ? (Math.round(n/total*1000)/10) + '%' : '—';
+
+// ¿El paciente estuvo en el servicio durante ese mes?
+// (tiene alguna evolución en el mes, o su estadía se superpone con el mes)
+function pacienteEnMes(p, mesStr){
+  if(evoluciones.some(e=>e.patientId===p.id && e.date && e.date.startsWith(mesStr))) return true;
+  const [y,m] = mesStr.split('-').map(Number);
+  const iniMes = `${mesStr}-01`;
+  const finMes = `${mesStr}-${String(new Date(y,m,0).getDate()).padStart(2,'0')}`;
+  const ingreso = p.fISector || p.fIUTI || p.fIHosp;
+  if(!ingreso) return false;
+  const egreso = p.fEUTI || null;
+  return ingreso <= finMes && (!egreso || egreso >= iniMes);
+}
+function pacientesDelMes(mesStr, sala){
+  return patients.filter(p => (!sala || p.sala===sala) && pacienteEnMes(p, mesStr));
+}
+function evosDelMes(mesStr, sala){
+  return evoluciones.filter(e=>{
+    if(e.tipo || !e.date || !e.date.startsWith(mesStr)) return false;
+    if(sala){ const p=patients.find(x=>x.id===e.patientId); if(!p||p.sala!==sala) return false; }
+    return true;
+  });
+}
+// Eventos de egreso (alta/óbito/traslado) del mes
+function egresosDelMes(mesStr, tipo, sala){
+  return evoluciones.filter(e=>{
+    if(!e.tipo || !e.date || !e.date.startsWith(mesStr)) return false;
+    if(tipo && e.tipo!==tipo) return false;
+    if(sala){ const p=patients.find(x=>x.id===e.patientId); if(!p||p.sala!==sala) return false; }
+    return true;
+  }).length;
+}
+function ingresosDelMes(mesStr, sala){
+  return patients.filter(p=>{
+    if(sala && p.sala!==sala) return false;
+    const f = p.fISector || p.fIUTI;
+    return f && f.startsWith(mesStr);
+  }).length;
+}
+
+// ── Demografía del mes ──
+function statsNum(vals){
+  const v = vals.filter(x=>x!==null && x!==undefined && x!=='' && !isNaN(x)).map(Number);
+  if(!v.length) return { n:0, prom:null, mediana:null, min:null, max:null };
+  v.sort((a,b)=>a-b);
+  const prom = v.reduce((s,x)=>s+x,0)/v.length;
+  const mediana = v.length%2 ? v[(v.length-1)/2] : (v[v.length/2-1]+v[v.length/2])/2;
+  return { n:v.length, prom:+prom.toFixed(1), mediana:+mediana.toFixed(1), min:v[0], max:v[v.length-1] };
+}
+const FRANJAS_EDAD = [
+  { label:'< 30',   test:e=>e<30 },
+  { label:'30-44',  test:e=>e>=30&&e<45 },
+  { label:'45-59',  test:e=>e>=45&&e<60 },
+  { label:'60-74',  test:e=>e>=60&&e<75 },
+  { label:'75 o más', test:e=>e>=75 },
+];
+function calcDemografia(mesStr){
+  const ps = pacientesDelMes(mesStr);
+  const total = ps.length;
+  const porSector = {}; SECTORES.forEach(s=>porSector[s]=ps.filter(p=>p.sala===s).length);
+  const sexo = { Masculino:0, Femenino:0, Otro:0, SinDato:0 };
+  ps.forEach(p=>{ if(p.genero==='Masculino')sexo.Masculino++; else if(p.genero==='Femenino')sexo.Femenino++; else if(p.genero==='Otro')sexo.Otro++; else sexo.SinDato++; });
+  const edadStats = statsNum(ps.map(p=>p.edad));
+  const franjas = FRANJAS_EDAD.map(f=>({ label:f.label, n: ps.filter(p=>p.edad!=null && p.edad!=='' && f.test(Number(p.edad))).length }));
+  const imcStats = statsNum(ps.map(p=>p.imc));
+  const catIMC = { 'Bajo peso (<18.5)':0, 'Normopeso (18.5-24.9)':0, 'Sobrepeso (25-29.9)':0, 'Obesidad I (30-34.9)':0, 'Obesidad II (35-39.9)':0, 'Obesidad III (40 o más)':0 };
+  ps.forEach(p=>{ const v=parseFloat(p.imc); if(isNaN(v))return;
+    if(v<18.5)catIMC['Bajo peso (<18.5)']++; else if(v<25)catIMC['Normopeso (18.5-24.9)']++;
+    else if(v<30)catIMC['Sobrepeso (25-29.9)']++; else if(v<35)catIMC['Obesidad I (30-34.9)']++;
+    else if(v<40)catIMC['Obesidad II (35-39.9)']++; else catIMC['Obesidad III (40 o más)']++; });
+  const antecedentes = ANTECEDENTES_LIST.map(a=>({ label:a.label, n: ps.filter(p=>Array.isArray(p.antecedentes)&&p.antecedentes.includes(a.key)).length }));
+  const grupos = Object.keys(TIPO_KINE_LABEL).map(k=>({ key:k, label:TIPO_KINE_LABEL[k], n: ps.filter(p=>p.tipoKine===k).length })).filter(g=>g.n>0);
+  const sinGrupo = ps.filter(p=>!p.tipoKine).length;
+  // Causas de VM más frecuentes
+  const causas = {};
+  ps.forEach(p=>{ const c=(p.causaVM||'').trim(); if(c) causas[c]=(causas[c]||0)+1; });
+  const causasTop = Object.entries(causas).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  // Egresos del mes
+  const altas = egresosDelMes(mesStr,'alta'), obitos = egresosDelMes(mesStr,'obito'), traslados = egresosDelMes(mesStr,'traslado');
+  const egresosTot = altas + obitos + traslados;
+  const estancias = ps.filter(p=>p.fIHosp).map(p=>(daysBetween(p.fIHosp, p.fEUTI||today())||0)+1);
+  return { total, porSector, sexo, edadStats, franjas, imcStats, catIMC, antecedentes, grupos, sinGrupo,
+           causasTop, altas, obitos, traslados, egresosTot,
+           mortalidad: egresosTot ? pctTxt(obitos, egresosTot) : '—',
+           estanciaStats: statsNum(estancias),
+           ingresos: ingresosDelMes(mesStr) };
+}
+
+// ── Actividad del equipo ──
+function calcEquipo(mesStr){
+  const evos = evosDelMes(mesStr);
+  const porKine = {};
+  evos.forEach(e=>{ const k=(e.kine||'(sin registrar)').trim(); porKine[k]=(porKine[k]||0)+1; });
+  const kines = Object.entries(porKine).sort((a,b)=>b[1]-a[1]);
+  const porTurno = { 'Mañana':0, 'Tarde':0, 'Noche':0, 'Otro':0 };
+  evos.forEach(e=>{ if(porTurno[e.turno]!==undefined) porTurno[e.turno]++; else porTurno.Otro++; });
+  const pacientesAtendidos = new Set(evos.map(e=>e.patientId)).size;
+  return { totalEvos: evos.length, kines, cantKines: kines.filter(([k])=>k!=='(sin registrar)').length, porTurno, pacientesAtendidos };
+}
+
+// ── Días por tipo de soporte/interfaz (días únicos paciente+fecha) ──
+function diasInterfazEnMes(mesStr, sala, tipo){
+  return contarDiasUnicos(e=>{
+    if(!e.date.startsWith(mesStr)) return false;
+    if(sala){ const p=patients.find(x=>x.id===e.patientId); if(!p||p.sala!==sala) return false; }
+    const esp = e.interfazEsp || '';
+    const itf = e.interfaz || '';
+    switch(tipo){
+      case 'TET':      return itf==='TET' && !esp;
+      case 'TQT_ARM':  return itf==='TQT' && !esp;
+      case 'TQT_ESP':  return esp==='TQT_O2' || esp==='TQT_AA' || itf.includes('TQT espontáneo');
+      case 'VNI':      return esp==='VNI' || itf==='VNI';
+      case 'CNAF':     return esp==='CNAF' || itf==='CNAF';
+      case 'VAN_O2':   return esp==='VAN_O2' || itf==='VAN con O₂';
+      case 'AA':       return esp==='VAN_AA' || itf==='Aire ambiente';
+      default: return false;
+    }
+  });
+}
+
+// ── Extubaciones detalladas ──
+function extubDetalle(mesStr, sala, tipo){
+  return contarDiasUnicos(e=>{
+    if(!e.date.startsWith(mesStr)) return false;
+    if(sala){ const p=patients.find(x=>x.id===e.patientId); if(!p||p.sala!==sala) return false; }
+    switch(tipo){
+      case 'planificada':    return e.extubacion==='Sí — planificada';
+      case 'exitosa':        return e.extubacion==='Sí — planificada' && e.pveResult==='Exitosa';
+      case 'fallida':        return e.extubacion?.startsWith('Sí') && e.pveResult?.startsWith('Fallida');
+      case 'autoextubacion': return e.extubacion==='autoextubacion';
+      case 'accidental':     return e.extubacion==='accidental';
+      case 'sin_pve':        return e.extubacion==='sin_pve';
+      case 'no_prog_legado': return e.extubacion==='Sí — no planificada';
+      case 'no_programada':  return ['autoextubacion','accidental','Sí — no planificada'].includes(e.extubacion);
+      case 'todas':          return esEvoConExtubacion(e);
+      default: return false;
+    }
+  });
+}
+
+// ── Prestaciones: conteo de TODAS las técnicas registradas ──
+function conteoTecnicasEnMes(mesStr, sala){
+  const map = {};
+  evosDelMes(mesStr, sala).forEach(e=>{
+    (e.tecnicas||[]).forEach(t=>{
+      const k = (t||'').trim();
+      if(!k) return;
+      map[k] = (map[k]||0)+1;
+    });
+  });
+  return map;
+}
+// Evaluaciones estructuradas (no salen de los tags)
+function evalEstructuradasEnMes(mesStr, sala){
+  const evos = evosDelMes(mesStr, sala);
+  const con = fn => evos.filter(fn).length;
+  const enSala = e => !sala || patients.find(p=>p.id===e.patientId)?.sala===sala;
+  return {
+    'PVE (prueba de ventilación espontánea)': contarDiasUnicos(e=>e.date.startsWith(mesStr)&&enSala(e)&&e.pve&&e.pve!=='No'&&e.pve!==''),
+    'Evaluación de músculos respiratorios (Pimax/Pemax/CV)': con(e=>e.musResp || e.musPImax || e.musPEmax || e.musCV || (e.tecnicas||[]).some(t=>(t||'').includes('músculos respiratorios'))),
+    'Evaluación de fuerza muscular (MRC)': con(e=>e.mrcCompleto==='Si' || e.mrcTotal || e.mrc),
+    'Control de presión de cuff (días)': contarDiasUnicos(e=>e.date.startsWith(mesStr)&&enSala(e)&&(e.cuffM||e.cuffT||e.cuffN)),
+    'Evaluación de deglución (días)': contarDiasUnicos(e=>e.date.startsWith(mesStr)&&enSala(e)&&e.deglusion&&e.deglusion!=='No realizada'),
+    'Cambios de setting ventilatorio': con(e=>e.modSetting),
+    'EAB registrados': con(e=>e.ph||e.pco2||e.po2) + evos.reduce((s,e)=>s+((Array.isArray(e.eabExtra)?e.eabExtra.length:0)),0),
+  };
+}
+
 // ── Vista mensual ──────────────────────────────────────────
 function renderIndMensual(mesStr){
   const body = document.getElementById('indBody');
@@ -10575,12 +10873,27 @@ function renderIndMensual(mesStr){
         ${filaARM('Días de ARMI totales', s=>patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0))}
         ${filaARM('Días de TET', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.interfaz==='TET'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
         ${filaARM('Días de TQT en ARM', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.interfaz==='TQT'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
-        ${filaARM('Días de TQT sin ARM (espontáneo)', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&(e.interfaz||'').includes('TQT espontáneo')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
+        ${filaARM('Días de TQT sin ARM (espontáneo)', s=>diasInterfazEnMes(mesStr,s,'TQT_ESP'))}
         ${filaARM('Pacientes únicos en ARM', s=>pacientesEnARMenMes(s,mesStr))}
+        <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Soporte no invasivo / Oxigenoterapia (días)</td></tr>
+        ${filaARM('Días de VNI', s=>diasInterfazEnMes(mesStr,s,'VNI'))}
+        ${filaARM('Días de CNAF', s=>diasInterfazEnMes(mesStr,s,'CNAF'))}
+        ${filaARM('Días de VAN con O₂', s=>diasInterfazEnMes(mesStr,s,'VAN_O2'))}
+        ${filaARM('Días en aire ambiente', s=>diasInterfazEnMes(mesStr,s,'AA'))}
         <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Extubaciones</td></tr>
         ${filaARM('Extubaciones exitosas', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.extubacion==='Sí — planificada'&&e.pveResult==='Exitosa'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
         ${filaARM('Extubaciones fallidas', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.extubacion?.startsWith('Sí')&&e.pveResult?.startsWith('Fallida')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
-        ${filaARM('Extubaciones no programadas', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&(e.extubacion==='Sí — no planificada'||e.extubacion==='autoextubacion'||e.extubacion==='accidental')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
+        ${filaARM('Extubaciones no programadas (total)', s=>extubDetalle(mesStr,s,'no_programada'))}
+        ${filaARM('— Autoextubaciones', s=>extubDetalle(mesStr,s,'autoextubacion'))}
+        ${filaARM('— Extubaciones accidentales', s=>extubDetalle(mesStr,s,'accidental'))}
+        ${filaARM('Extubaciones sin PVE previa', s=>extubDetalle(mesStr,s,'sin_pve'))}
+        <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Decanulación</td></tr>
+        ${filaARM('Decanulaciones exitosas', s=>decanulaciones('',s,mesStr))}
+        <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Movimientos del mes</td></tr>
+        ${filaARM('Ingresos al sector', s=>ingresosDelMes(mesStr,s))}
+        ${filaARM('Altas', s=>egresosDelMes(mesStr,'alta',s))}
+        ${filaARM('Óbitos', s=>egresosDelMes(mesStr,'obito',s))}
+        ${filaARM('Traslados internos', s=>egresosDelMes(mesStr,'traslado',s))}
         <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">PVE / Ventilación espontánea</td></tr>
         ${filaARM('PVE realizadas', s=>pveEnMes(s,mesStr))}
         ${filaARM('PVE exitosas', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.pveResult==='Exitosa'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
@@ -10618,6 +10931,10 @@ function renderIndPacientes(){
       <td>${SALA_LABEL[p.sala]||p.sala||'—'}</td>
       <td>${p.cama||'—'}</td>
       <td><span class="badge ${p.estado==='Activo'?'badge-teal':'badge-gray'}">${p.estado||'—'}</span></td>
+      <td>${p.genero?p.genero[0]:'—'}</td>
+      <td>${p.edad||'—'}</td>
+      <td style="white-space:nowrap">${p.tipoKine?(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine).replace(/^[^ ]+ /,''):'—'}</td>
+      <td>${p.imc||'—'}</td>
       <td>${diasHosp}</td>
       <td style="font-weight:${diasArm>0?'700':'400'};color:${diasArm>0?'var(--red-600)':'inherit'}">${diasArm||'—'}</td>
       <td>${diasTET||'—'}</td>
@@ -10628,6 +10945,7 @@ function renderIndPacientes(){
       <td>${extub||'—'}</td>
       <td>${deg||'—'}</td>
       <td>${cuff||'—'}</td>
+      <td>${diasU(e=>e.decDecanulado==='Si')?'Sí':'—'}</td>
       <td>${evos.length}</td>
     </tr>`;
   }).join('');
@@ -10644,6 +10962,10 @@ function renderIndPacientes(){
           <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Sala</th>
           <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Cama</th>
           <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Estado</th>
+          <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Sexo</th>
+          <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Edad</th>
+          <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Grupo</th>
+          <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">IMC</th>
           <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Días hosp.</th>
           <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100);color:var(--red-600)">Días ARM</th>
           <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Días TET</th>
@@ -10654,13 +10976,182 @@ function renderIndPacientes(){
           <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Extub.</th>
           <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Eval. deg.</th>
           <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Ctrl. cuff</th>
+          <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Decanulado</th>
           <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Evol. total</th>
         </tr>
       </thead>
-      <tbody>${filas||'<tr><td colspan="16" style="text-align:center;padding:2rem;color:var(--text-muted)">Sin datos</td></tr>'}</tbody>
+      <tbody>${filas||'<tr><td colspan="21" style="text-align:center;padding:2rem;color:var(--text-muted)">Sin datos</td></tr>'}</tbody>
     </table>
     </div>
   </div>`;
+}
+
+// ── Exportar TODOS los indicadores del mes a Excel (v3_120) ──
+// Un solo archivo, ordenado por secciones, con los mismos cálculos de la pantalla.
+async function exportarIndicadoresCompleto(mesStr){
+  mesStr = mesStr || today().slice(0,7);
+  const rows = [];
+  const seccion = t => { rows.push([]); rows.push(['═══ '+t+' ═══']); };
+  const calcFila = (label, fn) => [label, ...SECTORES.map(fn), SECTORES.reduce((s,sala)=>s+(fn(sala)||0),0)];
+
+  rows.push(['KINEXA — INDICADORES COMPLETOS DEL SERVICIO']);
+  rows.push(['Mes:', mesStr, 'Generado:', today(), 'Institución:', USER?.institucion_id||'']);
+
+  // ── 1. DEMOGRAFÍA ──
+  const d = calcDemografia(mesStr);
+  const T = d.total;
+  const pctN = (n)=> T ? Math.round(n/T*1000)/10 : 0;
+  seccion('DEMOGRAFÍA Y POBLACIÓN');
+  rows.push(['Pacientes del mes', T]);
+  rows.push(['Ingresos al sector', d.ingresos]);
+  rows.push(['Egresos totales', d.egresosTot]);
+  rows.push(['— Altas', d.altas]);
+  rows.push(['— Óbitos', d.obitos]);
+  rows.push(['— Traslados internos', d.traslados]);
+  rows.push(['Mortalidad (óbitos/egresos)', d.mortalidad]);
+  rows.push(['Estancia promedio (días)', d.estanciaStats.prom??'']);
+  rows.push(['Estancia mediana (días)', d.estanciaStats.mediana??'']);
+  rows.push([]);
+  rows.push(['Pacientes por sector','Cantidad','%']);
+  SECTORES.forEach(s=>rows.push([SECTOR_LBL(s), d.porSector[s]||0, pctN(d.porSector[s]||0)]));
+  rows.push([]);
+  rows.push(['Sexo','Cantidad','%']);
+  rows.push(['Masculino', d.sexo.Masculino, pctN(d.sexo.Masculino)]);
+  rows.push(['Femenino', d.sexo.Femenino, pctN(d.sexo.Femenino)]);
+  if(d.sexo.Otro) rows.push(['Otro', d.sexo.Otro, pctN(d.sexo.Otro)]);
+  if(d.sexo.SinDato) rows.push(['Sin dato', d.sexo.SinDato, pctN(d.sexo.SinDato)]);
+  rows.push([]);
+  rows.push(['Edad','Valor']);
+  rows.push(['Promedio', d.edadStats.prom??'']);
+  rows.push(['Mediana', d.edadStats.mediana??'']);
+  rows.push(['Mínima', d.edadStats.min??'']);
+  rows.push(['Máxima', d.edadStats.max??'']);
+  d.franjas.forEach(f=>rows.push(['Franja '+f.label+' años', f.n, pctN(f.n)]));
+  rows.push([]);
+  rows.push(['IMC','Cantidad','%']);
+  rows.push(['IMC promedio', d.imcStats.prom??'']);
+  Object.entries(d.catIMC).forEach(([k,v])=>rows.push([k, v, d.imcStats.n?Math.round(v/d.imcStats.n*1000)/10:0]));
+  rows.push(['Con IMC registrado', d.imcStats.n, pctN(d.imcStats.n)]);
+  rows.push([]);
+  rows.push(['Antecedente','Pacientes','%']);
+  d.antecedentes.filter(a=>a.n>0).sort((a,b)=>b.n-a.n).forEach(a=>rows.push([a.label, a.n, pctN(a.n)]));
+  rows.push([]);
+  rows.push(['Grupo de patología','Pacientes','%']);
+  d.grupos.sort((a,b)=>b.n-a.n).forEach(g=>rows.push([g.label.replace(/^[^ ]+ /,''), g.n, pctN(g.n)]));
+  if(d.sinGrupo) rows.push(['(sin grupo asignado)', d.sinGrupo, pctN(d.sinGrupo)]);
+  if(d.causasTop.length){
+    rows.push([]);
+    rows.push(['Causa de VM','Pacientes']);
+    d.causasTop.forEach(([c,n])=>rows.push([c, n]));
+  }
+
+  // ── 2. EQUIPO ──
+  const eq = calcEquipo(mesStr);
+  seccion('EQUIPO DEL MES');
+  rows.push(['Kinesiólogos que brindaron servicio', eq.cantKines]);
+  rows.push(['Evoluciones totales', eq.totalEvos]);
+  rows.push(['Pacientes atendidos (con evolución)', eq.pacientesAtendidos]);
+  rows.push([]);
+  rows.push(['Kinesiólogo/a','Evoluciones']);
+  eq.kines.forEach(([k,n])=>rows.push([k, n]));
+  rows.push([]);
+  rows.push(['Turno','Evoluciones']);
+  Object.entries(eq.porTurno).filter(([,v])=>v>0).forEach(([k,v])=>rows.push([k, v]));
+
+  // ── 3. PRESTACIONES ──
+  seccion('PRESTACIONES (por sector)');
+  rows.push(['Indicador', ...SECTORES.map(SECTOR_LBL), 'TOTAL']);
+  rows.push(calcFila('Prestaciones totales', s=>prestacionesTotalesEnMes(s,mesStr)));
+  rows.push(calcFila('Prestaciones generales (ARM/TQT ×6, resto ×2)', s=>prestacionesGeneralesEnMes(s,mesStr)));
+  rows.push([]);
+  rows.push(['Evaluaciones y procedimientos estructurados','Cantidad']);
+  Object.entries(evalEstructuradasEnMes(mesStr)).forEach(([k,v])=>rows.push([k, v]));
+  rows.push([]);
+  rows.push(['TODAS LAS TÉCNICAS REGISTRADAS (ordenadas por frecuencia)','Veces']);
+  const conteo = Object.entries(conteoTecnicasEnMes(mesStr)).sort((a,b)=>b[1]-a[1]);
+  conteo.forEach(([t,n])=>rows.push([t, n]));
+  rows.push(['TOTAL técnicas', conteo.reduce((s,[,n])=>s+n,0)]);
+
+  // ── 4. VENTILACIÓN ──
+  seccion('VENTILACIÓN MECÁNICA Y SOPORTE (por sector)');
+  rows.push(['Indicador', ...SECTORES.map(SECTOR_LBL), 'TOTAL']);
+  rows.push(calcFila('Días de ARM totales', s=>patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0)));
+  rows.push(calcFila('Días de TET', s=>diasInterfazEnMes(mesStr,s,'TET')));
+  rows.push(calcFila('Días de TQT en ARM', s=>diasInterfazEnMes(mesStr,s,'TQT_ARM')));
+  rows.push(calcFila('Días de TQT sin ARM (espontáneo)', s=>diasInterfazEnMes(mesStr,s,'TQT_ESP')));
+  rows.push(calcFila('Días de VNI', s=>diasInterfazEnMes(mesStr,s,'VNI')));
+  rows.push(calcFila('Días de CNAF', s=>diasInterfazEnMes(mesStr,s,'CNAF')));
+  rows.push(calcFila('Días de VAN con O2', s=>diasInterfazEnMes(mesStr,s,'VAN_O2')));
+  rows.push(calcFila('Días en aire ambiente', s=>diasInterfazEnMes(mesStr,s,'AA')));
+  rows.push(calcFila('Pacientes únicos en ARM', s=>pacientesEnARMenMes(s,mesStr)));
+
+  // ── 5. EXTUBACIONES ──
+  seccion('EXTUBACIONES (por sector)');
+  rows.push(['Indicador', ...SECTORES.map(SECTOR_LBL), 'TOTAL']);
+  rows.push(calcFila('Extubaciones (todas)', s=>extubDetalle(mesStr,s,'todas')));
+  rows.push(calcFila('Planificadas', s=>extubDetalle(mesStr,s,'planificada')));
+  rows.push(calcFila('Exitosas', s=>extubDetalle(mesStr,s,'exitosa')));
+  rows.push(calcFila('Fallidas', s=>extubDetalle(mesStr,s,'fallida')));
+  rows.push(calcFila('No programadas (total)', s=>extubDetalle(mesStr,s,'no_programada')));
+  rows.push(calcFila('— Autoextubaciones', s=>extubDetalle(mesStr,s,'autoextubacion')));
+  rows.push(calcFila('— Accidentales', s=>extubDetalle(mesStr,s,'accidental')));
+  rows.push(calcFila('Sin PVE previa', s=>extubDetalle(mesStr,s,'sin_pve')));
+  rows.push(calcFila('PVE realizadas', s=>pveEnMes(s,mesStr)));
+
+  // ── 6. VÍA AÉREA / DECANULACIÓN ──
+  seccion('VÍA AÉREA Y DECANULACIÓN (por sector)');
+  rows.push(['Indicador', ...SECTORES.map(SECTOR_LBL), 'TOTAL']);
+  rows.push(calcFila('Decanulaciones exitosas', s=>decanulaciones('',s,mesStr)));
+  rows.push(calcFila('Controles de cuff (días)', s=>controlCuffEnMes(s,mesStr)));
+  rows.push(calcFila('Evaluaciones de deglución (días)', s=>deglucionEnMes(s,mesStr)));
+
+  // ── 7. MOVIMIENTOS ──
+  seccion('MOVIMIENTOS DEL MES (por sector)');
+  rows.push(['Indicador', ...SECTORES.map(SECTOR_LBL), 'TOTAL']);
+  rows.push(calcFila('Ingresos', s=>ingresosDelMes(mesStr,s)));
+  rows.push(calcFila('Altas', s=>egresosDelMes(mesStr,'alta',s)));
+  rows.push(calcFila('Óbitos', s=>egresosDelMes(mesStr,'obito',s)));
+  rows.push(calcFila('Traslados internos', s=>egresosDelMes(mesStr,'traslado',s)));
+
+  // ── 8. DETALLE POR PACIENTE ──
+  seccion('DETALLE POR PACIENTE (todos los registros)');
+  rows.push(['Paciente','DNI','Sala','Cama','Estado','Sexo','Edad','Grupo','IMC','Días hosp.','Días ARM','Días TET','Días TQT ARM','Días TQT esp.','PVE','PVE exitosas','Extubaciones','Eval. deglución','Ctrl. cuff','Decanulado','Evoluciones']);
+  patients.forEach(p=>{
+    const evos = evoluciones.filter(e=>e.patientId===p.id&&!e.tipo);
+    const diasU = filtro => new Set(evos.filter(e=>e.date && filtro(e)).map(e=>e.date)).size;
+    const diasArm = p.inicioARM ? (daysBetween(p.inicioARM,p.finARM||today())||0)+1 : 0;
+    rows.push([
+      `${p.apellido}, ${p.nombre}`, p.dni||'', SALA_LABEL[p.sala]||p.sala||'', p.cama||'', p.estado||'',
+      p.genero||'', p.edad||'', p.tipoKine?(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine).replace(/^[^ ]+ /,''):'', p.imc||'',
+      p.fIHosp ? (daysBetween(p.fIHosp,p.fEUTI||today())||0)+1 : '',
+      diasArm||'', diasU(e=>e.interfaz==='TET'&&!e.interfazEsp)||'',
+      diasU(e=>e.interfaz==='TQT'&&!e.interfazEsp)||'',
+      diasU(e=>e.interfazEsp==='TQT_O2'||e.interfazEsp==='TQT_AA'||(e.interfaz||'').includes('TQT espontáneo'))||'',
+      diasU(e=>e.pve&&e.pve!=='No'&&e.pve!=='')||'',
+      diasU(e=>e.pveResult==='Exitosa')||'',
+      diasU(e=>esEvoConExtubacion(e))||'',
+      diasU(e=>e.deglusion&&e.deglusion!=='No realizada')||'',
+      diasU(e=>e.cuffM||e.cuffT||e.cuffN)||'',
+      diasU(e=>e.decDecanulado==='Si')?'Sí':'',
+      evos.length
+    ]);
+  });
+
+  // v3_123: separador ';' + decimales con coma + directiva sep=; para que
+  // Excel en configuración regional argentina/española abra las columnas bien.
+  const celda = c => {
+    if(typeof c==='number' && !Number.isInteger(c)) return String(c).replace('.',',');
+    const v = String(c===null||c===undefined?'':c).replace(/\n/g,' ');
+    return (v.includes(';')||v.includes('"')) ? '"'+v.replace(/"/g,'""')+'"' : v;
+  };
+  const csv = 'sep=;\n' + rows.map(r=>r.map(celda).join(';')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Kinexa_indicadores_completos_${mesStr}.csv`;
+  a.click();
+  addLog('export','Exportó indicadores completos: '+mesStr);
+  showToast('Indicadores completos exportados ✓','success');
 }
 
 // ── Exportar indicadores a Excel ─────────────────────────
@@ -11205,6 +11696,7 @@ if(GDRIVE_CONFIG?.clientId){
   if(lt) lt.textContent = `Google Drive configurado: ${GDRIVE_CONFIG.fileName||'hbee_kine_datos.json'}`;
 }
 
+document.querySelectorAll('.appVersionTag').forEach(el=>{ el.textContent = APP_VERSION; });
 // ── PWA: registro del service worker + autoactualización ──
 // v3_115: si hay una versión nueva publicada, la app se actualiza sola y recarga.
 // Así no hace falta acordarse del Ctrl+F5 después de cada subida.
