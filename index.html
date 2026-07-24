@@ -2994,6 +2994,39 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             <div class="form-hint">PEF — Peak Expiratory Flow</div>
           </div>
         </div>
+
+        <!-- v3_126: Ecografía diafragmática -->
+        <button type="button" class="dec-btn" id="btnEcoDiaf" onclick="toggleEcoDiaf()" style="margin-top:4px">
+          <i class="ti ti-device-tv"></i> Ecografía diafragmática
+        </button>
+        <div id="ecoDiafPanel" style="display:none;background:#fff;border:1.5px solid var(--blue-200);border-radius:8px;padding:11px 13px;margin-top:8px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--blue-700);margin-bottom:10px">
+            <i class="ti ti-wave-sine"></i> Ecografía diafragmática
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Excursión diafragmática (cm)</label>
+              <input type="number" id="eEcoDE" step="0.1" inputmode="decimal" oninput="calcEcoDiaf()" placeholder="ej: 1.8">
+              <div class="form-hint" id="eEcoDEHint">Reposo: 1–2 cm · Insp. profunda: &gt;4–5 cm</div>
+            </div>
+          </div>
+          <div class="form-row three">
+            <div class="form-group">
+              <label>Espesor en inspiración (mm)</label>
+              <input type="number" id="eEcoEspInsp" step="0.1" inputmode="decimal" oninput="calcEcoDiaf()" placeholder="ej: 2.4">
+            </div>
+            <div class="form-group">
+              <label>Espesor en espiración (mm)</label>
+              <input type="number" id="eEcoEspEsp" step="0.1" inputmode="decimal" oninput="calcEcoDiaf()" placeholder="ej: 1.8">
+              <div class="form-hint" id="eEcoTdiHint">Tdi normal: ≥1,5 mm</div>
+            </div>
+            <div class="form-group">
+              <label>Fracción de engrosamiento (TFdi %)</label>
+              <input type="text" id="eEcoTFdi" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:600">
+              <div class="form-hint" id="eEcoTFdiHint">(Esp. insp − Esp. esp) / Esp. esp × 100</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div class="form-group" style="margin-bottom:6px"><label style="margin-bottom:6px;">Movilización</label>
@@ -4686,7 +4719,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_125';
+const APP_VERSION = 'v3_126';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -6180,6 +6213,10 @@ function construirTextoEvo(evo, p){
     if(evo.musResp){
       add('PImax', evo.musResp.pimax); add('PEmax', evo.musResp.pemax);
       add('Capacidad vital', evo.musResp.cv); add('Pico flujo tosido', evo.musResp.pft); add('Pico flujo espiratorio', evo.musResp.pfe);
+      add('Eco diafragmática - excursión (cm)', evo.musResp.ecoDE);
+      add('Eco diafragmática - espesor inspiración (mm)', evo.musResp.ecoEspInsp);
+      add('Eco diafragmática - espesor espiración/Tdi (mm)', evo.musResp.ecoEspEsp);
+      add('Eco diafragmática - fracción de engrosamiento TFdi', evo.musResp.ecoTFdi);
     }
     if(evo.modSetting){
       L.push('— Se modificó el seteo del ventilador durante la sesión. Parámetros post-modificación:');
@@ -7489,13 +7526,62 @@ function setInterfazEsp(tipo){
 }
 
 // Cuidados generales VAA: visible si ARM (TET/TQT) o TQT espontáneo (con o sin O2)
-// ── Evaluación de músculos respiratorios ─────────────────
+// ── v3_126: Ecografía diafragmática ──────────────────────
+function toggleEcoDiaf(){
+  const panel = document.getElementById('ecoDiafPanel');
+  const btn = document.getElementById('btnEcoDiaf');
+  const abierto = panel.style.display !== 'none';
+  if(abierto){
+    panel.style.display = 'none';
+    if(btn) btn.classList.remove('active');
+    ['eEcoDE','eEcoEspInsp','eEcoEspEsp','eEcoTFdi'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    calcEcoDiaf();
+  } else {
+    panel.style.display = 'block';
+    if(btn) btn.classList.add('active');
+  }
+}
+function calcEcoDiaf(){
+  const num = id => { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? null : v; };
+  const setHint = (id, txt, color) => { const el=document.getElementById(id); if(el){ el.textContent=txt; el.style.color=color||''; el.style.fontWeight=color?'600':''; } };
+
+  // Excursión (DE): <1 cm = disfunción significativa
+  const de = num('eEcoDE');
+  if(de===null) setHint('eEcoDEHint','Reposo: 1–2 cm · Insp. profunda: >4–5 cm','');
+  else if(de < 1) setHint('eEcoDEHint','⚠ <1 cm: disfunción diafragmática significativa','var(--red-600)');
+  else if(de <= 2) setHint('eEcoDEHint','Dentro del rango de reposo (1–2 cm)','var(--teal-600)');
+  else setHint('eEcoDEHint','Excursión conservada','var(--teal-600)');
+
+  // Espesor en espiración (Tdi): <1,5 mm = atrofia
+  const esp = num('eEcoEspEsp');
+  if(esp===null) setHint('eEcoTdiHint','Tdi normal: ≥1,5 mm','');
+  else if(esp < 1.5) setHint('eEcoTdiHint','⚠ <1,5 mm: sugiere atrofia diafragmática','var(--red-600)');
+  else setHint('eEcoTdiHint','Espesor conservado (≥1,5 mm)','var(--teal-600)');
+
+  // TFdi = (insp − esp) / esp × 100
+  const insp = num('eEcoEspInsp');
+  const out = document.getElementById('eEcoTFdi');
+  if(insp!==null && esp!==null && esp>0){
+    const tfdi = (insp-esp)/esp*100;
+    if(out) out.value = tfdi.toFixed(1) + ' %';
+    if(tfdi < 20) setHint('eEcoTFdiHint','⚠ <20%: disfunción diafragmática','var(--red-600)');
+    else if(tfdi < 30) setHint('eEcoTFdiHint','20–30%: riesgo de fracaso del destete','var(--amber-600)');
+    else setHint('eEcoTFdiHint','≥30%: adecuada función · favorable para destete','var(--teal-600)');
+  } else {
+    if(out) out.value = '';
+    setHint('eEcoTFdiHint','(Esp. insp − Esp. esp) / Esp. esp × 100','');
+  }
+}
+
+
 function toggleTagMusResp(el){
   el.classList.toggle('active');
   const panel = document.getElementById('musRespPanel');
   panel.style.display = el.classList.contains('active') ? 'block' : 'none';
   if(!el.classList.contains('active')){
-    ['eMusPImax','eMusPEmax','eMusCV','eMusCVpcp','eMusPFT','eMusPFE'].forEach(id=>{
+    { const ep=document.getElementById('ecoDiafPanel'); if(ep) ep.style.display='none';
+      const eb=document.getElementById('btnEcoDiaf'); if(eb) eb.classList.remove('active'); }
+    ['eMusPImax','eMusPEmax','eMusCV','eMusCVpcp','eMusPFT','eMusPFE','eEcoDE','eEcoEspInsp','eEcoEspEsp','eEcoTFdi'].forEach(id=>{
       const e=document.getElementById(id); if(e) e.value='';
     });
   } else {
@@ -8548,6 +8634,11 @@ function fmtFuerzaResumen(e){
     if(m.cv) it('CV (ml)', m.cv + (m.cvPCP ? ' — '+m.cvPCP+' ml/kg PCP' : ''));
     if(m.pft) it('PFT (L/min)', m.pft);
     if(m.pfe) it('PFE (L/min)', m.pfe);
+    // v3_126: ecografía diafragmática
+    if(m.ecoDE) it('Eco diafr. — Excursión (cm)', m.ecoDE);
+    if(m.ecoEspInsp) it('Eco diafr. — Esp. insp (mm)', m.ecoEspInsp);
+    if(m.ecoEspEsp) it('Eco diafr. — Esp. esp / Tdi (mm)', m.ecoEspEsp);
+    if(m.ecoTFdi) it('Eco diafr. — TFdi', m.ecoTFdi);
   }
   if(!items.length) return '';
   return `<div class="evo-section-subtitle">Fuerza muscular / Músculos respiratorios</div><div class="evo-grid">${items.join('')}</div>`;
@@ -9602,7 +9693,9 @@ function openEvolucion(patientId){
   // Reset panel músculos respiratorios
   { const musTag=document.getElementById('tagMusRespTag'); if(musTag) musTag.classList.remove('active'); }
   { const musPanel=document.getElementById('musRespPanel'); if(musPanel) musPanel.style.display='none'; }
-  ['eMusPImax','eMusPEmax','eMusCV','eMusCVpcp','eMusPFT','eMusPFE'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['eMusPImax','eMusPEmax','eMusCV','eMusCVpcp','eMusPFT','eMusPFE','eEcoDE','eEcoEspInsp','eEcoEspEsp','eEcoTFdi'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  { const ep=document.getElementById('ecoDiafPanel'); if(ep) ep.style.display='none';
+    const eb=document.getElementById('btnEcoDiaf'); if(eb) eb.classList.remove('active'); }
   // Reset bloque mecánica 2
   { const t=document.getElementById('tagModSetting'); if(t) t.classList.remove('active'); }
   { const b=document.getElementById('accVent2Box'); if(b) b.style.display='none'; }
@@ -10020,6 +10113,13 @@ function precargarCamposEvolucion(evo){
     const mr = evo.musResp;
     const setVal = (id,v)=>{ const el=document.getElementById(id); if(el && v!==undefined && v!==null && v!=='') el.value=v; };
     setVal('eMusPImax', mr.pimax); setVal('eMusPEmax', mr.pemax);
+    // v3_126: ecografía diafragmática
+    setVal('eEcoDE', mr.ecoDE); setVal('eEcoEspInsp', mr.ecoEspInsp); setVal('eEcoEspEsp', mr.ecoEspEsp);
+    if(mr.ecoDE || mr.ecoEspInsp || mr.ecoEspEsp){
+      const ep=document.getElementById('ecoDiafPanel'); if(ep) ep.style.display='block';
+      const eb=document.getElementById('btnEcoDiaf'); if(eb) eb.classList.add('active');
+      calcEcoDiaf();
+    }
     setVal('eMusCV', mr.cv); setVal('eMusCVpcp', mr.cvPCP);
     setVal('eMusPFT', mr.pft); setVal('eMusPFE', mr.pfe);
   }
@@ -10180,7 +10280,9 @@ async function guardarEvolucion(){
     musResp: document.getElementById('tagMusRespTag')?.classList.contains('active') ? {
       pimax:G('eMusPImax'), pemax:G('eMusPEmax'),
       cv:G('eMusCV'), cvPCP:G('eMusCVpcp'),
-      pft:G('eMusPFT'), pfe:G('eMusPFE')
+      pft:G('eMusPFT'), pfe:G('eMusPFE'),
+      // v3_126: ecografía diafragmática
+      ecoDE:G('eEcoDE'), ecoEspInsp:G('eEcoEspInsp'), ecoEspEsp:G('eEcoEspEsp'), ecoTFdi:G('eEcoTFdi')
     } : null,
   };
 
