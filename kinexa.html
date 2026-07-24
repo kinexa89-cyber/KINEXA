@@ -4685,7 +4685,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_122';
+const APP_VERSION = 'v3_123';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -11137,10 +11137,14 @@ async function exportarIndicadoresCompleto(mesStr){
     ]);
   });
 
-  const csv = rows.map(r=>r.map(c=>{
+  // v3_123: separador ';' + decimales con coma + directiva sep=; para que
+  // Excel en configuración regional argentina/española abra las columnas bien.
+  const celda = c => {
+    if(typeof c==='number' && !Number.isInteger(c)) return String(c).replace('.',',');
     const v = String(c===null||c===undefined?'':c).replace(/\n/g,' ');
-    return (v.includes(',')||v.includes('"')) ? '"'+v.replace(/"/g,'""')+'"' : v;
-  }).join(',')).join('\n');
+    return (v.includes(';')||v.includes('"')) ? '"'+v.replace(/"/g,'""')+'"' : v;
+  };
+  const csv = 'sep=;\n' + rows.map(r=>r.map(celda).join(';')).join('\n');
   const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
