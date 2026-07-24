@@ -4769,7 +4769,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_128';
+const APP_VERSION = 'v3_129';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -4783,6 +4783,19 @@ function guardarSesionKx(u){ TOKEN=u.token; USER=u; try{ sessionStorage.setItem(
 function limpiarSesionKx(){ TOKEN=null; USER=null; try{ sessionStorage.removeItem('kinexa_token'); sessionStorage.removeItem('kinexa_user'); }catch(e){} }
 let KX_SECTORES = [];
 // Arma la pantalla de sectores y las opciones de sala a partir de los sectores de la institución
+// ── v3_129: tipo de sala (adultos / pediátrico) ──────────
+// Devuelve 'pediatrico' o 'adultos' para una sala dada.
+function tipoDeSala(sala){
+  const s = (KX_SECTORES||[]).find(x => x.nombre === sala);
+  return (s && s.tipo === 'pediatrico') ? 'pediatrico' : 'adultos';
+}
+function esSalaPediatrica(sala){ return tipoDeSala(sala) === 'pediatrico'; }
+// Tipo de sala del paciente (para saber qué formulario corresponde)
+function esPacientePediatrico(patientId){
+  const p = patients.find(x => x.id === patientId);
+  return p ? esSalaPediatrica(p.sala) : false;
+}
+
 function aplicarSectoresKinexa(sectores){
   KX_SECTORES = Array.isArray(sectores) ? sectores : [];
   SECTORES = KX_SECTORES.map(s => s.nombre);
@@ -4792,7 +4805,8 @@ function aplicarSectoresKinexa(sectores){
       ? `<button class="sector-btn" onclick="selectSector(null)" style="grid-column:1/-1;background:rgba(255,255,255,.15)"><i class="ti ti-layout-grid"></i><span>Ver todos los sectores</span></button>`
       : '';
     cont.innerHTML = KX_SECTORES.length
-      ? btnTodos + KX_SECTORES.map(s => `<button class="sector-btn" onclick="selectSector('${String(s.nombre).replace(/'/g,"\\'")}')" data-sala="${s.nombre}"><i class="ti ti-bed"></i><span>${s.nombre}</span></button>`).join('')
+      ? btnTodos + KX_SECTORES.map(s => { const ped = s.tipo === 'pediatrico';
+          return `<button class="sector-btn" onclick="selectSector('${String(s.nombre).replace(/'/g,"\\'")}')" data-sala="${s.nombre}"><i class="ti ${ped?'ti-mood-kid':'ti-bed'}"></i><span>${s.nombre}</span>${ped?'<small style="display:block;font-size:9px;opacity:.8;letter-spacing:.3px">PEDIÁTRICO</small>':''}</button>`; }).join('')
       : '<p style="grid-column:1/-1;text-align:center;color:#fff;font-size:13px">Esta institución todavía no tiene sectores cargados.</p>';
   }
   const fSala = document.getElementById('fSala');
@@ -4866,7 +4880,7 @@ function leerLogoRegistro(input){
 }
 
 // ── Filas dinámicas de sectores y kinesiólogos ────────────
-function addSectorRow(nombre, camas, contId){
+function addSectorRow(nombre, camas, contId, tipo){
   const cont = document.getElementById(contId || 'regSectores');
   const row = document.createElement('div');
   row.className = 'reg-sector';
@@ -4874,6 +4888,11 @@ function addSectorRow(nombre, camas, contId){
   row.innerHTML =
     `<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">`+
       `<input type="text" class="reg-sec-nombre" placeholder="Sector (ej: UTI A)" value="${nombre?String(nombre).replace(/"/g,'&quot;'):''}" style="flex:1">`+
+      // v3_129: tipo de sala — define si el pase es de adultos o pediátrico
+      `<select class="reg-sec-tipo" title="Tipo de sala" style="width:118px;flex-shrink:0">`+
+        `<option value="adultos"${tipo!=='pediatrico'?' selected':''}>Adultos</option>`+
+        `<option value="pediatrico"${tipo==='pediatrico'?' selected':''}>Pediátrico</option>`+
+      `</select>`+
       `<button class="btn btn-ghost btn-sm" onclick="this.closest('.reg-sector').remove()" title="Quitar sector"><i class="ti ti-trash"></i></button>`+
     `</div>`+
     `<div class="reg-camas" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>`+
@@ -4957,8 +4976,9 @@ async function doRegistrar(){
   const sectores = [];
   document.querySelectorAll('#regSectores .reg-sector').forEach(r=>{
     const nombre = r.querySelector('.reg-sec-nombre').value.trim();
+    const tipo = r.querySelector('.reg-sec-tipo')?.value || 'adultos';
     const camas = [...r.querySelectorAll('.reg-cama-in')].map(i=>i.value.trim()).filter(Boolean);
-    if(nombre) sectores.push({ nombre, camas });
+    if(nombre) sectores.push({ nombre, camas, tipo });
   });
   if(!sectores.length){ showToast('Agregá al menos un sector','error'); return; }
 
@@ -5007,7 +5027,7 @@ async function abrirConfigKinexa(){
   document.getElementById('configScreen').style.display = 'block';
   try {
     const sects = await rpc('kinexa_sectores', { p_token: TOKEN });
-    (sects || []).forEach(s => addSectorRow(s.nombre, normalizarCamas(s.camas), 'cfgSectores'));
+    (sects || []).forEach(s => addSectorRow(s.nombre, normalizarCamas(s.camas), 'cfgSectores', s.tipo));
     if(!(sects || []).length) addSectorRow(null, null, 'cfgSectores');
   } catch(e){ console.error(e); showToast('No se pudieron cargar los sectores','error'); }
   try {
@@ -5147,7 +5167,8 @@ async function guardarConfigKinexa(){
   document.querySelectorAll('#cfgSectores .reg-sector').forEach(r=>{
     const nombre = r.querySelector('.reg-sec-nombre').value.trim();
     const camas = [...r.querySelectorAll('.reg-cama-in')].map(i=>i.value.trim()).filter(Boolean);
-    if(nombre) sectores.push({ nombre, camas });
+    const tipo = r.querySelector('.reg-sec-tipo')?.value || 'adultos';
+    if(nombre) sectores.push({ nombre, camas, tipo });
   });
   if(!sectores.length){ showToast('Tiene que quedar al menos un sector','error'); return; }
 
@@ -5567,10 +5588,14 @@ function launchApp(){
   const badgeLabel = document.getElementById('sectorBadgeLabel');
   if(currentSector){
     badge.style.display = 'inline-flex';
-    badgeLabel.textContent = SALA_LABEL[currentSector] || currentSector;
+    // v3_129: se distingue si la sala es pediátrica
+    const ped = esSalaPediatrica(currentSector);
+    badgeLabel.textContent = (SALA_LABEL[currentSector] || currentSector) + (ped ? ' · Pediátrico' : '');
+    badge.style.background = ped ? 'rgba(236,72,153,.25)' : '';
   } else if(currentUser && currentUser.role === 'admin'){
     badge.style.display = 'inline-flex';
     badgeLabel.textContent = 'Todos los sectores';
+    badge.style.background = '';
   } else {
     badge.style.display = 'none';
   }
