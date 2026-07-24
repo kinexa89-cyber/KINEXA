@@ -796,11 +796,11 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 <div id="miClaveScreen" style="display:none;position:fixed;inset:0;z-index:2100;background:rgba(20,10,40,.55);overflow-y:auto;padding:1.2rem 1rem">
   <div class="login-card" style="max-width:430px;margin:0 auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
-      <h1 style="font-size:19px;margin:0">Cambiar mi clave</h1>
-      <button class="btn btn-ghost btn-sm" onclick="cerrarCambiarMiClave()"><i class="ti ti-x"></i></button>
+      <h1 style="font-size:19px;margin:0" id="miClaveTitulo">Cambiar mi clave</h1>
+      <button class="btn btn-ghost btn-sm" id="miClaveCerrar" onclick="cerrarCambiarMiClave()"><i class="ti ti-x"></i></button>
     </div>
-    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Elegí una clave nueva para tu usuario. Necesitás saber tu clave actual.</p>
-    <div class="form-group">
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px" id="miClaveTexto">Elegí una clave nueva para tu usuario. Necesitás saber tu clave actual.</p>
+    <div class="form-group" id="miClaveActualGrupo">
       <label>Clave actual</label>
       <div style="position:relative">
         <input type="password" id="miClaveActual" placeholder="Tu clave de ahora" autocomplete="current-password" style="padding-right:40px">
@@ -822,7 +822,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       </div>
     </div>
     <button class="btn btn-primary btn-block" id="btnGuardarMiClave" style="margin-top:8px" onclick="guardarMiClave()"><i class="ti ti-device-floppy"></i>Guardar clave nueva</button>
-    <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="cerrarCambiarMiClave()">Cancelar</button>
+    <button class="btn btn-ghost btn-block" id="miClaveCancelar" style="margin-top:10px" onclick="cerrarCambiarMiClave()">Cancelar</button>
   </div>
 </div>
 
@@ -4978,10 +4978,37 @@ function toggleVerClave(id, btn){
 }
 
 // Cambiar mi propia clave (cualquier usuario) — valida la clave actual en la base
-function abrirCambiarMiClave(){
+// v3_116: modo "forzado" = primer ingreso (o después de un reset del admin).
+// Solo en ese caso la app obliga a cambiar la clave; una vez cambiada, la base
+// marca debe_cambiar=false y no se vuelve a pedir nunca más.
+let CAMBIO_CLAVE_FORZADO = false;
+let CLAVE_LOGIN = ''; // solo en memoria, para precargar "clave actual"
+function abrirCambiarMiClave(forzado){
+  CAMBIO_CLAVE_FORZADO = !!forzado;
   ['miClaveActual','miClaveNueva','miClaveNueva2'].forEach(id=>{
     const e = document.getElementById(id); if(e){ e.value=''; e.type='password'; }
   });
+  const tit = document.getElementById('miClaveTitulo');
+  const txt = document.getElementById('miClaveTexto');
+  const grpActual = document.getElementById('miClaveActualGrupo');
+  const btnX = document.getElementById('miClaveCerrar');
+  const btnCancel = document.getElementById('miClaveCancelar');
+  if(CAMBIO_CLAVE_FORZADO){
+    // Primer ingreso: no se puede cerrar y la clave actual ya la sabemos
+    if(tit) tit.textContent = 'Creá tu clave';
+    if(txt) txt.textContent = 'Es tu primer ingreso. Por seguridad, elegí una clave nueva para continuar.';
+    const ca = document.getElementById('miClaveActual');
+    if(ca) ca.value = CLAVE_LOGIN || '';
+    if(grpActual) grpActual.style.display = 'none';
+    if(btnX) btnX.style.display = 'none';
+    if(btnCancel) btnCancel.style.display = 'none';
+  } else {
+    if(tit) tit.textContent = 'Cambiar mi clave';
+    if(txt) txt.textContent = 'Elegí una clave nueva para tu usuario. Necesitás saber tu clave actual.';
+    if(grpActual) grpActual.style.display = '';
+    if(btnX) btnX.style.display = '';
+    if(btnCancel) btnCancel.style.display = '';
+  }
   document.getElementById('miClaveScreen').style.display = 'block';
 }
 function cerrarCambiarMiClave(){ document.getElementById('miClaveScreen').style.display = 'none'; }
@@ -4998,7 +5025,12 @@ async function guardarMiClave(){
     const ok = await rpc('kinexa_cambiar_clave', { p_token:TOKEN, p_actual:actual, p_nueva:nueva });
     if(ok === true){
       showToast('Clave cambiada ✓','success');
+      const eraForzado = CAMBIO_CLAVE_FORZADO;
+      CAMBIO_CLAVE_FORZADO = false;
+      CLAVE_LOGIN = '';
       cerrarCambiarMiClave();
+      // Si era el primer ingreso, recién ahora entra a la app
+      if(eraForzado){ addLog('password','Creó su clave (primer ingreso)'); startSession(USER); }
     } else {
       showToast('La clave actual no es correcta','error');
     }
@@ -5357,6 +5389,13 @@ async function doLogin(){
       const sects = await rpc('kinexa_sectores', { p_token: TOKEN });
       aplicarSectoresKinexa(sects);
     } catch(eSec){ console.error('No se pudieron cargar los sectores', eSec); aplicarSectoresKinexa([]); }
+    // v3_116: solo el PRIMER ingreso (o tras un reset del admin) obliga a crear
+    // clave. Al guardarla, la base pone debe_cambiar=false y no se vuelve a pedir.
+    if(s.debe_cambiar === true){
+      CLAVE_LOGIN = p;
+      abrirCambiarMiClave(true);
+      return;
+    }
     startSession(USER);
   } catch(e){
     console.error('Login error:', e);
@@ -8430,10 +8469,7 @@ function otrosDatosEvoHTML(e){  const items = [];
     // TA combinada (si ambas presentes) se arma aparte más abajo
     items.push(`<div class="evo-item"><div class="k">${EVO_LABELS[k]}</div><div class="v">${escapeHTML(fmtValorEvo(v))}</div></div>`);
   });
-  // TA sistólica/diastólica combinada
-  if((e.tas!==''&&e.tas!=null) && (e.tad!==''&&e.tad!=null)){
-    items.push(`<div class="evo-item"><div class="k">TA (mmHg)</div><div class="v">${escapeHTML(e.tas)}/${escapeHTML(e.tad)}</div></div>`);
-  }
+  // v3_116: la TA ya se muestra en la sección "Signos vitales", no se repite acá.
   if(!items.length) return '';
   return `<div class="evo-section-subtitle">Otros datos registrados</div><div class="evo-grid">${items.join('')}</div>`;
 }
@@ -8632,6 +8668,9 @@ function addLog(type, msg){
   // el token de sesión). Antes iba a una tabla global y se mezclaban todas las
   // instituciones. Fire-and-forget: si no hay sesión/conexión, queda el local.
   try {
+    // v3_116: la jefatura (admin maestro) no queda registrada en la actividad
+    // de las instituciones que visita: sus acciones no se suben.
+    if(typeof USER !== 'undefined' && USER && USER.esMaestro) return;
     if(typeof TOKEN !== 'undefined' && TOKEN){
       rpc('kinexa_log_guardar', { p_token: TOKEN, p_tipo: entry.type, p_msg: entry.msg }).catch(()=>{});
     }
@@ -8640,7 +8679,9 @@ function addLog(type, msg){
 
 // v3_114: carga la actividad SOLO de la institución de la sesión actual (solo admin).
 // Si falla (sin conexión o falta la función), muestra el registro local con un aviso.
+let ULTIMO_ERROR_ACTIVIDAD = '';
 async function cargarActividadEquipo(){
+  ULTIMO_ERROR_ACTIVIDAD = '';
   const el = document.getElementById('logsList');
   if(el) el.innerHTML = '<div class="empty"><i class="ti ti-loader-2"></i><p>Cargando actividad del equipo…</p></div>';
   try {
@@ -8649,6 +8690,8 @@ async function cargarActividadEquipo(){
     renderLogs(teamLogs, false);
   } catch(e){
     console.error('Actividad Kinexa error:', e);
+    // v3_116: mostrar el motivo real para poder diagnosticar
+    ULTIMO_ERROR_ACTIVIDAD = (e && e.message) ? String(e.message).slice(0,300) : 'error desconocido';
     renderLogs(logs, true);
   }
 }
@@ -8671,7 +8714,7 @@ function renderLogs(lista, soloLocal){
   const data = Array.isArray(lista) ? lista : logs;
   const el = document.getElementById('logsList');
   if(!el) return;
-  const aviso = soloLocal ? `<div style="padding:8px 14px;font-size:11px;color:var(--amber-800);background:var(--amber-50);border-bottom:1px solid var(--amber-100);"><i class="ti ti-alert-triangle"></i> No se pudo cargar la actividad compartida. Mostrando solo la de este dispositivo.</div>` : '';
+  const aviso = soloLocal ? `<div style="padding:8px 14px;font-size:11px;color:var(--amber-800);background:var(--amber-50);border-bottom:1px solid var(--amber-100);"><i class="ti ti-alert-triangle"></i> No se pudo cargar la actividad compartida. Mostrando solo la de este dispositivo.${ULTIMO_ERROR_ACTIVIDAD ? `<br><span style="font-size:10px;opacity:.85">Detalle: ${escapeHTML(ULTIMO_ERROR_ACTIVIDAD)}</span>` : ''}</div>` : '';
   if(!data.length){ el.innerHTML = aviso + '<div class="empty"><i class="ti ti-list-search"></i><p>Sin actividad registrada</p></div>'; return; }
   const icons = { login:'ti-login', logout:'ti-logout', create:'ti-plus', edit:'ti-pencil', delete:'ti-trash', evolve:'ti-stethoscope', traslado:'ti-arrows-transfer-up', alta:'ti-home-check', obito:'ti-heart-off' };
   const colors = { login:'badge-amber', logout:'badge-gray', create:'badge-teal', edit:'badge-blue', delete:'badge-red', evolve:'badge-purple', traslado:'badge-blue', alta:'badge-teal', obito:'badge-red' };
