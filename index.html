@@ -205,6 +205,11 @@ tr:hover td{ background:var(--blue-50); }
 .modal-close{ background:none; border:none; cursor:pointer; color:var(--text-muted);
   font-size:22px; line-height:1; padding:2px; flex-shrink:0; margin-left:8px; }
 .modal-close:hover{ color:var(--text); }
+.esc-desc{ background:var(--blue-50); border:1px solid var(--blue-100); border-radius:8px;
+  padding:10px 13px; margin:6px 0 10px; font-size:12px; line-height:1.55; color:var(--text); }
+.esc-desc p{ margin:0 0 7px; }
+.esc-desc ul{ margin:0 0 7px 18px; padding:0; }
+.esc-desc li{ margin-bottom:2px; }
 .modal-footer{ display:flex; gap:8px; justify-content:flex-end; padding-top:1rem;
   border-top:1px solid var(--border); margin-top:.5rem; flex-wrap:wrap; }
 
@@ -1835,6 +1840,15 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
                 <option value="9">9 mm</option>
               </select>
             </div>
+            <!-- v3_133: con o sin balón (pediátricos) -->
+            <div class="form-group" id="eBalonRow" style="display:none">
+              <label>Balón</label>
+              <select id="eBalon">
+                <option value="">-</option>
+                <option value="Con balón">Con balón</option>
+                <option value="Sin balón">Sin balón</option>
+              </select>
+            </div>
             <!-- Progresión ADS: solo para TET -->
             <div class="form-group" id="eSubTETads" style="display:none">
               <label>Progresión TET a ADS (cm)</label>
@@ -2032,6 +2046,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <i class="ti ti-chevron-down accordion-arrow" id="arrSed"></i>
     </div>
     <div class="accordion-body" id="accSed">
+      <div id="eAdultoEscalas">
       <div class="form-row four" style="margin-top:8px">
         <div class="form-group"><label>RASS</label>
           <select id="eRASS">
@@ -2060,9 +2075,94 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           </select>
         </div>
       </div>
+      </div>
+
+      <!-- ═══ v3_133: ESCALAS PEDIÁTRICAS ═══ -->
+      <div id="ePedEscalas" style="display:none">
+
+        <!-- Sedación -->
+        <div class="form-section-title" style="margin-top:6px"><i class="ti ti-zzz"></i> Sedación
+          <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px" onclick="toggleDescEscala('descSedPed')"><i class="ti ti-info-circle"></i> Ver escalas</button>
+        </div>
+        <div id="descSedPed" class="esc-desc" style="display:none">
+          <p><strong>COMFORT-B</strong> (Behavioral) — 6 ítems observacionales (alerta, agitación, respuesta ventilatoria o llanto, movimiento, tono muscular, tensión facial), cada uno de 1 a 5. Puntaje total 6 a 30.</p>
+          <ul><li><strong>6–10:</strong> sedación excesiva</li><li><strong>11–22:</strong> sedación adecuada</li><li><strong>23–30:</strong> sedación insuficiente / disconfort</li></ul>
+          <p><strong>SBS</strong> (State Behavioral Scale) — de −3 a +2, según respuesta al estímulo.</p>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>COMFORT-B (6–30)</label>
+            <input type="number" id="eComfortB" inputmode="numeric" min="6" max="30" oninput="interpretarEscalasPed()" placeholder="6 a 30">
+            <div class="form-hint" id="eComfortBHint">11–22 = sedación adecuada</div>
+          </div>
+          <div class="form-group">
+            <label>SBS</label>
+            <select id="eSBS" onchange="interpretarEscalasPed()">
+              <option value="">-</option>
+              <option value="-3">−3 · Sin respuesta</option>
+              <option value="-2">−2 · Responde solo a estímulo nocivo</option>
+              <option value="-1">−1 · Responde a estímulo suave o a la voz</option>
+              <option value="0">0 · Despierto y capaz de calmarse</option>
+              <option value="+1">+1 · Inquieto, difícil de calmar</option>
+              <option value="+2">+2 · Agitado</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Dolor -->
+        <div class="form-section-title" style="margin-top:10px"><i class="ti ti-mood-sad"></i> Dolor
+          <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px" onclick="toggleDescEscala('descDolorPed')"><i class="ti ti-info-circle"></i> Ver escalas</button>
+        </div>
+        <div id="descDolorPed" class="esc-desc" style="display:none">
+          <p><strong>NRS</strong> (Numeric Rating Scale) — dolor referido por el propio paciente, de 0 a 10. Requiere que el chico pueda comunicarlo (en general desde los 6–8 años).</p>
+          <p><strong>OPS</strong> (Objective Pain Scale) — 5 ítems observacionales (tensión arterial, llanto, movimiento, agitación, lenguaje corporal o localización del dolor), cada uno de 0 a 2. Total 0 a 10.</p>
+          <p><strong>FLACC</strong> — 5 ítems observacionales de 0 a 2: <em>Face</em> (cara), <em>Legs</em> (piernas), <em>Activity</em> (actividad), <em>Cry</em> (llanto) y <em>Consolability</em> (consuelo). Total 0 a 10. Útil en no verbales.</p>
+          <p style="margin-bottom:0"><strong>Interpretación orientativa (OPS y FLACC):</strong> 0 sin dolor · 1–3 leve · 4–6 moderado · 7–10 intenso.</p>
+        </div>
+        <div class="form-hint" style="margin-bottom:6px">Podés completar una o más, según la que hayas usado.</div>
+        <div class="form-row three">
+          <div class="form-group">
+            <label>NRS (autorreporte, 0–10)</label>
+            <input type="number" id="eNRS" inputmode="numeric" min="0" max="10" oninput="interpretarEscalasPed()" placeholder="0 a 10">
+            <div class="form-hint" id="eNRSHint">Lo refiere el paciente</div>
+          </div>
+          <div class="form-group">
+            <label>OPS (0–10)</label>
+            <input type="number" id="eOPS" inputmode="numeric" min="0" max="10" oninput="interpretarEscalasPed()" placeholder="0 a 10">
+            <div class="form-hint" id="eOPSHint">Observacional</div>
+          </div>
+          <div class="form-group">
+            <label>FLACC (0–10)</label>
+            <input type="number" id="eFLACC" inputmode="numeric" min="0" max="10" oninput="interpretarEscalasPed()" placeholder="0 a 10">
+            <div class="form-hint" id="eFLACCHint">Observacional</div>
+          </div>
+        </div>
+
+        <!-- Delirium y abstinencia -->
+        <div class="form-section-title" style="margin-top:10px"><i class="ti ti-brain"></i> Delirium y abstinencia
+          <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px" onclick="toggleDescEscala('descDelPed')"><i class="ti ti-info-circle"></i> Ver escalas</button>
+        </div>
+        <div id="descDelPed" class="esc-desc" style="display:none">
+          <p><strong>CAPD</strong> (Cornell Assessment of Pediatric Delirium) — 8 ítems de 0 a 4, adaptados a la edad. Total 0 a 32. Un puntaje de <strong>9 o más</strong> es compatible con delirium.</p>
+          <p style="margin-bottom:0"><strong>SOPHIA</strong> (Sophia Observation withdrawal Symptoms scale, SOS) — signos de abstinencia a sedantes y opioides. Total 0 a 15. Un puntaje de <strong>4 o más</strong> sugiere síndrome de abstinencia.</p>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>CAPD (0–32)</label>
+            <input type="number" id="eCAPD" inputmode="numeric" min="0" max="32" oninput="interpretarEscalasPed()" placeholder="0 a 32">
+            <div class="form-hint" id="eCAPDHint">≥9 compatible con delirium</div>
+          </div>
+          <div class="form-group">
+            <label>SOPHIA / SOS (0–15)</label>
+            <input type="number" id="eSOPHIA" inputmode="numeric" min="0" max="15" oninput="interpretarEscalasPed()" placeholder="0 a 15">
+            <div class="form-hint" id="eSOPHIAHint">≥4 sugiere abstinencia</div>
+          </div>
+        </div>
+      </div>
+
 
       <!-- Dolor autopercibido -->
-      <div class="form-row">
+      <div class="form-row" id="eDolorAutoRow">
         <div class="form-group"><label>Dolor autopercibido</label>
           <select id="eDolorAuto" onchange="toggleDolorEscala()">
             <option value="">-</option><option>No</option><option>Sí</option>
@@ -2174,7 +2274,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-group"><label>FR seteada (rpm)</label><input type="number" id="eFR" inputmode="numeric" oninput="autoCalculate()"></div>
         <div class="form-group"><label>FR real (rpm)</label><input type="number" id="eFRreal" inputmode="numeric"></div>
         <div class="form-group"><label>PEEP (cmH₂O)</label><input type="number" id="ePEEP" inputmode="decimal" step="0.5" oninput="autoCalculate()"></div>
-        <div class="form-group"><label>FiO₂ (%)</label><input type="number" id="eFiO2" inputmode="numeric" min="21" max="100"></div>
+        <div class="form-group"><label>FiO₂ (%)</label><input type="number" id="eFiO2" inputmode="numeric" min="21" max="100" oninput="calcIndicesOxigenacion()"></div>
         <div class="form-group"><label>Ti total (seg)</label><input type="number" id="eTi" inputmode="decimal" step="0.1"></div>
       </div>
       <div class="form-row four">
@@ -2182,6 +2282,14 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-group"><label>Pplat (cmH₂O)</label><input type="number" id="ePplat" inputmode="decimal" oninput="autoCalculate()"></div>
         <div class="form-group"><label>PEEPt (cmH₂O)</label><input type="number" id="ePEEPt" inputmode="decimal" oninput="autoCalculate()"></div>
         <div class="form-group"><label>PC (cmH₂O)</label><input type="number" id="ePC" inputmode="decimal"></div>
+      </div>
+      <!-- v3_133: presión media en vía aérea (pediátricos) -->
+      <div class="form-row" id="eMAPRow" style="display:none">
+        <div class="form-group">
+          <label>MAP — Presión media en vía aérea (cmH₂O)</label>
+          <input type="number" id="eMAP" inputmode="decimal" step="0.1" oninput="calcIndicesOxigenacion()" placeholder="ej: 12">
+          <div class="form-hint">Necesaria para calcular el IO y el OSI</div>
+        </div>
       </div>
       <div class="form-row four">
         <div class="form-group"><label>DP (cmH₂O)</label><input type="number" id="eDP" inputmode="decimal" oninput="autoCalculate()"><div class="form-hint">Pplat − PEEPt</div></div>
@@ -2304,8 +2412,21 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-group"><label>HCO₃ (mEq/L)</label><input type="number" id="eHCO3" inputmode="decimal" placeholder="22–26"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>SpO₂ (%)</label><input type="number" id="eSpO2" inputmode="numeric" max="100"></div>
+        <div class="form-group"><label>SpO₂ (%)</label><input type="number" id="eSpO2" inputmode="numeric" max="100" oninput="calcIndicesOxigenacion()"></div>
         <div class="form-group"><label>PAFI</label><input type="number" id="ePAFI" inputmode="decimal"><div class="form-hint">PO₂ / FiO₂</div></div>
+      </div>
+      <!-- v3_133: índices de oxigenación pediátricos -->
+      <div class="form-row" id="eIOOSIRow" style="display:none">
+        <div class="form-group">
+          <label>IO — Índice de oxigenación</label>
+          <input type="text" id="eIO" readonly style="background:var(--amber-50);color:var(--amber-800);font-weight:600">
+          <div class="form-hint" id="eIOHint">(FiO₂ × MAP × 100) / PaO₂</div>
+        </div>
+        <div class="form-group">
+          <label>OSI — Índice de saturación de oxígeno</label>
+          <input type="text" id="eOSI" readonly style="background:var(--amber-50);color:var(--amber-800);font-weight:600">
+          <div class="form-hint" id="eOSIHint">(FiO₂ × MAP × 100) / SpO₂</div>
+        </div>
       </div>
       <div class="form-row four">
         <div class="form-group">
@@ -3161,6 +3282,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <span class="tag" onclick="toggleTag(this)">Evaluación de deglución</span>
           <span class="tag" onclick="toggleTag(this)">Toma de aspirado traqueal</span>
           <span class="tag" onclick="toggleTag(this)">Toma de minibal</span>
+          <span class="tag" onclick="toggleTag(this)">Toma de virológico</span>
           <span class="tag" onclick="toggleTag(this)">Esputo</span>
           <span class="tag" onclick="toggleTag(this)">Asistencia IOT</span>
           <span class="tag" onclick="toggleTag(this)">Asistencia TQT percutánea</span>
@@ -4826,7 +4948,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_132';
+const APP_VERSION = 'v3_133';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -6280,6 +6402,9 @@ function construirTextoEvo(evo, p){
     add('Día de ARM', evo.armDia); add('Día en el sector', evo.utiDia); add('Días de internación', evo.diasHosp);
     add('Interfaz', evo.interfaz); add('Detalle de interfaz', evo.interfazEsp);
     add('Motivo de ARM', evo.motivoVM==='Otro' ? (evo.motivoVMOtro||'Otro') : evo.motivoVM);
+    add('Tubo con o sin balón', evo.balon);
+    add('MAP - presión media en vía aérea (cmH2O)', evo.map);
+    add('IO - índice de oxigenación', evo.io); add('OSI - índice de saturación de oxígeno', evo.osi);
     add('Día de ventilación espontánea (sin ARM)', evo.diasVE);
     add('Diámetro de TET/cánula', evo.armDiametro); add('TET a nivel de ADS (cm)', evo.tetADS);
     add('Posición', evo.posicionARM); add('Ciclo de prono', evo.pronoCiclo);
@@ -6302,6 +6427,9 @@ function construirTextoEvo(evo, p){
     add('TA (mmHg)', (evo.tas!=='' && evo.tad!=='' && evo.tas!=null && evo.tad!=null) ? `${evo.tas}/${evo.tad}` : '');
     add('TAM (mmHg)', evo.tam); add('Temperatura (°C)', evo.temp); add('PIC (mmHg)', evo.pic); add('EtCO2 (mmHg)', evo.etco2);
     add('RASS', evo.rass); add('CPOT', evo.cpot); add('CAM-ICU', evo.camicu);
+    add('COMFORT-B (sedación)', evo.comfortB); add('SBS (sedación)', evo.sbs);
+    add('NRS (dolor autorreportado)', evo.nrs); add('OPS (dolor)', evo.ops); add('FLACC (dolor)', evo.flacc);
+    add('CAPD (delirium)', evo.capd); add('SOPHIA/SOS (abstinencia)', evo.sophia);
     add('Relación paciente-ventilador', evo.ventSed);
     add('Dolor (autorreporte)', evo.dolorAuto); add('Escala de dolor', evo.dolorEscala);
     add('Sedación', evo.sedacion); add('Analgesia', evo.analgesia); add('BNM', evo.bnm);
@@ -7847,6 +7975,106 @@ function setARMStatus(enARM){
   actualizarCuidadosVAA();
 }
 
+// ── v3_133: escalas pediátricas ──────────────────────────
+function toggleDescEscala(id){
+  const el = document.getElementById(id);
+  if(el) el.style.display = (el.style.display === 'none') ? 'block' : 'none';
+}
+// Interpreta cada puntaje y lo muestra con semáforo debajo del campo
+function interpretarEscalasPed(){
+  const num = id => { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? null : v; };
+  const hint = (id, txt, color) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.textContent = txt;
+    el.style.color = color || '';
+    el.style.fontWeight = color ? '600' : '';
+  };
+  const ROJO='var(--red-600)', AMBAR='var(--amber-600)', VERDE='var(--teal-600)';
+
+  const cb = num('eComfortB');
+  if(cb === null)     hint('eComfortBHint','11–22 = sedación adecuada','');
+  else if(cb < 11)    hint('eComfortBHint','⚠ Sedación excesiva','var(--blue-700)');
+  else if(cb <= 22)   hint('eComfortBHint','Sedación adecuada', VERDE);
+  else                hint('eComfortBHint','⚠ Sedación insuficiente / disconfort', AMBAR);
+
+  const escalaDolor = (v, idHint, base) => {
+    if(v === null)   hint(idHint, base, '');
+    else if(v === 0) hint(idHint, 'Sin dolor', VERDE);
+    else if(v <= 3)  hint(idHint, 'Dolor leve', VERDE);
+    else if(v <= 6)  hint(idHint, 'Dolor moderado', AMBAR);
+    else             hint(idHint, '⚠ Dolor intenso', ROJO);
+  };
+  escalaDolor(num('eNRS'),   'eNRSHint',   'Lo refiere el paciente');
+  escalaDolor(num('eOPS'),   'eOPSHint',   'Observacional');
+  escalaDolor(num('eFLACC'), 'eFLACCHint', 'Observacional');
+
+  const capd = num('eCAPD');
+  if(capd === null)    hint('eCAPDHint','≥9 compatible con delirium','');
+  else if(capd >= 9)   hint('eCAPDHint','⚠ Compatible con delirium', ROJO);
+  else                 hint('eCAPDHint','No sugiere delirium', VERDE);
+
+  const sos = num('eSOPHIA');
+  if(sos === null)     hint('eSOPHIAHint','≥4 sugiere abstinencia','');
+  else if(sos >= 4)    hint('eSOPHIAHint','⚠ Sugiere síndrome de abstinencia', ROJO);
+  else                 hint('eSOPHIAHint','No sugiere abstinencia', VERDE);
+}
+
+// ── v3_133: la evolución se adapta al tipo de sala del paciente ──
+let EVO_ES_PEDIATRICO = false;
+function aplicarModoEvoPorSala(patientId){
+  const p = patients.find(x => x.id === patientId);
+  const ped = p ? esSalaPediatrica(p.sala) : false;
+  EVO_ES_PEDIATRICO = ped;
+  const mostrar = (id, ver) => { const el = document.getElementById(id); if(el) el.style.display = ver ? '' : 'none'; };
+  mostrar('ePedEscalas',     ped);
+  mostrar('eAdultoEscalas', !ped);
+  mostrar('eDolorAutoRow',  !ped);   // en pediatría lo cubre la NRS
+  mostrar('eMAPRow',         ped);   // presión media en vía aérea
+  mostrar('eIOOSIRow',       ped);   // índices de oxigenación
+  mostrar('eBalonRow',       ped);   // tubo con o sin balón
+  // Tamaños de tubo: en pediatría desde 2 mm
+  const sel = document.getElementById('eARMdiametro');
+  if(sel){
+    const actual = sel.value;
+    sel.innerHTML = '<option value="">-</option>' +
+      (ped ? DIAMETROS_PED : DIAMETROS_ADULTO).map(d=>`<option value="${d}">${d} mm</option>`).join('');
+    sel.value = actual;
+  }
+  if(ped) interpretarEscalasPed();
+}
+const DIAMETROS_ADULTO = ['6','6.5','7','7.5','8','8.5','9'];
+const DIAMETROS_PED = ['2','2.5','3','3.5','4','4.5','5','5.5','6','6.5','7','7.5','8','8.5','9'];
+
+// ── v3_133: índices de oxigenación pediátricos ──
+// IO  = (FiO2 × MAP × 100) / PaO2      · OSI = (FiO2 × MAP × 100) / SpO2
+function calcIndicesOxigenacion(){
+  const num = id => { const v = parseFloat(document.getElementById(id)?.value); return isNaN(v) ? null : v; };
+  const fio2 = num('eFiO2'), map = num('eMAP'), pao2 = num('ePO2'), spo2 = num('eSpO2');
+  const setV = (id, v) => { const el = document.getElementById(id); if(el) el.value = v; };
+  const hint = (id, txt, color) => { const el=document.getElementById(id); if(el){ el.textContent=txt; el.style.color=color||''; el.style.fontWeight=color?'600':''; } };
+  const grav = v => v < 4 ? ['Sin criterio de SDRA pediátrico','var(--teal-600)']
+                  : v < 8 ? ['SDRA pediátrico leve','var(--amber-600)']
+                  : v < 16 ? ['SDRA pediátrico moderado','var(--amber-700)']
+                           : ['SDRA pediátrico grave','var(--red-600)'];
+  if(fio2 !== null && map !== null && pao2 !== null && pao2 > 0){
+    // FiO₂ se carga en %, por eso se divide por 100 antes de multiplicar por 100
+    const io = +( (fio2/100) * map * 100 / pao2 ).toFixed(2);
+    setV('eIO', io);
+    const [txt,col] = grav(io);
+    hint('eIOHint', 'IO ' + io + ' — ' + txt, col);
+  } else { setV('eIO',''); hint('eIOHint','(FiO₂ × MAP × 100) / PaO₂',''); }
+  if(fio2 !== null && map !== null && spo2 !== null && spo2 > 0){
+    const osi = +( (fio2/100) * map * 100 / spo2 ).toFixed(2);
+    setV('eOSI', osi);
+    const [txt,col] = osi < 5 ? ['Sin criterio de SDRA pediátrico','var(--teal-600)']
+                    : osi < 7.5 ? ['SDRA pediátrico leve','var(--amber-600)']
+                    : osi < 12.3 ? ['SDRA pediátrico moderado','var(--amber-700)']
+                                 : ['SDRA pediátrico grave','var(--red-600)'];
+    hint('eOSIHint','OSI ' + osi + ' — ' + txt, col);
+  } else { setV('eOSI',''); hint('eOSIHint','(FiO₂ × MAP × 100) / SpO₂',''); }
+}
+
 // ── v3_117: días de ventilación espontánea (sin ARM) ──────────────
 // Devuelve la fecha en que el paciente salió de ARM, o null si nunca estuvo
 // o no se puede determinar. Orden de preferencia:
@@ -8975,7 +9203,8 @@ const EVO_SKIP_CAMPOS = new Set([
   // Signos vitales
   'fc','tam','pic','etco2','spo2Mon','frMon','temp',
   // Ventilación / interfaz / O₂
-  'interfaz','interfazEsp','diasVE','motivoVM','motivoVMOtro','armDiametro','tetADS','posicionARM','pronoCiclo','cuffLeak',
+  'interfaz','interfazEsp','diasVE','motivoVM','motivoVMOtro','balon','map','io','osi',
+  'comfortB','sbs','nrs','ops','flacc','capd','sophia','armDiametro','tetADS','posicionARM','pronoCiclo','cuffLeak',
   'cnFlujo','mvFio2','mrFlujo','cnafFlujo','cnafFio2',
   'vniModo','vniPi','vniVt','vniFr','vniPeep','vniFio2','vniMascara',
   // Neurológico / Sedoanalgesia
@@ -9125,7 +9354,7 @@ function evoCardHTML(e, i){
   ]);
   // 2) Ventilación / interfaz + O₂ + VNI
   const secVent = evoSeccionGrid('Ventilación / Interfaz', [
-    [interfazTxt,'Interfaz'], [motivoVMTxt,'Motivo de ARM'], [e.diasVE,'Día de vent. espontánea'], [e.armDiametro,'Diámetro TET/cán. (mm)'], [e.tetADS,'TET a ADS (cm)'],
+    [interfazTxt,'Interfaz'], [motivoVMTxt,'Motivo de ARM'], [e.balon,'Balón'], [e.diasVE,'Día de vent. espontánea'], [e.armDiametro,'Diámetro TET/cán. (mm)'], [e.tetADS,'TET a ADS (cm)'],
     [posicionTxt,'Posición'], [e.cuffLeak,'Cuff leak test'],
     [e.cnFlujo,'Cánula nasal (L/min)'], [e.mvFio2,'Venturi FiO₂ (%)'], [e.mrFlujo,'Reservorio (L/min)'],
     [e.cnafFlujo,'CNAF flujo (L/min)'], [e.cnafFio2,'CNAF FiO₂ (%)'],
@@ -9134,14 +9363,17 @@ function evoCardHTML(e, i){
   ]);
   // 3) Neurológico / Sedoanalgesia
   const secNeuro = evoSeccionGrid('Neurológico / Sedoanalgesia', [
-    [e.rass,'RASS'], [e.cpot,'CPOT'], [e.camicu,'CAM-ICU'], [e.ventSed,'Relación pac.-vent.'],
+    [e.rass,'RASS'], [e.cpot,'CPOT'], [e.camicu,'CAM-ICU'],
+    [e.comfortB,'COMFORT-B'], [e.sbs,'SBS'], [e.nrs,'NRS (dolor)'], [e.ops,'OPS'],
+    [e.flacc,'FLACC'], [e.capd,'CAPD'], [e.sophia,'SOPHIA / SOS'],
+    [e.ventSed,'Relación pac.-vent.'],
     [dolorTxt,'Dolor'], [e.sedacion,'Sedación'], [e.analgesia,'Analgesia'], [e.bnm,'BNM'],
     [e.vasoact,'Vasoactivos'], [e.otrosFarmacos,'Otros fármacos']
   ]);
   // 4) Mecánica ventilatoria — setting inicial
   const secVM = evoSeccionGrid('Mecánica ventilatoria', [
     [e.modo,'Modo'], [e.vt,'VT (ml)'], [e.vtkg,'ml/kg'], [e.fr,'FR set'], [e.frReal,'FR real'],
-    [e.peep,'PEEP'], [e.fio2,'FiO₂ %'], [e.ti,'Ti (s)'], [e.pc,'PC'], [e.ppico,'Ppico'],
+    [e.peep,'PEEP'], [e.fio2,'FiO₂ %'], [e.map,'MAP'], [e.ti,'Ti (s)'], [e.pc,'PC'], [e.ppico,'Ppico'],
     [e.pplat,'Pplat'], [e.peept,'PEEP total'], [e.dp,'DP'], [e.crs,'Crs'], [e.rinsp,'R insp.'],
     [e.flujo,'Flujo'], [e.mp,'Poder mec.'], [e.er,'Er'], [e.ct,'Ct'], [e.p01,'P0.1'], [e.deltaPocc,'ΔPocc']
   ]);
@@ -9155,7 +9387,7 @@ function evoCardHTML(e, i){
   // 5) EAB
   const secEAB = evoSeccionGrid('EAB', [
     [e.ph,'pH'], [e.pco2,'pCO₂'], [e.po2,'pO₂'], [e.hco3,'HCO₃'], [e.spo2,'SpO₂ %'],
-    [e.pafi,'PAFI'], [e.lactato,'Lactato']
+    [e.pafi,'PAFI'], [e.io,'IO'], [e.osi,'OSI'], [e.lactato,'Lactato']
   ]);
   const secEABExtra = Array.isArray(e.eabExtra) ? e.eabExtra.map(x=>evoSeccionGrid('EAB'+(x.hora?' · '+x.hora:''), [
     [x.ph,'pH'],[x.pco2,'pCO₂'],[x.po2,'pO₂'],[x.hco3,'HCO₃'],[x.spo2,'SpO₂ %'],[x.pafi,'PAFI'],[x.lactato,'Lact']
@@ -10101,6 +10333,7 @@ function openEvolucion(patientId){
     'ePpico','ePplat','ePEEPt','eDP','eCrs','eRinsp','eFlujo','eMP','eER','eCT',
     'ePH','ePCO2','ePO2','eHCO3','eSpO2','ePAFI','eInterfaz',
     'eFC','eTAS','eTAD','eTAM','eSpO2Mon','eFRMon','ePIC','eEtCO2','eTemp',
+    'eBalon','eMAP','eIO','eOSI','eComfortB','eSBS','eNRS','eOPS','eFLACC','eCAPD','eSOPHIA',
     'eRASS','eCPOT','eCAMICU','eVentSed','eDolorAuto','eDolorEscala','eOtrosFarmacos',
     'eAKM1','eMRC',
     'ePVE','ePVETipo','ePVEtmin','ePVEresult','eInterfazPE',
@@ -10215,6 +10448,7 @@ function openEvolucion(patientId){
     diasARM = diasARM !== null ? diasARM + 1 : 0;
   }
   document.getElementById('eARM').value = diasARM || '';
+  aplicarModoEvoPorSala(patientId);   // v3_133: adultos o pediátrico según la sala
   actualizarHintVE(patientId, false); // se muestra recién si eligen TQT espontáneo
   // v3_127: limpiar el motivo de ARM
   { const b=document.getElementById('eMotivoVMBlock'); if(b) b.style.display='none';
@@ -10427,6 +10661,8 @@ const EVO_FIELD_MAP = {
   modo:'eModo', vt:'eVT', vtkg:'eVTkg', fr:'eFR', frReal:'eFRreal', peep:'ePEEP',
   fc:'eFC', tas:'eTAS', tad:'eTAD', tam:'eTAM', spo2Mon:'eSpO2Mon', frMon:'eFRMon',
   pic:'ePIC', etco2:'eEtCO2', temp:'eTemp', fio2:'eFiO2', ti:'eTi', pc:'ePC',
+  balon:'eBalon', map:'eMAP', comfortB:'eComfortB', sbs:'eSBS', nrs:'eNRS',
+  ops:'eOPS', flacc:'eFLACC', capd:'eCAPD', sophia:'eSOPHIA',
   vr:'eVR', aaGrad:'eAAGrad', aaRatio:'eAaRatio', lactato:'eLactato',
   p01:'eP01', deltaPocc:'eDeltaPocc',
   ppico:'ePpico', pplat:'ePplat', peept:'ePEEPt', dp:'eDP', crs:'eCrs',
@@ -10634,6 +10870,10 @@ async function guardarEvolucion(){
     armDia:GN('eARM'), utiDia:GN('eUTI'),
     interfaz:G('eInterfazPrincipal') || G('eInterfaz'),
     interfazEsp:G('eInterfazEsp'),
+    // v3_133: campos pediátricos
+    balon:G('eBalon'), map:GN('eMAP'), io:G('eIO'), osi:G('eOSI'),
+    comfortB:GN('eComfortB'), sbs:G('eSBS'), nrs:GN('eNRS'), ops:GN('eOPS'), flacc:GN('eFLACC'),
+    capd:GN('eCAPD'), sophia:GN('eSOPHIA'),
     // v3_127: motivo de ARM (solo cuando se pidió, al iniciar un episodio)
     motivoVM: (document.getElementById('eMotivoVMBlock')?.style.display !== 'none') ? G('eMotivoVM') : '',
     motivoVMOtro: (document.getElementById('eMotivoVMBlock')?.style.display !== 'none') ? G('eMotivoVMOtro') : '',
