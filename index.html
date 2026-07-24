@@ -4685,7 +4685,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_123';
+const APP_VERSION = 'v3_124';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -5392,7 +5392,7 @@ async function doLogin(){
           const sm = Array.isArray(rm) ? rm[0] : rm;
           if(sm && sm.token){
             const nombreM = ((sm.nombre||'') + ' ' + (sm.apellido||'')).trim() || u;
-            guardarSesionKx({ token:sm.token, user:u, name:nombreM, role:'admin', institucion_id:Number(inst), esMaestro:true });
+            guardarSesionKx({ token:sm.token, user:u, name:nombreM, role:'admin', institucion_id:Number(inst), esMaestro:true, instNombre: sm.inst_nombre||'' });
             try { const sects = await rpc('kinexa_sectores', { p_token:TOKEN }); aplicarSectoresKinexa(sects); }
             catch(eS){ aplicarSectoresKinexa([]); }
             startSession(USER);
@@ -5403,7 +5403,7 @@ async function doLogin(){
       showToast('DNI o clave incorrectos','error'); return;
     }
     const nombre = ((s.nombre||'') + ' ' + (s.apellido||'')).trim() || u;
-    guardarSesionKx({ token: s.token, user: u, name: nombre, role: s.es_admin ? 'admin' : 'kine', institucion_id: Number(inst) });
+    guardarSesionKx({ token: s.token, user: u, name: nombre, role: s.es_admin ? 'admin' : 'kine', institucion_id: Number(inst), instNombre: s.inst_nombre||'' });
     // Traer los sectores de la institución y armar la UI
     try {
       const sects = await rpc('kinexa_sectores', { p_token: TOKEN });
@@ -5447,7 +5447,7 @@ function startSession(user){
   currentUser = user;
   ocultarPantallasAuth();
   // Todos eligen en qué sector van a trabajar hoy (el admin además puede elegir "ver todos")
-  document.getElementById('sectorGreeting').textContent = `Bienvenido/a, ${user.name}`;
+  document.getElementById('sectorGreeting').textContent = `Bienvenido/a, ${user.name}` + (user.instNombre ? ` — ${user.instNombre}` : '');
   { const sg=document.getElementById('sectorGreeting'); if(sg) sg.title = 'Kinexa '+APP_VERSION; }
   document.getElementById('sectorScreen').style.display = 'flex';
 }
@@ -5470,6 +5470,10 @@ function launchApp(){
   const av = document.getElementById('navAvatar');
   av.textContent = currentUser.name.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();
   document.getElementById('navName').textContent = currentUser.name;
+  // v3_124: mostrar la institución actual en la barra superior
+  { const sub = document.getElementById('navBrandSub');
+    if(sub && currentUser.instNombre) sub.textContent = currentUser.instNombre;
+    if(sub) sub.title = currentUser.instNombre || ''; }
   // Mostrar badge de sector
   const badge = document.getElementById('sectorBadge');
   const badgeLabel = document.getElementById('sectorBadgeLabel');
