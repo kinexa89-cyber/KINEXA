@@ -8,7 +8,7 @@
 //  cambiá el número de VERSION de abajo. Eso hace que el navegador
 //  detecte el cambio y actualice la app sola.
 // ══════════════════════════════════════════════════════════════
-const VERSION = 'kinexa-v3_120';
+const VERSION = 'kinexa-v3_122';
 
 // Instalación: activar la versión nueva sin esperar
 self.addEventListener('install', (event) => {
@@ -33,7 +33,15 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// Todas las peticiones van directo a la red (nunca a caché)
+// v3_122: la página principal SIEMPRE se verifica contra el servidor.
+// Sin esto, el navegador puede servir una copia guardada (hasta ~10 min)
+// y la app queda mostrando la versión vieja aunque se cierre y se reabra.
 self.addEventListener('fetch', (event) => {
-  return; // sin intervención: el navegador maneja la request normalmente
+  const req = event.request;
+  if (req.mode === 'navigate' || req.destination === 'document') {
+    event.respondWith(
+      fetch(req, { cache: 'no-cache' }).catch(() => fetch(req))
+    );
+  }
+  // El resto de las peticiones siguen el comportamiento normal del navegador.
 });

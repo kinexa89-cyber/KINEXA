@@ -197,7 +197,7 @@ tr:hover td{ background:var(--blue-50); }
 @keyframes overlayIn{ from{opacity:0} to{opacity:1} }
 @keyframes modalIn{ from{opacity:0; transform:translateY(12px) scale(.985)} to{opacity:1; transform:none} }
 .modal{ background:#fff; border-radius:var(--radius-xl); padding:1.5rem;
-  width:720px; max-width:100%; margin:auto; box-shadow:var(--shadow-lg); }
+  width:720px; max-width:100%; min-width:0; margin:auto; box-shadow:var(--shadow-lg); }
 .modal-sm{ width:460px; }
 .modal-header{ display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:1.2rem; }
 .modal-header h3{ font-size:17px; font-weight:700; color:var(--blue-900); }
@@ -680,6 +680,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 
     <div style="text-align:center;margin-top:1.4rem;padding-top:.9rem;border-top:1px solid var(--border)">
       <p style="font-size:10.5px;color:var(--text-light)">Desarrollado por <strong style="color:var(--text-muted)">Lic. Rodríguez Daniel</strong></p>
+      <p style="font-size:10px;color:var(--text-light);margin-top:3px">Kinexa <span class="appVersionTag"></span></p>
     </div>
   </div>
 </div>
@@ -696,6 +697,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="mostrarRegistro()"><i class="ti ti-building-hospital"></i>Registrar mi institución</button>
     <div style="text-align:center;margin-top:1.4rem;padding-top:.9rem;border-top:1px solid var(--border)">
       <p style="font-size:10.5px;color:var(--text-light)">Desarrollado por <strong style="color:var(--text-muted)">Lic. Rodríguez Daniel</strong></p>
+      <p style="font-size:10px;color:var(--text-light);margin-top:3px">Kinexa <span class="appVersionTag"></span></p>
     </div>
   </div>
 </div>
@@ -4683,6 +4685,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
+const APP_VERSION = 'v3_122';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -5445,6 +5448,7 @@ function startSession(user){
   ocultarPantallasAuth();
   // Todos eligen en qué sector van a trabajar hoy (el admin además puede elegir "ver todos")
   document.getElementById('sectorGreeting').textContent = `Bienvenido/a, ${user.name}`;
+  { const sg=document.getElementById('sectorGreeting'); if(sg) sg.title = 'Kinexa '+APP_VERSION; }
   document.getElementById('sectorScreen').style.display = 'flex';
 }
 
@@ -11688,6 +11692,7 @@ if(GDRIVE_CONFIG?.clientId){
   if(lt) lt.textContent = `Google Drive configurado: ${GDRIVE_CONFIG.fileName||'hbee_kine_datos.json'}`;
 }
 
+document.querySelectorAll('.appVersionTag').forEach(el=>{ el.textContent = APP_VERSION; });
 // ── PWA: registro del service worker + autoactualización ──
 // v3_115: si hay una versión nueva publicada, la app se actualiza sola y recarga.
 // Así no hace falta acordarse del Ctrl+F5 después de cada subida.
