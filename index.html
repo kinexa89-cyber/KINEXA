@@ -103,12 +103,12 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); font-si
 .topnav{ background:var(--blue-900); color:#fff; display:flex; align-items:center;
   justify-content:space-between; padding:0 1rem; height:54px; position:sticky; top:0; z-index:100;
   box-shadow:0 2px 8px rgba(0,0,0,.3); }
-.nav-brand{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
+.nav-brand{ display:flex; align-items:center; gap:10px; flex-shrink:1; min-width:0; }
 .nav-pulse{ width:8px; height:8px; border-radius:50%; background:var(--teal-400);
   box-shadow:0 0 0 2px rgba(29,158,117,.3); animation:pulse 2s infinite; }
 @keyframes pulse{ 0%,100%{box-shadow:0 0 0 2px rgba(29,158,117,.3)} 50%{box-shadow:0 0 0 5px rgba(29,158,117,.0)} }
 .nav-brand-text{ font-size:13px; font-weight:700; letter-spacing:.2px; }
-.nav-brand-sub{ font-size:10px; color:rgba(255,255,255,.5); letter-spacing:.3px; }
+.nav-brand-sub{ font-size:10px; color:rgba(255,255,255,.5); letter-spacing:.3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:210px; }
 .nav-center{ display:flex; gap:2px; }
 .nav-tab{ display:flex; align-items:center; gap:5px; padding:0 12px; height:54px;
   font-size:12px; color:rgba(255,255,255,.55); cursor:pointer; border-bottom:3px solid transparent;
@@ -517,6 +517,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 /* ─── RESPONSIVE ─── */
 @media(max-width:680px){
   .topnav .nav-center,.topnav .nav-user-name{ display:none; }
+  .nav-brand-sub{ max-width:34vw; }
   .bottom-nav{ display:block; }
   main{ padding:.75rem; padding-bottom:90px; }
   .stats-grid{ grid-template-columns:1fr 1fr; }
@@ -4685,7 +4686,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_124';
+const APP_VERSION = 'v3_125';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -5470,10 +5471,14 @@ function launchApp(){
   const av = document.getElementById('navAvatar');
   av.textContent = currentUser.name.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();
   document.getElementById('navName').textContent = currentUser.name;
-  // v3_124: mostrar la institución actual en la barra superior
+  // v3_125: institución en la barra, truncada con el FINAL del nombre
+  // (la parte distintiva: casi todos empiezan con "Hospital ...")
   { const sub = document.getElementById('navBrandSub');
-    if(sub && currentUser.instNombre) sub.textContent = currentUser.instNombre;
-    if(sub) sub.title = currentUser.instNombre || ''; }
+    const nom = currentUser.instNombre || '';
+    if(sub && nom){
+      sub.textContent = nom.length > 32 ? '…' + nom.slice(-30) : nom;
+      sub.title = nom;
+    } }
   // Mostrar badge de sector
   const badge = document.getElementById('sectorBadge');
   const badgeLabel = document.getElementById('sectorBadgeLabel');
