@@ -636,25 +636,6 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- ════ CAMBIO DE CONTRASEÑA (primer ingreso) ════ -->
-<div id="changePassScreen" style="display:none;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(145deg,#3B0764 0%,#7C3AED 55%,#A78BFA 100%);padding:1rem">
-  <div style="background:#fff;border-radius:20px;padding:2rem;width:420px;max-width:100%;box-shadow:0 24px 64px rgba(0,0,0,.28)">
-    <div style="text-align:center;margin-bottom:1.5rem">
-      <div style="display:inline-flex;align-items:center;gap:6px;background:var(--amber-50);color:var(--amber-800);font-size:10px;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:.8px;text-transform:uppercase;margin-bottom:1rem"><i class="ti ti-lock"></i> Seguridad</div>
-      <h2 style="font-size:18px;font-weight:700;color:var(--blue-900);margin-bottom:4px">Creá tu contraseña</h2>
-      <p style="font-size:12px;color:var(--text-muted)" id="changePassGreeting">Por seguridad cambiá tu contraseña para continuar.</p>
-    </div>
-    <div class="form-group">
-      <label>Nueva contraseña</label>
-      <input type="password" id="newPass1" placeholder="Mínimo 8 caracteres" autocomplete="new-password">
-    </div>
-    <div class="form-group">
-      <label>Repetí la nueva contraseña</label>
-      <input type="password" id="newPass2" placeholder="••••••••" autocomplete="new-password" onkeydown="if(event.key==='Enter')guardarNuevaPass()">
-    </div>
-    <button class="btn btn-primary btn-block" id="btnChangePass" onclick="guardarNuevaPass()"><i class="ti ti-device-floppy"></i>Guardar y entrar</button>
-    <button class="btn btn-ghost btn-block btn-sm" onclick="doLogout()" style="color:var(--text-muted);margin-top:8px"><i class="ti ti-logout"></i>Cancelar y salir</button>
-  </div>
-</div>
 
 <!-- ════ LOGIN ════ -->
 <div id="loginScreen" style="display:none">
@@ -4755,7 +4736,7 @@ async function cargarInstitucionesKinexa(){
 
 // ── Navegación entre pantallas de acceso ──────────────────
 function ocultarPantallasAuth(){
-  ['inicioScreen','loginScreen','registerScreen','sectorScreen','changePassScreen'].forEach(id=>{
+  ['inicioScreen','loginScreen','registerScreen','sectorScreen'].forEach(id=>{
     const e = document.getElementById(id); if(e) e.style.display='none';
   });
 }
@@ -5073,110 +5054,6 @@ async function guardarConfigKinexa(){
     if(btn){ btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i>Guardar cambios'; }
   }
 }
-// ═════════════════════════════════════════════════════════
-const SUPA_URL = 'https://mahtdvrakymuwiapcxjj.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1haHRkdnJha3ltdXdpYXBjeGpqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzMjMxMzcsImV4cCI6MjA5Njg5OTEzN30.2ozV6aouldSjqEwKpYnzQdEDdNqu_DGa0qJS6RoPxOo';
-// ── Sesión de Supabase Auth ──────────────────────────────
-// La sesión vive en sessionStorage: sobrevive un F5 pero muere al cerrar
-// la pestaña (importante en computadoras compartidas del hospital).
-const AUTH_EMAIL_DOMAIN = 'kine.hbee.ar'; // dominio sintético interno, no recibe mails
-let supaSession = null;
-try { supaSession = JSON.parse(sessionStorage.getItem('hbee_supa_session')) || null; } catch(e){ supaSession = null; }
-// v3_108: si el usuario tildó "recordar mi sesión", la sesión también se
-// guarda en localStorage y sobrevive al cierre del navegador. sessionStorage
-// tiene prioridad (sesión de la pestaña actual).
-try {
-  if(!supaSession && localStorage.getItem('hbee_recordar_sesion') === '1'){
-    supaSession = JSON.parse(localStorage.getItem('hbee_supa_session')) || null;
-  }
-} catch(e){}
-
-function setSupaSession(data){
-  supaSession = {
-    access_token: data.access_token,
-    refresh_token: data.refresh_token,
-    expires_at: Math.floor(Date.now()/1000) + (data.expires_in || 3600),
-    // user_metadata del usuario (Auth): la usamos como fuente de verdad de
-    // "ya cambió su contraseña", porque el usuario siempre puede escribirla
-    // sobre sí mismo (a diferencia de la tabla perfiles, protegida por RLS).
-    user_metadata: data.user?.user_metadata || supaSession?.user_metadata || null
-  };
-  try { sessionStorage.setItem('hbee_supa_session', JSON.stringify(supaSession)); } catch(e){}
-  // Si "recordar sesión" está activo, persistir también en localStorage
-  // (importante: el refresh token rota en cada renovación, hay que actualizarlo siempre)
-  try {
-    if(localStorage.getItem('hbee_recordar_sesion') === '1'){
-      localStorage.setItem('hbee_supa_session', JSON.stringify(supaSession));
-    }
-  } catch(e){}
-}
-function clearSupaSession(){
-  supaSession = null;
-  try { sessionStorage.removeItem('hbee_supa_session'); } catch(e){}
-  try { localStorage.removeItem('hbee_supa_session'); } catch(e){}
-}
-
-let _refreshPromise = null;
-async function refreshSupaSession(){
-  // Evita renovaciones simultáneas
-  if(_refreshPromise) return _refreshPromise;
-  const rt = supaSession?.refresh_token;
-  if(!rt) return false;
-  _refreshPromise = (async () => {
-    try {
-      const r = await fetch(SUPA_URL+'/auth/v1/token?grant_type=refresh_token', {
-        method:'POST',
-        headers:{ 'Content-Type':'application/json', 'apikey':SUPA_KEY },
-        body: JSON.stringify({ refresh_token: rt })
-      });
-      if(!r.ok) return false;
-      const data = await r.json();
-      if(!data.access_token) return false;
-      setSupaSession(data);
-      return true;
-    } catch(e){ return false; }
-    finally { _refreshPromise = null; }
-  })();
-  return _refreshPromise;
-}
-
-function forceRelogin(){
-  clearSupaSession();
-  currentUser = null;
-  currentSector = null;
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('sectorScreen').style.display = 'none';
-  document.getElementById('loginScreen').style.display = 'flex';
-  showToast('Tu sesión venció. Iniciá sesión de nuevo.','error');
-}
-
-async function supaFetch(path, options={}, _retried){
-  // Renovar el token si vence en menos de 2 minutos
-  if(supaSession && supaSession.expires_at - Math.floor(Date.now()/1000) < 120){
-    await refreshSupaSession();
-  }
-  const token = supaSession?.access_token;
-  if(!token) throw new Error('Sin sesión activa');
-  const headers = { 'Content-Type':'application/json', 'apikey':SUPA_KEY,
-    'Authorization':'Bearer '+token, ...(options.headers||{}) };
-  const r = await fetch(SUPA_URL+path, { ...options, headers });
-  if(r.status===401 && !_retried){
-    const ok = await refreshSupaSession();
-    if(ok) return supaFetch(path, options, true);
-    forceRelogin();
-    throw new Error('Sesión vencida');
-  }
-  if(!r.ok){
-    const e = await r.text().catch(()=>'sin detalle');
-    throw new Error(e||`HTTP ${r.status}`);
-  }
-  if(r.status===204 || r.headers.get('content-length')==='0') return null;
-  const text = await r.text();
-  if(!text || !text.trim()) return null;
-  try { return JSON.parse(text); }
-  catch(e){ throw new Error('JSON inválido: ' + text.slice(0,100)); }
-}
-
 async function loadFromSupabase(){
   setSyncStatus('syncing');
   cargarConfigCompartida(); // v3_110: baja la API key de Gemini compartida (no bloquea la carga)
@@ -5224,7 +5101,7 @@ async function saveToSupabase(){
 // ════════════════════════════════════════════════════════
 //  DATOS
 // ════════════════════════════════════════════════════════
-// Usuarios: ahora gestionados en Supabase Auth + tabla perfiles (v3_90)
+// Usuarios: gestionados en la base de Kinexa (tabla usuarios, vía RPC)
 
 let patients = LS.get('hbee_patients') || []; // v3_100: datos semilla de prueba eliminados para el piloto real
 
@@ -5489,13 +5366,6 @@ async function doLogin(){
   }
 }
 
-async function fetchMiPerfil(){
-  try {
-    const rows = await supaFetch('/rest/v1/perfiles?select=username,nombre,rol,debe_cambiar_pass&limit=1');
-    return rows && rows[0] ? rows[0] : null;
-  } catch(e){ return null; }
-}
-
 // Restaurar sesión si la pestaña se recargó (F5) con sesión vigente
 async function tryRestoreSession(){
   try {
@@ -5520,52 +5390,6 @@ function startSession(user){
   // Todos eligen en qué sector van a trabajar hoy (el admin además puede elegir "ver todos")
   document.getElementById('sectorGreeting').textContent = `Bienvenido/a, ${user.name}`;
   document.getElementById('sectorScreen').style.display = 'flex';
-}
-
-async function guardarNuevaPass(){
-  const p1 = document.getElementById('newPass1').value;
-  const p2 = document.getElementById('newPass2').value;
-  if(p1.length < 8){ showToast('La contraseña debe tener al menos 8 caracteres','error'); return; }
-  if(p1 !== p2){ showToast('Las contraseñas no coinciden','error'); return; }
-
-  const btn = document.getElementById('btnChangePass');
-  if(btn){ btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i> Guardando…'; }
-  try {
-    // 1) Cambiar la contraseña en Supabase Auth y dejar constancia en la
-    //    metadata del usuario (pass_cambiada). La metadata es la fuente de
-    //    verdad: el usuario siempre puede escribirla sobre sí mismo, a
-    //    diferencia de la tabla perfiles (protegida por RLS).
-    const updated = await supaFetch('/auth/v1/user', {
-      method:'PUT',
-      body: JSON.stringify({ password: p1, data: { pass_cambiada: true } })
-    });
-    // Actualizar la metadata guardada en la sesión local
-    if(supaSession){
-      supaSession.user_metadata = updated?.user_metadata || { ...(supaSession.user_metadata||{}), pass_cambiada: true };
-      try { sessionStorage.setItem('hbee_supa_session', JSON.stringify(supaSession)); } catch(_e){}
-    }
-    // 2) Intentar apagar la marca en perfiles (best-effort: si RLS no lo
-    //    permite, no pasa nada — la metadata ya evita que vuelva a pedirla)
-    try {
-      await supaFetch('/rest/v1/perfiles?username=eq.'+encodeURIComponent(currentUser.user), {
-        method:'PATCH',
-        headers:{ 'Prefer':'return=minimal' },
-        body: JSON.stringify({ debe_cambiar_pass: false })
-      });
-    } catch(ePerfil){
-      console.warn('No se pudo actualizar debe_cambiar_pass en perfiles (RLS). Se usa la metadata de Auth.', ePerfil);
-    }
-    // 3) Continuar al ingreso normal, ya sin la marca
-    document.getElementById('changePassScreen').style.display = 'none';
-    addLog('password','Cambió su contraseña (primer ingreso)');
-    showToast('Contraseña actualizada ✓','success');
-    startSession({ ...currentUser, debeCambiarPass:false });
-  } catch(e){
-    console.error('Error cambio pass:', e);
-    showToast('No se pudo cambiar la contraseña: ' + (e.message||'').slice(0,60),'error');
-  } finally {
-    if(btn){ btn.disabled = false; btn.innerHTML = '<i class="ti ti-device-floppy"></i>Guardar y entrar'; }
-  }
 }
 
 function selectSector(sala){
@@ -5598,7 +5422,7 @@ function launchApp(){
   } else {
     badge.style.display = 'none';
   }
-  // Control de acceso a Indicadores y Actividad: solo rol admin (el rol viene de la tabla perfiles en Supabase)
+  // Control de acceso a Indicadores y Actividad: solo rol admin (es_admin en la base de Kinexa)
   const puedeVerIndicadores = currentUser.role === 'admin';
   ['tab-indicadores','btab-indicadores','tab-actividad','btab-actividad'].forEach(id=>{
     const el = document.getElementById(id);
@@ -9038,8 +8862,8 @@ function renderPatientRow(p, todayStr){
         ${tqtBadge}
         ${!tieneHoy ? '<span class="badge badge-red" style="font-size:9px;"><i class="ti ti-alert-circle"></i> Sin evo. hoy</span>' : ''}
       </div>
-      <div class="p-name" style="margin-top:4px">${p.apellido}, ${p.nombre}</div>
-      <div class="p-meta">${p.tipoKine?`<span class="tipo-kine-badge">${TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine}</span> · `:''}${p.diagnostico||'—'} · ${p.edad||'?'} años · ${diasUTI!=null?diasUTI+' días '+(''+diasUTI).replace(/\d+/,'')+' sector':'—'}</div>
+      <div class="p-name" style="margin-top:4px">${escapeHTML(p.apellido)}, ${escapeHTML(p.nombre)}</div>
+      <div class="p-meta">${p.tipoKine?`<span class="tipo-kine-badge">${escapeHTML(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine)}</span> · `:''}${escapeHTML(p.diagnostico||'—')} · ${escapeHTML(p.edad||'?')} años · ${diasUTI!=null?diasUTI+' días '+(''+diasUTI).replace(/\d+/,'')+' sector':'—'}</div>
     </div>
     <div class="p-actions">
       <button class="btn-evolve" onclick="openEvolucionAdaptado(${p.id})">
@@ -9115,8 +8939,8 @@ function filterDash(q){
           ${tqtBadge}
           ${!tieneHoy?'<span class="badge badge-red" style="font-size:9px;"><i class="ti ti-alert-circle"></i> Sin evo. hoy</span>':''}
         </div>
-        <div class="p-name" style="margin-top:4px">${p.apellido}, ${p.nombre}</div>
-        <div class="p-meta">${p.tipoKine?`<span class="tipo-kine-badge">${TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine}</span> · `:''}${p.diagnostico||'—'} · ${p.edad||'?'} años · ${diasUTI!=null?diasUTI+' días '+(''+diasUTI).replace(/\d+/,'')+' sector':'—'}</div>
+        <div class="p-name" style="margin-top:4px">${escapeHTML(p.apellido)}, ${escapeHTML(p.nombre)}</div>
+        <div class="p-meta">${p.tipoKine?`<span class="tipo-kine-badge">${escapeHTML(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine)}</span> · `:''}${escapeHTML(p.diagnostico||'—')} · ${escapeHTML(p.edad||'?')} años · ${diasUTI!=null?diasUTI+' días '+(''+diasUTI).replace(/\d+/,'')+' sector':'—'}</div>
       </div>
       <div class="p-actions">
         <button class="btn-evolve" onclick="openEvolucion(${p.id})"><i class="ti ti-stethoscope"></i> Evolucionar <span class="evo-count">${nEvo}</span></button>
@@ -11263,12 +11087,43 @@ if(GDRIVE_CONFIG?.clientId){
   if(lt) lt.textContent = `Google Drive configurado: ${GDRIVE_CONFIG.fileName||'hbee_kine_datos.json'}`;
 }
 
-// ── PWA: registro del service worker ──
+// ── PWA: registro del service worker + autoactualización ──
+// v3_115: si hay una versión nueva publicada, la app se actualiza sola y recarga.
+// Así no hace falta acordarse del Ctrl+F5 después de cada subida.
 if('serviceWorker' in navigator){
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(err => {
+    navigator.serviceWorker.register('./sw.js').then(reg => {
+      // Buscar actualizaciones al abrir y cada 60 minutos
+      const buscar = () => { try { reg.update(); } catch(_){} };
+      buscar();
+      setInterval(buscar, 60*60*1000);
+      // Cuando el navegador detecta una versión nueva, activarla enseguida
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        if(!sw) return;
+        sw.addEventListener('statechange', () => {
+          // 'installed' + ya había un controller = es una ACTUALIZACIÓN (no la 1ª instalación)
+          if(sw.state === 'installed' && navigator.serviceWorker.controller){
+            try { sw.postMessage({ type:'SKIP_WAITING' }); } catch(_){}
+          }
+        });
+      });
+    }).catch(err => {
       console.warn('Service worker no registrado:', err);
     });
+    // Cuando el service worker nuevo toma el control, recargar una sola vez
+    let recargando = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if(recargando) return;
+      recargando = true;
+      window.location.reload();
+    });
+  });
+  // Al volver a la app (cambiar de pestaña/abrir el celu), chequear actualizaciones
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible'){
+      navigator.serviceWorker.getRegistration().then(reg => { if(reg){ try { reg.update(); } catch(_){} } }).catch(()=>{});
+    }
   });
 }
 </script>
