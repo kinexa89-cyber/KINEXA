@@ -1072,14 +1072,6 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div id="fGrupoResp" style="display:none">
           <div class="form-row">
             <div class="form-group">
-              <label>¿Está en ARM al ingreso?</label>
-              <select id="fRespARM">
-                <option value="">-</option>
-                <option value="Si">Sí</option>
-                <option value="No">No</option>
-              </select>
-            </div>
-            <div class="form-group">
               <label>¿Es oxigenodependiente?</label>
               <select id="fRespO2Dep">
                 <option value="">-</option>
@@ -1561,12 +1553,45 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       </div>
     </div>
 
+    <!-- v3_128: ARM al ingreso — aplica a TODOS los grupos de patología -->
+    <div class="form-section" id="fARMIngresoBlock">
+      <div class="form-section-title"><i class="ti ti-lungs"></i> ARM al ingreso</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>¿Está en ARM al ingreso?</label>
+          <select id="fRespARM" onchange="onARMingresoChange(this.value)">
+            <option value="">-</option>
+            <option value="Si">Sí</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+      </div>
+      <div id="fMotivoVMBlock" style="display:none">
+      <div class="form-row">
+        <div class="form-group">
+          <label>¿Por qué está en ARM?</label>
+          <select id="fCausaVM" onchange="onMotivoVMChange('f')">
+            <option value="">Seleccioná el motivo...</option>
+            <option value="Deterioro del estado de conciencia">Deterioro del estado de conciencia</option>
+            <option value="IRA">IRA (insuficiencia respiratoria aguda)</option>
+            <option value="Shock">Shock</option>
+            <option value="POP">POP (postoperatorio)</option>
+            <option value="Otro">Otro</option>
+          </select>
+        </div>
+        <div class="form-group" id="fCausaVMOtroWrap" style="display:none">
+          <label>Especificá el motivo</label>
+          <input type="text" id="fCausaVMOtro" placeholder="Detallá el motivo">
+        </div>
+      </div>
+      </div>
+    </div>
+
     <!-- ARM / Ventilación -->
     <div class="form-section" id="fSeccionARM">
       <div class="form-section-title"><i class="ti ti-lungs"></i> ARM / Ventilación</div>
       <div class="form-hint" style="margin-bottom:10px">Esta sección se completa una vez que el paciente ya está cargado, editando su ficha.</div>
       <div class="form-row three">
-        <div class="form-group"><label>Causa de VM</label><input type="text" id="fCausaVM" placeholder="IRA, post-op, etc."></div>
         <div class="form-group"><label>Fecha IOT</label><input type="date" id="fFIOT"></div>
         <div class="form-group"><label>Fecha inicio ARM</label><input type="date" id="fInicioARM"></div>
       </div>
@@ -1711,6 +1736,31 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <button type="button" class="interfaz-btn" id="ibTQT" onclick="selectInterfaz('TQT')">
             <i class="ti ti-plug-connected"></i><span>TQT</span><small>Traqueostomía</small>
           </button>
+        </div>
+
+        <!-- v3_127: Motivo de ARM — solo al iniciar un episodio nuevo de ARM -->
+        <div id="eMotivoVMBlock" style="display:none;margin-top:10px;background:var(--amber-50);border:1.5px solid var(--amber-200);border-radius:8px;padding:11px 13px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--amber-700);margin-bottom:8px">
+            <i class="ti ti-help-circle"></i> Motivo de ARM
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>¿Por qué inicia ARM?</label>
+              <select id="eMotivoVM" onchange="onMotivoVMChange('e')">
+                <option value="">Seleccioná el motivo...</option>
+                <option value="Deterioro del estado de conciencia">Deterioro del estado de conciencia</option>
+                <option value="IRA">IRA (insuficiencia respiratoria aguda)</option>
+                <option value="Shock">Shock</option>
+                <option value="POP">POP (postoperatorio)</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="form-group" id="eMotivoVMOtroWrap" style="display:none">
+              <label>Especificá el motivo</label>
+              <input type="text" id="eMotivoVMOtro" placeholder="Detallá el motivo">
+            </div>
+          </div>
+          <div class="form-hint" id="eMotivoVMHint">Se pregunta una sola vez por episodio de ARM.</div>
         </div>
         <!-- Diámetro interno + progresión ADS: aparece al elegir TET o TQT en ARM -->
         <div id="eSubARMdiametro" style="display:none;margin-top:10px">
@@ -4719,7 +4769,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_126';
+const APP_VERSION = 'v3_128';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -6147,6 +6197,7 @@ function construirTextoEvo(evo, p){
   } else {
     add('Día de ARM', evo.armDia); add('Día en el sector', evo.utiDia); add('Días de internación', evo.diasHosp);
     add('Interfaz', evo.interfaz); add('Detalle de interfaz', evo.interfazEsp);
+    add('Motivo de ARM', evo.motivoVM==='Otro' ? (evo.motivoVMOtro||'Otro') : evo.motivoVM);
     add('Día de ventilación espontánea (sin ARM)', evo.diasVE);
     add('Diámetro de TET/cánula', evo.armDiametro); add('TET a nivel de ADS (cm)', evo.tetADS);
     add('Posición', evo.posicionARM); add('Ciclo de prono', evo.pronoCiclo);
@@ -6600,6 +6651,56 @@ function populateCama(sala, selected){
     opts.map(c => `<option value="${c}"${c===selected?' selected':''}>${c}</option>`).join('');
 }
 
+// ── v3_127: Motivo de ARM ────────────────────────────────
+const MOTIVOS_VM = ['Deterioro del estado de conciencia','IRA','Shock','POP','Otro'];
+function onARMingresoChange(val){
+  const b = document.getElementById('fMotivoVMBlock');
+  if(b) b.style.display = (val === 'Si') ? 'block' : 'none';
+  if(val !== 'Si'){
+    const sel=document.getElementById('fCausaVM'); if(sel) sel.value='';
+    const otro=document.getElementById('fCausaVMOtro'); if(otro) otro.value='';
+    const w=document.getElementById('fCausaVMOtroWrap'); if(w) w.style.display='none';
+  }
+}
+// Muestra el texto libre solo si eligieron "Otro". pref: 'f' ficha · 'e' evolución
+function onMotivoVMChange(pref){
+  const selId  = pref==='e' ? 'eMotivoVM'          : 'fCausaVM';
+  const wrapId = pref==='e' ? 'eMotivoVMOtroWrap'  : 'fCausaVMOtroWrap';
+  const otroId = pref==='e' ? 'eMotivoVMOtro'      : 'fCausaVMOtro';
+  const val = document.getElementById(selId)?.value;
+  const w = document.getElementById(wrapId);
+  if(w) w.style.display = (val === 'Otro') ? 'block' : 'none';
+  if(val !== 'Otro'){ const o=document.getElementById(otroId); if(o) o.value=''; }
+}
+// Muestra el motivo de ARM en la evolución solo si el episodio vigente no tiene uno.
+function actualizarMotivoVMEvo(enARM){
+  const b = document.getElementById('eMotivoVMBlock');
+  if(!b) return;
+  if(!enARM){ b.style.display = 'none'; return; }
+  if(editingEvoId){ // editando: si esa evolución ya traía motivo, se muestra cargado
+    const ev = evoluciones.find(x=>x.id===editingEvoId);
+    if(ev && ev.motivoVM){ b.style.display='block'; return; }
+  }
+  const fecha = document.getElementById('eDate')?.value || today();
+  const yaTiene = motivoVMEpisodioActual(currentEvoPacId, fecha);
+  b.style.display = yaTiene ? 'none' : 'block';
+  const h = document.getElementById('eMotivoVMHint');
+  if(h && !yaTiene) h.textContent = 'Se pregunta una sola vez por episodio de ARM.';
+}
+
+// Motivo del episodio de ARM vigente. null = episodio nuevo (hay que preguntarlo).
+function motivoVMEpisodioActual(patientId, fechaRef){
+  const p = patients.find(x=>x.id===patientId);
+  const evos = evoluciones
+    .filter(e => e.patientId===patientId && !e.tipo && e.date && (!fechaRef || e.date <= fechaRef))
+    .sort((a,b) => String(b.date+(b.hora||'')).localeCompare(String(a.date+(a.hora||''))));
+  for(const e of evos){
+    if(e.motivoVM) return e.motivoVM;                        // el episodio ya tiene motivo
+    if(e.interfazEsp || esEvoConExtubacion(e)) return null;   // salió de ARM => episodio nuevo
+  }
+  return (p && p.causaVM) ? p.causaVM : null;                 // se remonta al ingreso
+}
+
 function onGrupoChange(grupo){
   const bloques = {
     respiratorio:'fGrupoResp', neurologico:'fGrupoNeuro',
@@ -7006,6 +7107,9 @@ function resetGrupoFields(){
   document.getElementById('fQxCargaBox').style.display='none';
   // Campos respiratorio
   const rARM=document.getElementById('fRespARM'); if(rARM) rARM.value='';
+  { const b=document.getElementById('fMotivoVMBlock'); if(b) b.style.display='none';
+    ['fCausaVM','fCausaVMOtro'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
+    const w=document.getElementById('fCausaVMOtroWrap'); if(w) w.style.display='none'; }
   const rO2=document.getElementById('fRespO2Dep'); if(rO2) rO2.value='';
   // Campos quemado
   ['fQuemSCQ','fQuemGrado'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
@@ -7430,6 +7534,7 @@ function setARMStatus(enARM){
   }
   // v3_117: el aviso de días sin ARM solo aplica al elegir TQT espontáneo
   actualizarHintVE(currentEvoPacId, false);
+  if(!enARM) actualizarMotivoVMEvo(false);
   actualizarCuidadosVAA();
 }
 
@@ -8561,7 +8666,7 @@ const EVO_SKIP_CAMPOS = new Set([
   // Signos vitales
   'fc','tam','pic','etco2','spo2Mon','frMon','temp',
   // Ventilación / interfaz / O₂
-  'interfaz','interfazEsp','diasVE','armDiametro','tetADS','posicionARM','pronoCiclo','cuffLeak',
+  'interfaz','interfazEsp','diasVE','motivoVM','motivoVMOtro','armDiametro','tetADS','posicionARM','pronoCiclo','cuffLeak',
   'cnFlujo','mvFio2','mrFlujo','cnafFlujo','cnafFio2',
   'vniModo','vniPi','vniVt','vniFr','vniPeep','vniFio2','vniMascara',
   // Neurológico / Sedoanalgesia
@@ -8697,6 +8802,7 @@ function evoCardHTML(e, i){
   const interfazTxt = e.interfaz
     ? (e.interfaz + (e.interfazEsp ? ' · ' + (INTERFAZ_ESP_LABEL[e.interfazEsp]||e.interfazEsp) : ''))
     : (e.interfazEsp ? (INTERFAZ_ESP_LABEL[e.interfazEsp]||e.interfazEsp) : '');
+  const motivoVMTxt = e.motivoVM ? (e.motivoVM==='Otro' && e.motivoVMOtro ? 'Otro: '+e.motivoVMOtro : e.motivoVM) : '';
   const posicionTxt = e.posicionARM ? (e.posicionARM + (e.pronoCiclo ? ' ('+e.pronoCiclo+')' : '')) : '';
   const taTxt = (e.tas!==''&&e.tas!=null && e.tad!==''&&e.tad!=null) ? `${e.tas}/${e.tad}` : '';
   const dolorTxt = e.dolorAuto ? (e.dolorAuto + (e.dolorEscala ? ' — '+e.dolorEscala : '')) : '';
@@ -8710,7 +8816,7 @@ function evoCardHTML(e, i){
   ]);
   // 2) Ventilación / interfaz + O₂ + VNI
   const secVent = evoSeccionGrid('Ventilación / Interfaz', [
-    [interfazTxt,'Interfaz'], [e.diasVE,'Día de vent. espontánea'], [e.armDiametro,'Diámetro TET/cán. (mm)'], [e.tetADS,'TET a ADS (cm)'],
+    [interfazTxt,'Interfaz'], [motivoVMTxt,'Motivo de ARM'], [e.diasVE,'Día de vent. espontánea'], [e.armDiametro,'Diámetro TET/cán. (mm)'], [e.tetADS,'TET a ADS (cm)'],
     [posicionTxt,'Posición'], [e.cuffLeak,'Cuff leak test'],
     [e.cnFlujo,'Cánula nasal (L/min)'], [e.mvFio2,'Venturi FiO₂ (%)'], [e.mrFlujo,'Reservorio (L/min)'],
     [e.cnafFlujo,'CNAF flujo (L/min)'], [e.cnafFio2,'CNAF FiO₂ (%)'],
@@ -9264,7 +9370,8 @@ function openEditPaciente(id){
   // Campos específicos por grupo
   resetGrupoFields();
   if(p.tipoKine) onGrupoChange(p.tipoKine);
-  if(p.tipoKine==='respiratorio'){ M('fRespARM',p.grupoRespARM||''); M('fRespO2Dep',p.grupoRespO2Dep||''); }
+  M('fRespARM', p.grupoRespARM||'');   // v3_128: aplica a todos los grupos
+  if(p.tipoKine==='respiratorio'){ M('fRespO2Dep',p.grupoRespO2Dep||''); }
   if(p.tipoKine==='neurologico'){
     M('fNeuroFoco', p.grupoNeuroFoco||'');
     onFocoChange(p.grupoNeuroFoco||'');
@@ -9329,7 +9436,8 @@ function openEditPaciente(id){
   document.getElementById('fObesidadCalc').value = gradoObesidad(p.imc) || 'Sin sobrepeso';
   // ARM/Ventilación: visible para poder completarlo o actualizarlo
   document.getElementById('fSeccionARM').style.display = 'block';
-  M('fCausaVM',p.causaVM); M('fFIOT',p.fIOT); M('fInicioARM',p.inicioARM); M('fVMNI',p.vmni);
+  M('fCausaVM',p.causaVM); M('fCausaVMOtro',p.causaVMOtro); M('fFIOT',p.fIOT);
+  onARMingresoChange(p.grupoRespARM||''); onMotivoVMChange('f'); M('fInicioARM',p.inicioARM); M('fVMNI',p.vmni);
   M('fProno',p.prono); M('fTQT',p.tqt); M('fFinARM',p.finARM); M('fReintubado',p.reintubado);
   openModal('modalPaciente');
 }
@@ -9436,7 +9544,7 @@ async function guardarPaciente(){
     diagnostico:G('fDiag'),
     alertaImportante:G('fAlertaImportante'),
     antecedentes, otrosAnt:G('fOtrosAnt'),
-    causaVM:G('fCausaVM'), fIOT:G('fFIOT'), inicioARM:G('fInicioARM'), vmni:G('fVMNI'),
+    causaVM:G('fCausaVM'), causaVMOtro:G('fCausaVMOtro'), fIOT:G('fFIOT'), inicioARM:G('fInicioARM'), vmni:G('fVMNI'),
     prono:parseInt(G('fProno'))||0, tqt:G('fTQT'), finARM:G('fFinARM'), reintubado:G('fReintubado'),
   };
   if(editPacId){
@@ -9772,6 +9880,10 @@ function openEvolucion(patientId){
   }
   document.getElementById('eARM').value = diasARM || '';
   actualizarHintVE(patientId, false); // se muestra recién si eligen TQT espontáneo
+  // v3_127: limpiar el motivo de ARM
+  { const b=document.getElementById('eMotivoVMBlock'); if(b) b.style.display='none';
+    ['eMotivoVM','eMotivoVMOtro'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
+    const w=document.getElementById('eMotivoVMOtroWrap'); if(w) w.style.display='none'; }
 
   // Contadores visuales
   const counters = document.getElementById('evoDayCounters');
@@ -9920,6 +10032,9 @@ function selectInterfaz(tipo, visual=true){
   const posBox = document.getElementById('eSubARMposicion');
   if(posBox) posBox.style.display = ['TET','TQT'].includes(tipo) ? 'block' : 'none';
 
+  // v3_127: Motivo de ARM — se pide solo al iniciar un episodio nuevo
+  actualizarMotivoVMEvo(['TET','TQT'].includes(tipo));
+
   // Mostrar el árbol de PVE correcto (TET o TQT) según la interfaz elegida
   if(['TET','TQT'].includes(tipo)) actualizarArbolPVEPorInterfaz(tipo);
 
@@ -10021,6 +10136,11 @@ const EVO_FIELD_MAP = {
 };
 
 function precargarCamposEvolucion(evo){
+  // v3_127: motivo de ARM
+  { const sel=document.getElementById('eMotivoVM'); if(sel) sel.value = evo.motivoVM || '';
+    const otro=document.getElementById('eMotivoVMOtro'); if(otro) otro.value = evo.motivoVMOtro || '';
+    const b=document.getElementById('eMotivoVMBlock'); if(b) b.style.display = evo.motivoVM ? 'block' : 'none';
+    onMotivoVMChange('e'); }
   // En edición no aplica el aviso de estado heredado
   { const h = document.getElementById('eVentHeredadoHint'); if(h){ h.style.display='none'; h.innerHTML=''; } }
   // Fecha / interfaz principal (ids con múltiples posibles destinos)
@@ -10178,6 +10298,9 @@ async function guardarEvolucion(){
     armDia:GN('eARM'), utiDia:GN('eUTI'),
     interfaz:G('eInterfazPrincipal') || G('eInterfaz'),
     interfazEsp:G('eInterfazEsp'),
+    // v3_127: motivo de ARM (solo cuando se pidió, al iniciar un episodio)
+    motivoVM: (document.getElementById('eMotivoVMBlock')?.style.display !== 'none') ? G('eMotivoVM') : '',
+    motivoVMOtro: (document.getElementById('eMotivoVMBlock')?.style.display !== 'none') ? G('eMotivoVMOtro') : '',
     // v3_117: días de ventilación espontánea (solo si es TQT sin ARM y estuvo en ARM antes)
     diasVE: (['TQT_O2','TQT_AA'].includes(G('eInterfazEsp'))
               ? (diasVentilacionEspontanea(currentEvoPacId, date) ?? '') : ''),
@@ -10524,7 +10647,7 @@ function renderIndDemografia(mesStr){
     (d.sinGrupo?indFila2('(sin grupo asignado)', d.sinGrupo, pctTxt(d.sinGrupo,T)):''),
     ['Grupo','Pacientes','%'])}
 
-  ${d.causasTop.length ? indTabla('Causas de VM más frecuentes','ti-lungs',
+  ${d.causasTop.length ? indTabla('Motivos de ARM más frecuentes','ti-lungs',
     d.causasTop.map(([c,n])=>indFila2(escapeHTML(c), n, '')).join(''),
     ['Causa','Pacientes','']) : ''}
 
@@ -10822,8 +10945,17 @@ function calcDemografia(mesStr){
   const grupos = Object.keys(TIPO_KINE_LABEL).map(k=>({ key:k, label:TIPO_KINE_LABEL[k], n: ps.filter(p=>p.tipoKine===k).length })).filter(g=>g.n>0);
   const sinGrupo = ps.filter(p=>!p.tipoKine).length;
   // Causas de VM más frecuentes
+  // v3_127: motivos de ARM = episodio del ingreso (ficha) + episodios nuevos
+  // registrados en las evoluciones del mes.
   const causas = {};
-  ps.forEach(p=>{ const c=(p.causaVM||'').trim(); if(c) causas[c]=(causas[c]||0)+1; });
+  const sumar = (motivo, otro) => {
+    let c = (motivo||'').trim();
+    if(!c) return;
+    if(c === 'Otro') c = (otro||'').trim() ? 'Otro: '+otro.trim() : 'Otro';
+    causas[c] = (causas[c]||0)+1;
+  };
+  ps.forEach(p => sumar(p.causaVM, p.causaVMOtro));
+  evosDelMes(mesStr).forEach(e => sumar(e.motivoVM, e.motivoVMOtro));
   const causasTop = Object.entries(causas).sort((a,b)=>b[1]-a[1]).slice(0,10);
   // Egresos del mes
   const altas = egresosDelMes(mesStr,'alta'), obitos = egresosDelMes(mesStr,'obito'), traslados = egresosDelMes(mesStr,'traslado');
@@ -11152,7 +11284,7 @@ async function exportarIndicadoresCompleto(mesStr){
   if(d.sinGrupo) rows.push(['(sin grupo asignado)', d.sinGrupo, pctN(d.sinGrupo)]);
   if(d.causasTop.length){
     rows.push([]);
-    rows.push(['Causa de VM','Pacientes']);
+    rows.push(['Motivo de ARM','Episodios']);
     d.causasTop.forEach(([c,n])=>rows.push([c, n]));
   }
 
