@@ -4948,7 +4948,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_133';
+const APP_VERSION = 'v3_134';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -9894,6 +9894,9 @@ function openNuevoPaciente(){
   const salaInicial = currentSector || '';
   document.getElementById('fSala').value = salaInicial;
   populateCama(salaInicial);
+  // v3_134: al preseleccionar la sala por código no se dispara el onchange,
+  // así que hay que aplicar el modo (adultos / pediátrico) a mano.
+  aplicarModoFichaPorSala(salaInicial);
   document.getElementById('fFIUTI').value = today();
   openModal('modalPaciente');
 }
