@@ -1056,6 +1056,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <option value="post_qx">🔪 Post-quirúrgico</option>
           <option value="amputado">🦾 Amputado</option>
           <option value="quemado">🔥 Quemado</option>
+          <option value="trauma">🦴 Trauma</option>
           <option value="otro">📋 Otro</option>
           <option value="crm">🫀 POP CRM (Cirugía de Revascularización Miocárdica)</option>
         </select>
@@ -1339,6 +1340,15 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
               <label class="ant-chip"><input type="checkbox" id="fQuemPerine" value="perine">Periné</label>
               <label class="ant-chip"><input type="checkbox" id="fQuemViaAerea" value="via_aerea">Vía aérea</label>
             </div>
+          </div>
+        </div>
+
+        <!-- Trauma -->
+        <div id="fGrupoTrauma" style="display:none">
+          <div class="form-group">
+            <label>Lesiones</label>
+            <textarea id="fTraumaLesiones" rows="4" placeholder="Detallá las lesiones del paciente. Ej.: Fractura de fémur derecho (clavo endomedular), fractura costal 4.ª a 7.ª izquierda, TEC leve, contusión pulmonar bilateral..."></textarea>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">Escribí libremente todas las lesiones y su tratamiento (quirúrgico, ortesis, reposo, etc.).</div>
           </div>
         </div>
 
@@ -5675,6 +5685,7 @@ async function generarResumenIA(){
     `Edad: ${p.edad||'—'} años, sexo: ${p.genero||'—'}`,
     `Sala: ${SALA_LABEL[p.sala]||p.sala}, cama ${p.cama||'—'}`,
     p.tipoKine ? `Grupo: ${tipoLabel}` : '',
+    (p.tipoKine==='trauma' && p.grupoTraumaLesiones) ? `Lesiones: ${p.grupoTraumaLesiones}` : '',
     `Diagnóstico principal: ${p.diagnostico||'—'}`,
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
@@ -5810,6 +5821,7 @@ async function generarInformeAlta(patientId){
     `Edad: ${p.edad||'—'} años, sexo: ${p.genero||'—'}`,
     `Sala: ${SALA_LABEL[p.sala]||p.sala}, cama ${p.cama||'—'}`,
     p.tipoKine ? `Grupo: ${tipoLabel}` : '',
+    (p.tipoKine==='trauma' && p.grupoTraumaLesiones) ? `Lesiones: ${p.grupoTraumaLesiones}` : '',
     `Diagnóstico principal: ${p.diagnostico||'—'}`,
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
@@ -6474,7 +6486,7 @@ const ES_MINIMOS = sala => /m[ií]nimos?/i.test(sala || '');
 const TIPO_KINE_LABEL = {
   respiratorio:'🫁 Respiratorio', neurologico:'🧠 Neurológico',
   pre_qx:'🔪 Pre-quirúrgico', post_qx:'🔪 Post-quirúrgico',
-  amputado:'🦾 Amputado', quemado:'🔥 Quemado',
+  amputado:'🦾 Amputado', quemado:'🔥 Quemado', trauma:'🦴 Trauma',
   post_uti:'🏥 Post UTI', otro:'📋 Otro'
 };
 
@@ -6541,13 +6553,13 @@ function populateCama(sala, selected){
 function onGrupoChange(grupo){
   const bloques = {
     respiratorio:'fGrupoResp', neurologico:'fGrupoNeuro',
-    quemado:'fGrupoQuemado', amputado:'fGrupoAmputado',
+    quemado:'fGrupoQuemado', amputado:'fGrupoAmputado', trauma:'fGrupoTrauma',
     post_uti:'fGrupoPostUTI', pre_qx:'fGrupoQx', post_qx:'fGrupoQx', crm:'fGrupoCRM'
   };
   const wrapper = document.getElementById('fGrupoEspecifico');
   const hayBloque = !!bloques[grupo];
   wrapper.style.display = hayBloque ? 'block' : 'none';
-  ['fGrupoResp','fGrupoNeuro','fGrupoQuemado','fGrupoAmputado','fGrupoPostUTI','fGrupoQx','fGrupoCRM'].forEach(id => {
+  ['fGrupoResp','fGrupoNeuro','fGrupoQuemado','fGrupoAmputado','fGrupoTrauma','fGrupoPostUTI','fGrupoQx','fGrupoCRM'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
   });
@@ -6961,9 +6973,11 @@ function resetGrupoFields(){
   });
   // Campos amputado
   ['fAmpNivel','fAmpMotivo','fAmpCausa'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  // Campos trauma
+  { const el=document.getElementById('fTraumaLesiones'); if(el) el.value=''; }
   // Ocultar wrapper
   const w=document.getElementById('fGrupoEspecifico'); if(w) w.style.display='none';
-  ['fGrupoResp','fGrupoNeuro','fGrupoQuemado','fGrupoAmputado','fGrupoPostUTI','fGrupoCRM'].forEach(id=>{
+  ['fGrupoResp','fGrupoNeuro','fGrupoQuemado','fGrupoAmputado','fGrupoTrauma','fGrupoPostUTI','fGrupoQx','fGrupoCRM'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });
 }
@@ -9202,6 +9216,7 @@ function openEditPaciente(id){
   if(p.tipoKine==='amputado'){
     M('fAmpNivel',p.grupoAmpNivel||''); M('fAmpMotivo',p.grupoAmpMotivo||''); M('fAmpCausa',p.grupoAmpCausa||'');
   }
+  if(p.tipoKine==='trauma'){ M('fTraumaLesiones', p.grupoTraumaLesiones||''); }
   if(p.tipoKine==='post_uti' && p.grupoMRC){
     MRC_CAMPOS.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=p.grupoMRC[id]||''; });
     calcMRCIngreso();
@@ -9293,6 +9308,7 @@ async function guardarPaciente(){
     peso, talla, imc, pcp: pcp!==null ? +pcp.toFixed(1) : null,
     sala:G('fSala'), cama:G('fCama'),
     tipoKine:G('fTipoKine'), estFx:G('fEstFx'),
+    grupoTraumaLesiones:G('fTraumaLesiones'),
     // Campos por grupo
     grupoRespARM: G('fRespARM')||null,
     grupoRespO2Dep: G('fRespO2Dep')||null,
