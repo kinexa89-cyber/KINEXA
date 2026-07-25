@@ -205,6 +205,10 @@ tr:hover td{ background:var(--blue-50); }
 .modal-close{ background:none; border:none; cursor:pointer; color:var(--text-muted);
   font-size:22px; line-height:1; padding:2px; flex-shrink:0; margin-left:8px; }
 .modal-close:hover{ color:var(--text); }
+.esc-items{ background:#fff; border:1.5px solid var(--blue-200); border-radius:8px;
+  padding:11px 13px; margin:4px 0 10px; }
+.esc-items label{ font-size:12px; font-weight:600; }
+.esc-items select{ font-size:12px; }
 .esc-desc{ background:var(--blue-50); border:1px solid var(--blue-100); border-radius:8px;
   padding:10px 13px; margin:6px 0 10px; font-size:12px; line-height:1.55; color:var(--text); }
 .esc-desc p{ margin:0 0 7px; }
@@ -2091,9 +2095,12 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>COMFORT-B (6–30)</label>
+            <label>COMFORT-B (6–30)
+              <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px" onclick="togglePanelEscala('ComfortB')"><i class="ti ti-list-check"></i> Completar por ítems</button>
+            </label>
             <input type="number" id="eComfortB" inputmode="numeric" min="6" max="30" oninput="interpretarEscalasPed()" placeholder="6 a 30">
             <div class="form-hint" id="eComfortBHint">11–22 = sedación adecuada</div>
+            <div class="form-hint" id="avanceComfortB" style="color:var(--blue-700);font-weight:600"></div>
           </div>
           <div class="form-group">
             <label>SBS</label>
@@ -2120,6 +2127,8 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <p style="margin-bottom:0"><strong>Interpretación orientativa (OPS y FLACC):</strong> 0 sin dolor · 1–3 leve · 4–6 moderado · 7–10 intenso.</p>
         </div>
         <div class="form-hint" style="margin-bottom:6px">Podés completar una o más, según la que hayas usado.</div>
+        <div id="panelComfortB" class="esc-items" style="display:none"><div id="itemsComfortB"></div></div>
+
         <div class="form-row three">
           <div class="form-group">
             <label>NRS (autorreporte, 0–10)</label>
@@ -2132,11 +2141,15 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             <div class="form-hint" id="eOPSHint">Observacional</div>
           </div>
           <div class="form-group">
-            <label>FLACC (0–10)</label>
+            <label>FLACC (0–10)
+              <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px" onclick="togglePanelEscala('FLACC')"><i class="ti ti-list-check"></i> Por ítems</button>
+            </label>
             <input type="number" id="eFLACC" inputmode="numeric" min="0" max="10" oninput="interpretarEscalasPed()" placeholder="0 a 10">
             <div class="form-hint" id="eFLACCHint">Observacional</div>
+            <div class="form-hint" id="avanceFLACC" style="color:var(--blue-700);font-weight:600"></div>
           </div>
         </div>
+        <div id="panelFLACC" class="esc-items" style="display:none"><div id="itemsFLACC"></div></div>
 
         <!-- Delirium y abstinencia -->
         <div class="form-section-title" style="margin-top:10px"><i class="ti ti-brain"></i> Delirium y abstinencia
@@ -2148,9 +2161,12 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label>CAPD (0–32)</label>
+            <label>CAPD (0–32)
+              <button type="button" class="btn btn-ghost btn-sm" style="padding:2px 7px;font-size:11px" onclick="togglePanelEscala('CAPD')"><i class="ti ti-list-check"></i> Por ítems</button>
+            </label>
             <input type="number" id="eCAPD" inputmode="numeric" min="0" max="32" oninput="interpretarEscalasPed()" placeholder="0 a 32">
             <div class="form-hint" id="eCAPDHint">≥9 compatible con delirium</div>
+            <div class="form-hint" id="avanceCAPD" style="color:var(--blue-700);font-weight:600"></div>
           </div>
           <div class="form-group">
             <label>SOPHIA / SOS (0–15)</label>
@@ -2158,6 +2174,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             <div class="form-hint" id="eSOPHIAHint">≥4 sugiere abstinencia</div>
           </div>
         </div>
+        <div id="panelCAPD" class="esc-items" style="display:none"><div id="itemsCAPD"></div></div>
       </div>
 
 
@@ -4948,7 +4965,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_134';
+const APP_VERSION = 'v3_135';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -7682,6 +7699,7 @@ function aplicarModoFichaPorSala(sala){
   mostrar('fPercentilosWrap', ped);
   mostrar('antGridPed', ped);
   mostrar('antGrid', !ped);
+  mostrar('fEstFxRow', !ped);   // v3_135: no aplica en pediatría
   // En pediatría la edad sale de la fecha de nacimiento
   const wrapEdad = document.getElementById('fEdad')?.closest('.form-group');
   if(wrapEdad) wrapEdad.style.display = ped ? 'none' : '';
@@ -7972,7 +7990,156 @@ function setARMStatus(enARM){
   // v3_117: el aviso de días sin ARM solo aplica al elegir TQT espontáneo
   actualizarHintVE(currentEvoPacId, false);
   if(!enARM) actualizarMotivoVMEvo(false);
+  actualizarComfortBporARM(enARM);   // v3_135: cambia "respuesta ventilatoria" por "llanto"
   actualizarCuidadosVAA();
+}
+
+
+// ══ v3_135: escalas pediátricas desarrolladas por ítem ══
+// Cada opción lleva su propio puntaje, así el total se suma solo.
+const ESCALAS_PED = {
+  ComfortB: {
+    nombre: 'COMFORT-B', min: 6, max: 30,
+    items: [
+      { key:'alerta', label:'Alerta', opts:[
+        [1,'Profundamente dormido — ojos cerrados, sin respuesta'],
+        [2,'Levemente dormido — abre los ojos, se mueve poco'],
+        [3,'Somnoliento — cierra los ojos con frecuencia, poco alerta'],
+        [4,'Despierto y alerta — responde al entorno'],
+        [5,'Hiperalerta — respuesta exagerada a los estímulos'] ] },
+      { key:'calma', label:'Calma / Agitación', opts:[
+        [1,'Calmado'],
+        [2,'Levemente ansioso'],
+        [3,'Ansioso — agitado pero se controla'],
+        [4,'Muy ansioso'],
+        [5,'Pánico — pérdida grave del control'] ] },
+      { key:'resp', label:'Respuesta ventilatoria', labelAlt:'Llanto', opts:[
+        [1,'Sin tos ni respiración espontánea'],
+        [2,'Respiración espontánea con poca o ninguna respuesta al ventilador'],
+        [3,'Tos ocasional o resistencia al ventilador'],
+        [4,'Respira activamente contra el ventilador o tose con regularidad'],
+        [5,'Lucha con el ventilador — tos o ahogo'] ],
+        optsAlt:[
+        [1,'Respiración tranquila, sin llanto'],
+        [2,'Sollozos o quejidos ocasionales'],
+        [3,'Gimoteo monótono'],
+        [4,'Llanto'],
+        [5,'Grito o llanto intenso'] ] },
+      { key:'mov', label:'Movimiento físico', opts:[
+        [1,'Sin movimientos'],
+        [2,'Movimientos leves ocasionales'],
+        [3,'Movimientos leves frecuentes'],
+        [4,'Movimientos vigorosos limitados a las extremidades'],
+        [5,'Movimientos vigorosos que incluyen tronco y cabeza'] ] },
+      { key:'tono', label:'Tono muscular', opts:[
+        [1,'Músculos totalmente relajados, sin tono'],
+        [2,'Tono reducido — menor resistencia de lo normal'],
+        [3,'Tono muscular normal'],
+        [4,'Aumento del tono, con flexión de dedos de manos y pies'],
+        [5,'Rigidez extrema, con flexión de dedos de manos y pies'] ] },
+      { key:'facial', label:'Tensión facial', opts:[
+        [1,'Músculos faciales totalmente relajados'],
+        [2,'Tono facial normal, sin tensión evidente'],
+        [3,'Tensión evidente en algunos músculos faciales'],
+        [4,'Tensión evidente en todos los músculos faciales'],
+        [5,'Músculos faciales contorsionados, gesto de dolor'] ] },
+    ]
+  },
+  FLACC: {
+    nombre: 'FLACC', min: 0, max: 10,
+    items: [
+      { key:'cara', label:'Cara (Face)', opts:[
+        [0,'Sin expresión particular o sonriente'],
+        [1,'Muecas o ceño fruncido ocasional, retraído, desinteresado'],
+        [2,'Temblor de mentón frecuente o constante, mandíbula apretada'] ] },
+      { key:'piernas', label:'Piernas (Legs)', opts:[
+        [0,'Posición normal o relajada'],
+        [1,'Inquietas, intranquilas, tensas'],
+        [2,'Pataleo o piernas elevadas'] ] },
+      { key:'actividad', label:'Actividad (Activity)', opts:[
+        [0,'Acostado tranquilo, posición normal, se mueve con facilidad'],
+        [1,'Se retuerce, se balancea, tenso'],
+        [2,'Arqueado, rígido o con movimientos bruscos'] ] },
+      { key:'llanto', label:'Llanto (Cry)', opts:[
+        [0,'Sin llanto, despierto o dormido'],
+        [1,'Gemidos o quejidos, queja ocasional'],
+        [2,'Llanto constante, grito o sollozo, quejas frecuentes'] ] },
+      { key:'consuelo', label:'Consuelo (Consolability)', opts:[
+        [0,'Contento, relajado'],
+        [1,'Se tranquiliza con el contacto, el abrazo o la palabra; se distrae'],
+        [2,'Difícil de consolar o confortar'] ] },
+    ]
+  },
+  CAPD: {
+    nombre: 'CAPD', min: 0, max: 32,
+    nota: 'Los primeros cuatro ítems puntúan al revés: cuanto menos presente la conducta, mayor el puntaje.',
+    items: [
+      { key:'contacto',  label:'¿Hace contacto visual con el cuidador?', inv:true },
+      { key:'intencion', label:'¿Sus acciones son intencionadas?', inv:true },
+      { key:'entorno',   label:'¿Es consciente de su entorno?', inv:true },
+      { key:'comunica',  label:'¿Comunica sus necesidades y deseos?', inv:true },
+      { key:'inquieto',  label:'¿Está inquieto?' },
+      { key:'inconsol',  label:'¿Está inconsolable?' },
+      { key:'pocoactivo',label:'¿Se mueve muy poco estando despierto?' },
+      { key:'lento',     label:'¿Tarda mucho en responder a los estímulos?' },
+    ]
+  }
+};
+const CAPD_FRECUENCIAS = ['Nunca','Rara vez','A veces','A menudo','Siempre'];
+
+// Dibuja los ítems de una escala dentro de su contenedor
+function renderEscalaPed(nombre){
+  const def = ESCALAS_PED[nombre];
+  const cont = document.getElementById('items' + nombre);
+  if(!def || !cont) return;
+  let html = def.nota ? `<div class="form-hint" style="margin-bottom:7px">${def.nota}</div>` : '';
+  def.items.forEach((it, i) => {
+    // CAPD usa las mismas 5 frecuencias en todos los ítems
+    const opciones = def.items[i].opts || CAPD_FRECUENCIAS.map((f, idx) =>
+      [ it.inv ? (4-idx) : idx, f ]);
+    const usarAlt = (nombre === 'ComfortB' && it.optsAlt && !EVO_ES_PEDIATRICO_ARM);
+    const lista = usarAlt ? it.optsAlt : opciones;
+    const etiqueta = (usarAlt && it.labelAlt) ? it.labelAlt : it.label;
+    html += `<div class="form-group" style="margin-bottom:8px">
+      <label id="lbl${nombre}_${it.key}">${etiqueta}</label>
+      <select id="esc${nombre}_${it.key}" data-escala="${nombre}" onchange="sumarEscalaPed('${nombre}')">
+        <option value="">-</option>
+        ${lista.map(([v,txt]) => `<option value="${v}">${v} · ${txt}</option>`).join('')}
+      </select>
+    </div>`;
+  });
+  cont.innerHTML = html;
+}
+// Suma los ítems y vuelca el total en el campo de la escala
+function sumarEscalaPed(nombre){
+  const def = ESCALAS_PED[nombre];
+  if(!def) return;
+  let total = 0, cargados = 0;
+  def.items.forEach(it => {
+    const v = document.getElementById('esc' + nombre + '_' + it.key)?.value;
+    if(v !== '' && v !== undefined && v !== null){ total += parseInt(v); cargados++; }
+  });
+  const completa = cargados === def.items.length;
+  const campo = document.getElementById('e' + nombre);
+  if(campo) campo.value = completa ? total : '';
+  const av = document.getElementById('avance' + nombre);
+  if(av) av.textContent = cargados ? `${cargados} de ${def.items.length} ítems` : '';
+  interpretarEscalasPed();
+}
+// Abre/cierra el panel de ítems
+function togglePanelEscala(nombre){
+  const panel = document.getElementById('panel' + nombre);
+  if(!panel) return;
+  const abierto = panel.style.display !== 'none';
+  panel.style.display = abierto ? 'none' : 'block';
+  if(!abierto) renderEscalaPed(nombre);
+}
+// En COMFORT-B el tercer ítem cambia según esté o no en ARM
+let EVO_ES_PEDIATRICO_ARM = false;
+function actualizarComfortBporARM(enARM){
+  EVO_ES_PEDIATRICO_ARM = !!enARM;
+  const panel = document.getElementById('panelComfortB');
+  if(panel && panel.style.display !== 'none') renderEscalaPed('ComfortB');
 }
 
 // ── v3_133: escalas pediátricas ──────────────────────────
@@ -8033,6 +8200,23 @@ function aplicarModoEvoPorSala(patientId){
   mostrar('eMAPRow',         ped);   // presión media en vía aérea
   mostrar('eIOOSIRow',       ped);   // índices de oxigenación
   mostrar('eBalonRow',       ped);   // tubo con o sin balón
+  // Diámetros de cánula de la sección de decanulación
+  ['eDecDiametroActual','eDecDiametroNuevo'].forEach(id=>{
+    const sd = document.getElementById(id);
+    if(!sd) return;
+    const act = sd.value;
+    sd.innerHTML = '<option value="">-</option>' +
+      (ped ? DIAMETROS_PED : DIAMETROS_ADULTO).map(d=>`<option value="${d}">${d} mm</option>`).join('');
+    sd.value = act;
+  });
+  // Progresión del TET a la arcada dentaria: en pediatría desde 4 cm
+  const selAds = document.getElementById('eTETads');
+  if(selAds){
+    const act = selAds.value;
+    selAds.innerHTML = '<option value="">-</option>' +
+      (ped ? ADS_PED : ADS_ADULTO).map(v=>`<option value="${v}">${v} cm</option>`).join('');
+    selAds.value = act;
+  }
   // Tamaños de tubo: en pediatría desde 2 mm
   const sel = document.getElementById('eARMdiametro');
   if(sel){
@@ -8044,6 +8228,8 @@ function aplicarModoEvoPorSala(patientId){
   if(ped) interpretarEscalasPed();
 }
 const DIAMETROS_ADULTO = ['6','6.5','7','7.5','8','8.5','9'];
+const ADS_ADULTO = ['16','17','18','19','20','21','22','23','24','25','26','27','28'];
+const ADS_PED = ['4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28'];
 const DIAMETROS_PED = ['2','2.5','3','3.5','4','4.5','5','5.5','6','6.5','7','7.5','8','8.5','9'];
 
 // ── v3_133: índices de oxigenación pediátricos ──
@@ -10451,6 +10637,12 @@ function openEvolucion(patientId){
     diasARM = diasARM !== null ? diasARM + 1 : 0;
   }
   document.getElementById('eARM').value = diasARM || '';
+  // v3_135: cerrar y limpiar los paneles de escalas por ítem
+  ['ComfortB','FLACC','CAPD'].forEach(nom=>{
+    const panel=document.getElementById('panel'+nom); if(panel) panel.style.display='none';
+    const cont=document.getElementById('items'+nom); if(cont) cont.innerHTML='';
+    const av=document.getElementById('avance'+nom); if(av) av.textContent='';
+  });
   aplicarModoEvoPorSala(patientId);   // v3_133: adultos o pediátrico según la sala
   actualizarHintVE(patientId, false); // se muestra recién si eligen TQT espontáneo
   // v3_127: limpiar el motivo de ARM
@@ -10711,6 +10903,21 @@ const EVO_FIELD_MAP = {
 };
 
 function precargarCamposEvolucion(evo){
+  // v3_135: ítems de las escalas pediátricas
+  if(evo.escalasItems){
+    Object.keys(ESCALAS_PED).forEach(nom=>{
+      const usa = ESCALAS_PED[nom].items.some(it=>evo.escalasItems[nom+'_'+it.key] !== undefined);
+      if(!usa) return;
+      const panel = document.getElementById('panel'+nom);
+      if(panel){ panel.style.display='block'; renderEscalaPed(nom); }
+      ESCALAS_PED[nom].items.forEach(it=>{
+        const el = document.getElementById('esc'+nom+'_'+it.key);
+        const v = evo.escalasItems[nom+'_'+it.key];
+        if(el && v !== undefined) el.value = v;
+      });
+      sumarEscalaPed(nom);
+    });
+  }
   // v3_127: motivo de ARM
   { const sel=document.getElementById('eMotivoVM'); if(sel) sel.value = evo.motivoVM || '';
     const otro=document.getElementById('eMotivoVMOtro'); if(otro) otro.value = evo.motivoVMOtro || '';
@@ -10877,6 +11084,17 @@ async function guardarEvolucion(){
     balon:G('eBalon'), map:GN('eMAP'), io:G('eIO'), osi:G('eOSI'),
     comfortB:GN('eComfortB'), sbs:G('eSBS'), nrs:GN('eNRS'), ops:GN('eOPS'), flacc:GN('eFLACC'),
     capd:GN('eCAPD'), sophia:GN('eSOPHIA'),
+    // v3_135: ítems de las escalas desarrolladas
+    escalasItems: (function(){
+      const out = {};
+      Object.keys(ESCALAS_PED).forEach(nom=>{
+        ESCALAS_PED[nom].items.forEach(it=>{
+          const v = document.getElementById('esc'+nom+'_'+it.key)?.value;
+          if(v !== '' && v !== undefined && v !== null) out[nom+'_'+it.key] = v;
+        });
+      });
+      return Object.keys(out).length ? out : null;
+    })(),
     // v3_127: motivo de ARM (solo cuando se pidió, al iniciar un episodio)
     motivoVM: (document.getElementById('eMotivoVMBlock')?.style.display !== 'none') ? G('eMotivoVM') : '',
     motivoVMOtro: (document.getElementById('eMotivoVMBlock')?.style.display !== 'none') ? G('eMotivoVMOtro') : '',
