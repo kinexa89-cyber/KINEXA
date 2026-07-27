@@ -552,6 +552,15 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 @media(min-width:900px){
   .stats-grid{ grid-template-columns:repeat(4,1fr); }
 }
+/* ── v3_140: frecuencia de atención ── */
+.frec-toggle{ display:flex; background:var(--blue-50); border:1px solid var(--border); border-radius:9px; padding:2px; gap:2px; }
+.frec-btn{ border:none; background:transparent; font-family:var(--font); font-size:11.5px; font-weight:700;
+  color:var(--text-muted); padding:5px 10px; border-radius:7px; cursor:pointer; display:flex; align-items:center; gap:4px;
+  transition:all .15s ease; white-space:nowrap; }
+.frec-btn:hover{ color:var(--blue-700); }
+.frec-btn.active{ background:#fff; color:var(--blue-800); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+.patient-row.row-frec-off{ opacity:.55; }
+.patient-row.row-frec-off:hover{ opacity:.85; }
 </style>
 </head>
 <body>
@@ -906,12 +915,17 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="stat-card stat-blue"><div class="stat-label">Pacientes activos</div><div class="stat-value" id="statActivos">0</div><div class="stat-sub" id="statActivosSub">En UTI / Emergencia</div></div>
         <div class="stat-card stat-amber"><div class="stat-label" id="statARMLabel">Pacientes en ARM</div><div class="stat-value" id="statARM">0</div><div class="stat-sub" id="statARMSub">Asistencia respiratoria</div></div>
         <div class="stat-card stat-teal"><div class="stat-label">Evoluciones hoy</div><div class="stat-value" id="statHoy">0</div><div class="stat-sub">Cargadas en guardia</div></div>
-        <div class="stat-card stat-red"><div class="stat-label">Sin evoluciones hoy</div><div class="stat-value" id="statSinEvo">0</div><div class="stat-sub">Requieren atención</div></div>
+        <div class="stat-card stat-red"><div class="stat-label">Sin evoluciones hoy</div><div class="stat-value" id="statSinEvo">0</div><div class="stat-sub">De los que tocan hoy</div></div>
       </div>
       <div class="card">
         <div class="card-header">
           <div class="card-header-title"><i class="ti ti-users" style="color:var(--blue-400)"></i>Pacientes activos</div>
-          <div style="display:flex;gap:6px">
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <!-- v3_140: filtro por frecuencia de atención -->
+            <div class="frec-toggle">
+              <button id="btnFrecHoy" class="frec-btn active" onclick="setDashFrecFiltro('hoy')"><i class="ti ti-calendar-check"></i> Para hoy</button>
+              <button id="btnFrecTodos" class="frec-btn" onclick="setDashFrecFiltro('todos')"><i class="ti ti-users"></i> Todos</button>
+            </div>
             <input type="text" placeholder="Buscar..." oninput="filterDash(this.value)" style="width:160px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-family:var(--font)">
             <button class="btn btn-success btn-sm" onclick="openNuevoPaciente()"><i class="ti ti-plus"></i>Nuevo</button>
           </div>
@@ -995,6 +1009,36 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- ══════════ MODAL NUEVO / EDITAR PACIENTE ══════════ -->
+<!-- v3_140: modal de cambio rápido de frecuencia de atención -->
+<div class="modal-overlay" id="modalFrecRapida">
+  <div class="modal" style="max-width:420px">
+    <div class="modal-header">
+      <div>
+        <h3><i class="ti ti-calendar-repeat" style="color:var(--purple-400);margin-right:6px"></i>Frecuencia de atención</h3>
+        <div class="modal-subtitle" id="frecRapNombre">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalFrecRapida')">&times;</button>
+    </div>
+    <div class="form-group">
+      <label>¿Cada cuánto se atiende a este paciente?</label>
+      <select id="frecRapSelect">
+        <option value="1">Todos los días</option>
+        <option value="2">Día por medio (cada 2 días)</option>
+        <option value="3">Cada 3 días</option>
+        <option value="4">Cada 4 días</option>
+        <option value="5">Cada 5 días</option>
+        <option value="6">Cada 6 días</option>
+        <option value="7">1 vez por semana</option>
+      </select>
+    </div>
+    <p style="font-size:11px;color:var(--text-muted);margin-top:8px"><i class="ti ti-info-circle"></i> El contador se reinicia con cada evolución: el paciente vuelve a aparecer en "Para hoy" cuando se cumple el plazo desde la última atención.</p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalFrecRapida')">Cancelar</button>
+      <button class="btn btn-success" onclick="guardarFrecRapida()"><i class="ti ti-device-floppy"></i>Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalPaciente">
   <div class="modal">
     <div class="modal-header">
@@ -1100,6 +1144,19 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-group"><label>Fecha de ingreso al sector</label><input type="date" id="fFIUTI"></div>
       </div>
       <div class="form-group"><label>Diagnóstico principal</label><input type="text" id="fDiag"></div>
+      <!-- v3_140: frecuencia de atención kinésica -->
+      <div class="form-group">
+        <label><i class="ti ti-calendar-repeat" style="color:var(--purple-400)"></i> Frecuencia de atención kinésica</label>
+        <select id="fFrecAtencion">
+          <option value="1">Todos los días</option>
+          <option value="2">Día por medio (cada 2 días)</option>
+          <option value="3">Cada 3 días</option>
+          <option value="4">Cada 4 días</option>
+          <option value="5">Cada 5 días</option>
+          <option value="6">Cada 6 días</option>
+          <option value="7">1 vez por semana</option>
+        </select>
+      </div>
       <div class="form-group">
         <label style="color:var(--red-600);font-weight:800"><i class="ti ti-alert-triangle"></i> ALERTA IMPORTANTE (la ve todo el equipo)</label>
         <textarea id="fAlertaImportante" rows="2" placeholder="Texto libre. Ej: NO cargar peso en MID / NO movilizar: cardiopatía inestable" style="border:1.5px solid var(--red-200);background:var(--red-50);border-radius:8px;width:100%;padding:8px 10px;font-family:var(--font);font-size:13px;resize:vertical"></textarea>
@@ -4997,7 +5054,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_139';
+const APP_VERSION = 'v3_140';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -9960,6 +10017,60 @@ function renderAll(){
   renderTabla();
 }
 
+// ══ v3_140: FRECUENCIA DE ATENCIÓN KINÉSICA ══════════════
+let dashFrecFiltro = 'hoy'; // 'hoy' = solo los que tocan hoy | 'todos'
+const FREC_OPCIONES = [[1,'Todos los días'],[2,'Día por medio'],[3,'Cada 3 días'],[4,'Cada 4 días'],[5,'Cada 5 días'],[6,'Cada 6 días'],[7,'1 vez por semana']];
+function frecPaciente(p){ const f = parseInt(p?.frecAtencion); return (f>=1 && f<=7) ? f : 1; }
+function frecLabelCorto(f){ return f===2 ? 'Día x medio' : f===7 ? '1×/sem' : `c/${f} días`; }
+function ultimaFechaAtencion(pid){
+  let max = null;
+  evoluciones.forEach(e=>{ if(e.patientId===pid && e.date && (!max || e.date>max)) max = e.date; });
+  return max;
+}
+// Días que faltan para la próxima atención (0 = toca hoy o está atrasado)
+function diasHastaProxAtencion(p, todayStr){
+  const f = frecPaciente(p);
+  if(f<=1) return 0;
+  const ult = ultimaFechaAtencion(p.id);
+  if(!ult) return 0; // sin evoluciones todavía: siempre aparece
+  const trans = daysBetween(ult, todayStr);
+  if(trans===null || trans<0) return 0;
+  return Math.max(0, f - trans);
+}
+// "Toca hoy" = le corresponde atención hoy, o ya fue evolucionado hoy (sigue en el pase del día)
+function tocaHoy(p, todayStr){
+  if(evoluciones.some(e=>e.patientId===p.id && e.date===todayStr)) return true;
+  return diasHastaProxAtencion(p, todayStr) === 0;
+}
+function setDashFrecFiltro(v){
+  dashFrecFiltro = v;
+  renderDashboard();
+}
+// ── Acceso rápido: cambiar frecuencia desde la fila del pase ──
+let _frecPacId = null;
+function openFrecRapida(id){
+  const p = patients.find(x=>x.id===id);
+  if(!p) return;
+  _frecPacId = id;
+  document.getElementById('frecRapNombre').textContent = `${p.apellido}, ${p.nombre}`;
+  document.getElementById('frecRapSelect').value = String(frecPaciente(p));
+  openModal('modalFrecRapida');
+}
+async function guardarFrecRapida(){
+  const p = patients.find(x=>x.id===_frecPacId);
+  if(!p) return;
+  const nueva = parseInt(document.getElementById('frecRapSelect').value)||1;
+  if(nueva !== frecPaciente(p)){
+    p.frecAtencion = nueva;
+    const lbl = (FREC_OPCIONES.find(o=>o[0]===nueva)||[])[1] || ('cada '+nueva+' días');
+    addLog('edit', `Cambió frecuencia de atención de ${p.apellido}, ${p.nombre} → ${lbl}`);
+    await persistAll();
+    showToast('Frecuencia de atención actualizada','success');
+  }
+  closeModal('modalFrecRapida');
+  renderAll();
+}
+
 function renderDashboard(){
   let activos = patients.filter(p=>p.estado==='Activo');
   // Filtrar por sector si es kine
@@ -9977,8 +10088,20 @@ function renderDashboard(){
   // v3_110: el conteo de ARM sale del estado ventilatorio real (última evolución)
   const conARM = activos.filter(p=>{ const c = estadoVentPaciente(p).cod; return c==='ARM_TET' || c==='ARM_TQT'; });
   const conTQT = activos.filter(p=> (p.tqt && p.tqt !== 'No') || p.tqtMin === 'Sí');
-  const sinEvo = activos.filter(p=>!evoluciones.some(e=>e.patientId===p.id && e.date===todayStr));
+  // v3_140: "sin evolución hoy" cuenta solo a los que les toca atención hoy
+  const sinEvo = activos.filter(p=> diasHastaProxAtencion(p, todayStr)===0 && !evoluciones.some(e=>e.patientId===p.id && e.date===todayStr));
   const esMin = ES_MINIMOS(currentSector);
+
+  // v3_140: lista a mostrar según filtro de frecuencia
+  const paraHoy = activos.filter(p=>tocaHoy(p, todayStr));
+  const mostrados = dashFrecFiltro==='hoy' ? paraHoy : activos;
+  const bH = document.getElementById('btnFrecHoy'), bT = document.getElementById('btnFrecTodos');
+  if(bH && bT){
+    bH.classList.toggle('active', dashFrecFiltro==='hoy');
+    bT.classList.toggle('active', dashFrecFiltro==='todos');
+    bH.innerHTML = `<i class="ti ti-calendar-check"></i> Para hoy (${paraHoy.length})`;
+    bT.innerHTML = `<i class="ti ti-users"></i> Todos (${activos.length})`;
+  }
 
   document.getElementById('statActivos').textContent = activos.length;
   document.getElementById('statActivosSub').textContent = currentSector ? (SALA_LABEL[currentSector]||currentSector) : 'En todos los sectores';
@@ -9994,11 +10117,16 @@ function renderDashboard(){
     cont.innerHTML=`<div class="empty"><i class="ti ti-users-off"></i><p>${msg}</p></div>`;
     return;
   }
+  // v3_140: hay activos pero ninguno toca hoy
+  if(!mostrados.length){
+    cont.innerHTML=`<div class="empty"><i class="ti ti-calendar-check"></i><p>No hay pacientes para atender hoy.<br><span style="font-size:12px;color:var(--text-muted)">Tocá "Todos" para ver el resto de los pacientes activos.</span></p></div>`;
+    return;
+  }
   // Para admin: separar por sector con subtítulos
   let html = '';
   if(!currentSector){
     let lastSala = null;
-    activos.forEach(p=>{
+    mostrados.forEach(p=>{
       if(p.sala !== lastSala){
         html += `<div style="padding:8px 14px 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--blue-600);background:var(--blue-50);border-bottom:1px solid var(--border)">${SALA_LABEL[p.sala]||p.sala}</div>`;
         lastSala = p.sala;
@@ -10006,7 +10134,7 @@ function renderDashboard(){
       html += renderPatientRow(p, todayStr);
     });
   } else {
-    html = activos.map(p=>renderPatientRow(p, todayStr)).join('');
+    html = mostrados.map(p=>renderPatientRow(p, todayStr)).join('');
   }
   cont.innerHTML = html;
 }
@@ -10068,14 +10196,23 @@ function renderPatientRow(p, todayStr){
   const diasUTI = daysBetween(p.fIUTI, todayStr);
   const estVent = estadoVentPaciente(p);
   const tqtBadge = ventBadgeHTML(estVent);
-  const rowClass = (estVent.cod==='ARM_TET'||estVent.cod==='ARM_TQT') ? 'row-arm' : (estVent.cod==='TQT_VE' ? 'row-decan' : 'row-libre');
+  // v3_140: frecuencia de atención
+  const frec = frecPaciente(p);
+  const diasProx = diasHastaProxAtencion(p, todayStr);
+  const debeHoy = diasProx===0;
+  const frecBadge = frec>1 ? `<span class="badge badge-purple" style="font-size:9px" title="Frecuencia de atención: ${(FREC_OPCIONES.find(o=>o[0]===frec)||[])[1]||''}"><i class="ti ti-calendar-repeat"></i> ${frecLabelCorto(frec)}</span>` : '';
+  const proxChip = (!debeHoy && !tieneHoy) ? `<span class="badge badge-amber" style="font-size:9px" title="Según la frecuencia elegida, hoy no le toca atención"><i class="ti ti-clock"></i> Próx.: ${diasProx===1?'mañana':'en '+diasProx+' días'}</span>` : '';
+  const rowClassBase = (estVent.cod==='ARM_TET'||estVent.cod==='ARM_TQT') ? 'row-arm' : (estVent.cod==='TQT_VE' ? 'row-decan' : 'row-libre');
+  const rowClass = rowClassBase + ((!debeHoy && !tieneHoy) ? ' row-frec-off' : '');
   return `<div class="patient-row ${rowClass}" data-id="${p.id}">
     <div style="flex:1;min-width:0">
       <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
         ${currentSector?'':salaChip(p.sala)}
         <span style="font-size:10px;font-weight:600;color:var(--text-muted)">Cama ${p.cama||'—'}</span>
         ${tqtBadge}
-        ${!tieneHoy ? '<span class="badge badge-red" style="font-size:9px;"><i class="ti ti-alert-circle"></i> Sin evo. hoy</span>' : ''}
+        ${frecBadge}
+        ${proxChip}
+        ${(!tieneHoy && debeHoy) ? '<span class="badge badge-red" style="font-size:9px;"><i class="ti ti-alert-circle"></i> Sin evo. hoy</span>' : ''}
       </div>
       <div class="p-name" style="margin-top:4px">${escapeHTML(p.apellido)}, ${escapeHTML(p.nombre)}</div>
       <div class="p-meta">${p.tipoKine?`<span class="tipo-kine-badge">${escapeHTML(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine)}</span> · `:''}${escapeHTML(p.diagnostico||'—')} · ${escapeHTML(edadTextoPaciente(p))} · ${diasUTI!=null?diasUTI+' días '+(''+diasUTI).replace(/\d+/,'')+' sector':'—'}</div>
@@ -10086,6 +10223,7 @@ function renderPatientRow(p, todayStr){
         <span class="evo-count">${nEvo}</span>
       </button>
       <button class="btn btn-icon btn-sm" onclick="openEditPaciente(${p.id})" title="Editar"><i class="ti ti-pencil"></i></button>
+      <button class="btn btn-icon btn-sm" onclick="openFrecRapida(${p.id})" title="Frecuencia de atención" style="color:var(--purple-400)"><i class="ti ti-calendar-repeat"></i></button>
       <button class="btn btn-icon btn-sm" onclick="openHistorialRapido(${p.id})" title="Ver evoluciones" style="color:var(--purple-400)"><i class="ti ti-history"></i></button>
       <button class="btn btn-icon btn-sm" onclick="openResumenIA(${p.id})" title="Resumen IA para el pase" style="color:var(--teal-600)"><i class="ti ti-sparkles"></i></button>
       <button class="btn btn-icon btn-sm" onclick="generarInformeAlta(${p.id})" title="Informe kinésico (Word)" style="color:var(--blue-700)"><i class="ti ti-file-text-ai"></i></button>
@@ -10132,6 +10270,8 @@ function renderTabla(){
 }
 
 function filterDash(q){
+  // v3_140: al limpiar la búsqueda se vuelve a la vista con filtro de frecuencia
+  if(!q || !q.trim()){ renderDashboard(); return; }
   const activos = patients.filter(p=>p.estado==='Activo');
   const s = q.toLowerCase();
   const lista = activos.filter(p=>
@@ -10145,6 +10285,12 @@ function filterDash(q){
     const diasUTI = daysBetween(p.fIUTI, todayStr);
     const estVent = estadoVentPaciente(p);
     const tqtBadge = ventBadgeHTML(estVent);
+    // v3_140: frecuencia de atención en resultados de búsqueda
+    const frec = frecPaciente(p);
+    const diasProx = diasHastaProxAtencion(p, todayStr);
+    const debeHoy = diasProx===0;
+    const frecBadge = frec>1 ? `<span class="badge badge-purple" style="font-size:9px" title="Frecuencia de atención"><i class="ti ti-calendar-repeat"></i> ${frecLabelCorto(frec)}</span>` : '';
+    const proxChip = (!debeHoy && !tieneHoy) ? `<span class="badge badge-amber" style="font-size:9px"><i class="ti ti-clock"></i> Próx.: ${diasProx===1?'mañana':'en '+diasProx+' días'}</span>` : '';
     const rowClass = (estVent.cod==='ARM_TET'||estVent.cod==='ARM_TQT') ? 'row-arm' : (estVent.cod==='TQT_VE' ? 'row-decan' : 'row-libre');
     return `<div class="patient-row ${rowClass}">
       <div style="flex:1;min-width:0">
@@ -10152,7 +10298,9 @@ function filterDash(q){
           ${salaChip(p.sala)}
           <span style="font-size:10px;font-weight:600;color:var(--text-muted)">Cama ${p.cama||'—'}</span>
           ${tqtBadge}
-          ${!tieneHoy?'<span class="badge badge-red" style="font-size:9px;"><i class="ti ti-alert-circle"></i> Sin evo. hoy</span>':''}
+          ${frecBadge}
+          ${proxChip}
+          ${(!tieneHoy && debeHoy)?'<span class="badge badge-red" style="font-size:9px;"><i class="ti ti-alert-circle"></i> Sin evo. hoy</span>':''}
         </div>
         <div class="p-name" style="margin-top:4px">${escapeHTML(p.apellido)}, ${escapeHTML(p.nombre)}</div>
         <div class="p-meta">${p.tipoKine?`<span class="tipo-kine-badge">${escapeHTML(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine)}</span> · `:''}${escapeHTML(p.diagnostico||'—')} · ${escapeHTML(edadTextoPaciente(p))} · ${diasUTI!=null?diasUTI+' días '+(''+diasUTI).replace(/\d+/,'')+' sector':'—'}</div>
@@ -10160,6 +10308,7 @@ function filterDash(q){
       <div class="p-actions">
         <button class="btn-evolve" onclick="openEvolucion(${p.id})"><i class="ti ti-stethoscope"></i> Evolucionar <span class="evo-count">${nEvo}</span></button>
         <button class="btn btn-icon btn-sm" onclick="openEditPaciente(${p.id})"><i class="ti ti-pencil"></i></button>
+        <button class="btn btn-icon btn-sm" onclick="openFrecRapida(${p.id})" title="Frecuencia de atención" style="color:var(--purple-400)"><i class="ti ti-calendar-repeat"></i></button>
         <button class="btn btn-icon btn-sm" onclick="openResumenIA(${p.id})" title="Resumen IA" style="color:var(--teal-600)"><i class="ti ti-sparkles"></i></button>
         <button class="btn btn-icon btn-sm" onclick="generarInformeAlta(${p.id})" title="Informe kinésico (Word)" style="color:var(--blue-700)"><i class="ti ti-file-text-ai"></i></button>
       </div>
@@ -10209,6 +10358,7 @@ function openNuevoPaciente(){
     'fCausaVM','fFIOT','fInicioARM','fVMNI','fProno','fTQT','fFinARM','fReintubado'];
   campos.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('fTipoKine').value = '';
+  document.getElementById('fFrecAtencion').value = '1'; // v3_140: default todos los días
   resetGrupoFields();
   document.getElementById('fEstFx').value = '';
   document.getElementById('fTQTMin').value = '';
@@ -10258,6 +10408,7 @@ function openEditPaciente(id){
   M('fDiag',p.diagnostico);
   M('fAlertaImportante',p.alertaImportante);
   M('fTipoKine',p.tipoKine); M('fEstFx',p.estFx);
+  document.getElementById('fFrecAtencion').value = String(frecPaciente(p)); // v3_140
   // Campos específicos por grupo
   resetGrupoFields();
   if(p.tipoKine) onGrupoChange(p.tipoKine);
@@ -10448,6 +10599,7 @@ async function guardarPaciente(){
     tqtMin:G('fTQTMin'), tqtMinTipo:G('fTQTMinTipo'), tqtMinID:G('fTQTMinID'), tqtMinED:G('fTQTMinED'),
     fIHosp:G('fFIHosp'), fIUTI:G('fFIUTI'),
     diagnostico:G('fDiag'),
+    frecAtencion: parseInt(G('fFrecAtencion'))||1, // v3_140
     alertaImportante:G('fAlertaImportante'),
     antecedentes, otrosAnt:G('fOtrosAnt'),
     causaVM:G('fCausaVM'), causaVMOtro:G('fCausaVMOtro'), fIOT:G('fFIOT'), inicioARM:G('fInicioARM'), vmni:G('fVMNI'),
