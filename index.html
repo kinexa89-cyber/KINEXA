@@ -1991,6 +1991,44 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <!-- v3_117: días de ventilación espontánea (si estuvo en ARM antes) -->
         <div id="eVEdiasHint" style="display:none;margin-top:8px;background:var(--teal-50);border:1px solid var(--teal-100);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--teal-800);line-height:1.5"></div>
 
+        <!-- v3_142: Dificultad respiratoria (solo pediátricos SIN ARM) -->
+        <div id="eDifRespPed" style="display:none">
+          <div class="form-section-title" style="margin-top:12px"><i class="ti ti-lungs"></i> Dificultad respiratoria</div>
+          <div class="form-hint" style="margin-bottom:2px">Elegí la escala que vas a usar. Podés usar las dos.</div>
+          <div class="dec-row">
+            <button type="button" class="dec-btn" id="btnEscTal" onclick="toggleEscalaSel('Tal')">
+              <i class="ti ti-list-check"></i> Score de Tal
+            </button>
+            <button type="button" class="dec-btn" id="btnEscWoodDownes" onclick="toggleEscalaSel('WoodDownes')">
+              <i class="ti ti-list-check"></i> Wood-Downes
+            </button>
+          </div>
+
+          <div id="panelTal" class="esc-items" style="display:none">
+            <div id="itemsTal"></div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Total Score de Tal</label>
+                <input type="text" id="eTal" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:700" placeholder="—">
+                <div class="form-hint" id="eTalHint">0–4 leve · 5–8 moderado · 9–12 grave</div>
+                <div class="form-hint" id="avanceTal" style="color:var(--blue-700);font-weight:600"></div>
+              </div>
+            </div>
+          </div>
+
+          <div id="panelWoodDownes" class="esc-items" style="display:none">
+            <div id="itemsWoodDownes"></div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Total Wood-Downes modificado</label>
+                <input type="text" id="eWoodDownes" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:700" placeholder="—">
+                <div class="form-hint" id="eWoodDownesHint">0–3 leve · 4–5 moderado · ≥6 grave</div>
+                <div class="form-hint" id="avanceWoodDownes" style="color:var(--blue-700);font-weight:600"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Sub: VAN con O2 -->
         <div id="eSubVANO2" style="display:none" class="dec-sublevel">
           <div class="dec-label">Dispositivo</div>
@@ -2141,44 +2179,8 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <!-- ═══ v3_133: ESCALAS PEDIÁTRICAS ═══ -->
       <div id="ePedEscalas" style="display:none">
 
-        <!-- v3_141: Dificultad respiratoria -->
-        <div class="form-section-title" style="margin-top:6px"><i class="ti ti-lungs"></i> Dificultad respiratoria</div>
-        <div class="form-hint" style="margin-bottom:2px">Elegí la escala que vas a usar. Podés usar las dos.</div>
-        <div class="dec-row">
-          <button type="button" class="dec-btn" id="btnEscTal" onclick="toggleEscalaSel('Tal')">
-            <i class="ti ti-list-check"></i> Score de Tal
-          </button>
-          <button type="button" class="dec-btn" id="btnEscWoodDownes" onclick="toggleEscalaSel('WoodDownes')">
-            <i class="ti ti-list-check"></i> Wood-Downes
-          </button>
-        </div>
-
-        <div id="panelTal" class="esc-items" style="display:none">
-          <div id="itemsTal"></div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Total Score de Tal</label>
-              <input type="text" id="eTal" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:700" placeholder="—">
-              <div class="form-hint" id="eTalHint">0–4 leve · 5–8 moderado · 9–12 grave</div>
-              <div class="form-hint" id="avanceTal" style="color:var(--blue-700);font-weight:600"></div>
-            </div>
-          </div>
-        </div>
-
-        <div id="panelWoodDownes" class="esc-items" style="display:none">
-          <div id="itemsWoodDownes"></div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Total Wood-Downes modificado</label>
-              <input type="text" id="eWoodDownes" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:700" placeholder="—">
-              <div class="form-hint" id="eWoodDownesHint">0–3 leve · 4–5 moderado · ≥6 grave</div>
-              <div class="form-hint" id="avanceWoodDownes" style="color:var(--blue-700);font-weight:600"></div>
-            </div>
-          </div>
-        </div>
-
         <!-- Sedación -->
-        <div class="form-section-title" style="margin-top:12px"><i class="ti ti-zzz"></i> Sedación</div>
+        <div class="form-section-title" style="margin-top:6px"><i class="ti ti-zzz"></i> Sedación</div>
         <div class="form-hint" style="margin-bottom:2px">Elegí la escala que vas a usar. Podés usar las dos.</div>
         <div class="dec-row">
           <button type="button" class="dec-btn" id="btnEscComfortB" onclick="toggleEscalaSel('ComfortB')">
@@ -5090,7 +5092,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_141';
+const APP_VERSION = 'v3_142';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -8130,6 +8132,17 @@ function setARMStatus(enARM){
   actualizarHintVE(currentEvoPacId, false);
   if(!enARM) actualizarMotivoVMEvo(false);
   actualizarComfortBporARM(enARM);   // v3_135: cambia "respuesta ventilatoria" por "llanto"
+  // v3_142: Tal y Wood-Downes solo aplican SIN ARM — al pasar a ARM se cierran y limpian
+  if(enARM){
+    ['Tal','WoodDownes'].forEach(nom=>{
+      const pn = document.getElementById('panel'+nom);
+      if(pn && pn.style.display !== 'none'){
+        pn.style.display = 'none';
+        document.getElementById('btnEsc'+nom)?.classList.remove('active');
+        limpiarEscalaPed(nom);
+      }
+    });
+  }
   actualizarCuidadosVAA();
 }
 
@@ -8505,6 +8518,7 @@ function aplicarModoEvoPorSala(patientId){
   }
   const mostrar = (id, ver) => { const el = document.getElementById(id); if(el) el.style.display = ver ? '' : 'none'; };
   mostrar('ePedEscalas',     ped);
+  mostrar('eDifRespPed',     ped);   // v3_142: Tal y Wood-Downes (dentro del bloque sin ARM)
   mostrar('eAdultoEscalas', !ped);
   mostrar('eDolorAutoRow',  !ped);   // en pediatría lo cubre la NRS
   mostrar('eMAPRow',         ped);   // presión media en vía aérea
