@@ -2141,8 +2141,44 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <!-- ═══ v3_133: ESCALAS PEDIÁTRICAS ═══ -->
       <div id="ePedEscalas" style="display:none">
 
+        <!-- v3_141: Dificultad respiratoria -->
+        <div class="form-section-title" style="margin-top:6px"><i class="ti ti-lungs"></i> Dificultad respiratoria</div>
+        <div class="form-hint" style="margin-bottom:2px">Elegí la escala que vas a usar. Podés usar las dos.</div>
+        <div class="dec-row">
+          <button type="button" class="dec-btn" id="btnEscTal" onclick="toggleEscalaSel('Tal')">
+            <i class="ti ti-list-check"></i> Score de Tal
+          </button>
+          <button type="button" class="dec-btn" id="btnEscWoodDownes" onclick="toggleEscalaSel('WoodDownes')">
+            <i class="ti ti-list-check"></i> Wood-Downes
+          </button>
+        </div>
+
+        <div id="panelTal" class="esc-items" style="display:none">
+          <div id="itemsTal"></div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Total Score de Tal</label>
+              <input type="text" id="eTal" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:700" placeholder="—">
+              <div class="form-hint" id="eTalHint">0–4 leve · 5–8 moderado · 9–12 grave</div>
+              <div class="form-hint" id="avanceTal" style="color:var(--blue-700);font-weight:600"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="panelWoodDownes" class="esc-items" style="display:none">
+          <div id="itemsWoodDownes"></div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Total Wood-Downes modificado</label>
+              <input type="text" id="eWoodDownes" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:700" placeholder="—">
+              <div class="form-hint" id="eWoodDownesHint">0–3 leve · 4–5 moderado · ≥6 grave</div>
+              <div class="form-hint" id="avanceWoodDownes" style="color:var(--blue-700);font-weight:600"></div>
+            </div>
+          </div>
+        </div>
+
         <!-- Sedación -->
-        <div class="form-section-title" style="margin-top:6px"><i class="ti ti-zzz"></i> Sedación</div>
+        <div class="form-section-title" style="margin-top:12px"><i class="ti ti-zzz"></i> Sedación</div>
         <div class="form-hint" style="margin-bottom:2px">Elegí la escala que vas a usar. Podés usar las dos.</div>
         <div class="dec-row">
           <button type="button" class="dec-btn" id="btnEscComfortB" onclick="toggleEscalaSel('ComfortB')">
@@ -5054,7 +5090,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_140';
+const APP_VERSION = 'v3_141';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -6534,6 +6570,8 @@ function construirTextoEvo(evo, p){
     add('TAM (mmHg)', evo.tam); add('Temperatura (°C)', evo.temp); add('PIC (mmHg)', evo.pic); add('EtCO2 (mmHg)', evo.etco2);
     add('RASS', evo.rass); add('CPOT', evo.cpot); add('CAM-ICU', evo.camicu);
     add('COMFORT-B (sedación)', evo.comfortB); add('SBS (sedación)', evo.sbs);
+    add('Score de Tal modificado (dificultad respiratoria, 0-12)', evo.tal);
+    add('Wood-Downes modificado (dificultad respiratoria, 0-8)', evo.woodDownes);
     add('NRS (dolor autorreportado)', evo.nrs); add('OPS (dolor)', evo.ops); add('FLACC (dolor)', evo.flacc);
     add('CAPD (delirium)', evo.capd); add('SOPHIA/SOS (abstinencia)', evo.sophia);
     add('Relación paciente-ventilador', evo.ventSed);
@@ -8099,6 +8137,46 @@ function setARMStatus(enARM){
 // ══ v3_135: escalas pediátricas desarrolladas por ítem ══
 // Cada opción lleva su propio puntaje, así el total se suma solo.
 const ESCALAS_PED = {
+  // v3_141: dificultad respiratoria
+  Tal: {
+    nombre: 'Score de Tal (modificado)', min: 0, max: 12,
+    nota: 'Si no hay sibilancias por insuficiente entrada de aire, el ítem Sibilancias se anota con 3 puntos. El rango de FR se ajusta solo según la edad del paciente.',
+    items: [
+      { key:'fr', label:'Frecuencia respiratoria (mayor de 6 meses)',
+        opts:[ [0,'≤ 30'],[1,'31 – 45'],[2,'46 – 60'],[3,'> 60'] ],
+        labelAlt:'Frecuencia respiratoria (6 meses o menos)',
+        optsAlt:[ [0,'≤ 40'],[1,'41 – 55'],[2,'56 – 70'],[3,'> 70'] ] },
+      { key:'sibilancias', label:'Sibilancias', opts:[
+        [0,'No'],
+        [1,'Fin de la espiración con estetoscopio'],
+        [2,'Inspiración y espiración con estetoscopio'],
+        [3,'Audibles sin estetoscopio (o sin sibilancias por insuficiente entrada de aire)'] ] },
+      { key:'fc', label:'Frecuencia cardíaca', opts:[
+        [0,'Menos de 120'],[1,'120 – 140'],[2,'141 – 160'],[3,'Más de 160'] ] },
+      { key:'musculos', label:'Músculos accesorios', opts:[
+        [0,'No'],
+        [1,'Tiraje subcostal'],
+        [2,'Tiraje subcostal e intercostal'],
+        [3,'Tiraje universal (subcostal + intercostal + aleteo nasal)'] ] },
+    ]
+  },
+  WoodDownes: {
+    nombre: 'Wood-Downes modificado', min: 0, max: 8,
+    items: [
+      { key:'sato2', label:'Sat O₂ (aire ambiente)', opts:[
+        [0,'≥ 94%'],[1,'92 – 93%'],[2,'< 92%'] ] },
+      { key:'fr', label:'Frecuencia respiratoria', opts:[
+        [0,'< 50 rpm'],[1,'50 – 60 rpm'],[2,'> 60 rpm'] ] },
+      { key:'sibilancias', label:'Sibilancias espiratorias', opts:[
+        [0,'Leves'],
+        [1,'Toda la espiración'],
+        [2,'Inspiratorias y espiratorias, o audibles sin fonendo'] ] },
+      { key:'musculatura', label:'Musculatura accesoria', opts:[
+        [0,'Ninguna o leve intercostal'],
+        [1,'Intercostal moderada y supraesternal'],
+        [2,'Intensas, aleteo nasal, bamboleo torácico'] ] },
+    ]
+  },
   ComfortB: {
     nombre: 'COMFORT-B', min: 6, max: 30,
     items: [
@@ -8252,7 +8330,8 @@ function renderEscalaPed(nombre){
     // CAPD usa las mismas 5 frecuencias en todos los ítems
     const opciones = def.items[i].opts || CAPD_FRECUENCIAS.map((f, idx) =>
       [ it.inv ? (4-idx) : idx, f ]);
-    const usarAlt = (nombre === 'ComfortB' && it.optsAlt && !EVO_ES_PEDIATRICO_ARM);
+    const usarAlt = (nombre === 'ComfortB' && it.optsAlt && !EVO_ES_PEDIATRICO_ARM)
+                 || (nombre === 'Tal' && it.optsAlt && EVO_PED_MENOR6M); // v3_141: FR según edad
     const lista = usarAlt ? it.optsAlt : opciones;
     const etiqueta = (usarAlt && it.labelAlt) ? it.labelAlt : it.label;
     html += `<div class="form-group" style="margin-bottom:8px">
@@ -8328,7 +8407,7 @@ function limpiarEscalaPed(nombre){
 }
 // Deja todas las escalas apagadas (al abrir una evolución nueva)
 function resetEscalasSel(){
-  ['ComfortB','SBS','NRS','OPS','FLACC','CAPD','SOPHIA'].forEach(nom=>{
+  ['Tal','WoodDownes','ComfortB','SBS','NRS','OPS','FLACC','CAPD','SOPHIA'].forEach(nom=>{
     const panel = document.getElementById('panel'+nom); if(panel) panel.style.display = 'none';
     const btn   = document.getElementById('btnEsc'+nom); if(btn) btn.classList.remove('active');
     const cont  = document.getElementById('items'+nom); if(cont) cont.innerHTML = '';
@@ -8370,6 +8449,19 @@ function interpretarEscalasPed(){
   };
   const ROJO='var(--red-600)', AMBAR='var(--amber-600)', VERDE='var(--teal-600)';
 
+  // v3_141: dificultad respiratoria
+  const tal = num('eTal');
+  if(tal === null)     hint('eTalHint','0–4 leve · 5–8 moderado · 9–12 grave','');
+  else if(tal <= 4)    hint('eTalHint','Dificultad respiratoria LEVE', VERDE);
+  else if(tal <= 8)    hint('eTalHint','⚠ Dificultad respiratoria MODERADA', AMBAR);
+  else                 hint('eTalHint','⚠ Dificultad respiratoria GRAVE', ROJO);
+
+  const wd = num('eWoodDownes');
+  if(wd === null)      hint('eWoodDownesHint','0–3 leve · 4–5 moderado · ≥6 grave','');
+  else if(wd <= 3)     hint('eWoodDownesHint','Afectación LEVE', VERDE);
+  else if(wd <= 5)     hint('eWoodDownesHint','⚠ Afectación MODERADA', AMBAR);
+  else                 hint('eWoodDownesHint','⚠ Afectación GRAVE', ROJO);
+
   const cb = num('eComfortB');
   if(cb === null)     hint('eComfortBHint','11–22 = sedación adecuada','');
   else if(cb < 11)    hint('eComfortBHint','⚠ Sedación excesiva','var(--blue-700)');
@@ -8400,10 +8492,17 @@ function interpretarEscalasPed(){
 
 // ── v3_133: la evolución se adapta al tipo de sala del paciente ──
 let EVO_ES_PEDIATRICO = false;
+let EVO_PED_MENOR6M = false; // v3_141: para el Score de Tal (rango de FR según edad)
 function aplicarModoEvoPorSala(patientId){
   const p = patients.find(x => x.id === patientId);
   const ped = p ? esSalaPediatrica(p.sala) : false;
   EVO_ES_PEDIATRICO = ped;
+  // v3_141: edad en meses a partir de la fecha de nacimiento (para el Score de Tal)
+  EVO_PED_MENOR6M = false;
+  if(ped && p?.fechaNac){
+    const meses = (Date.now() - new Date(p.fechaNac).getTime()) / (1000*60*60*24*30.4375);
+    if(!isNaN(meses) && meses >= 0 && meses <= 6) EVO_PED_MENOR6M = true;
+  }
   const mostrar = (id, ver) => { const el = document.getElementById(id); if(el) el.style.display = ver ? '' : 'none'; };
   mostrar('ePedEscalas',     ped);
   mostrar('eAdultoEscalas', !ped);
@@ -9601,7 +9700,7 @@ const EVO_SKIP_CAMPOS = new Set([
   'fc','tam','pic','etco2','spo2Mon','frMon','temp',
   // Ventilación / interfaz / O₂
   'interfaz','interfazEsp','diasVE','motivoVM','motivoVMOtro','balon','map','io','osi',
-  'comfortB','sbs','nrs','ops','flacc','capd','sophia','armDiametro','tetADS','posicionARM','pronoCiclo','cuffLeak',
+  'comfortB','sbs','nrs','ops','flacc','capd','sophia','tal','woodDownes','armDiametro','tetADS','posicionARM','pronoCiclo','cuffLeak',
   'cnFlujo','mvFio2','mrFlujo','cnafFlujo','cnafFio2',
   'vniModo','vniPi','vniVt','vniFr','vniPeep','vniFio2','vniMascara',
   // Neurológico / Sedoanalgesia
@@ -9747,7 +9846,8 @@ function evoCardHTML(e, i){
   // 1) Signos vitales (monitor)
   const secVitales = evoSeccionGrid('Signos vitales', [
     [e.fc,'FC (lpm)'], [taTxt,'TA (mmHg)'], [e.tam,'TAM'], [e.temp,'Temp (°C)'], [e.spo2Mon,'SpO₂ mon (%)'],
-    [e.frMon,'FR mon (rpm)'], [e.pic,'PIC (mmHg)'], [e.etco2,'EtCO₂ (mmHg)']
+    [e.frMon,'FR mon (rpm)'], [e.pic,'PIC (mmHg)'], [e.etco2,'EtCO₂ (mmHg)'],
+    [e.tal,'Score de Tal'], [e.woodDownes,'Wood-Downes mod.']
   ]);
   // 2) Ventilación / interfaz + O₂ + VNI
   const secVent = evoSeccionGrid('Ventilación / Interfaz', [
@@ -10828,7 +10928,7 @@ function openEvolucion(patientId){
     'ePpico','ePplat','ePEEPt','eDP','eCrs','eRinsp','eFlujo','eMP','eER','eCT',
     'ePH','ePCO2','ePO2','eHCO3','eSpO2','ePAFI','eInterfaz',
     'eFC','eTAS','eTAD','eTAM','eSpO2Mon','eFRMon','ePIC','eEtCO2','eTemp',
-    'eBalon','eMAP','eIO','eOSI','eComfortB','eSBS','eNRS','eOPS','eFLACC','eCAPD','eSOPHIA',
+    'eBalon','eMAP','eIO','eOSI','eComfortB','eSBS','eNRS','eOPS','eFLACC','eCAPD','eSOPHIA','eTal','eWoodDownes',
     'eRASS','eCPOT','eCAMICU','eVentSed','eDolorAuto','eDolorEscala','eOtrosFarmacos',
     'eAKM1','eMRC',
     'ePVE','ePVETipo','ePVEtmin','ePVEresult','eInterfazPE',
@@ -11159,6 +11259,7 @@ const EVO_FIELD_MAP = {
   pic:'ePIC', etco2:'eEtCO2', temp:'eTemp', fio2:'eFiO2', ti:'eTi', pc:'ePC',
   balon:'eBalon', map:'eMAP', comfortB:'eComfortB', sbs:'eSBS', nrs:'eNRS',
   ops:'eOPS', flacc:'eFLACC', capd:'eCAPD', sophia:'eSOPHIA',
+  tal:'eTal', woodDownes:'eWoodDownes',
   vr:'eVR', aaGrad:'eAAGrad', aaRatio:'eAaRatio', lactato:'eLactato',
   p01:'eP01', deltaPocc:'eDeltaPocc',
   ppico:'ePpico', pplat:'ePplat', peept:'ePEEPt', dp:'eDP', crs:'eCrs',
@@ -11392,6 +11493,7 @@ async function guardarEvolucion(){
     balon:G('eBalon'), map:GN('eMAP'), io:G('eIO'), osi:G('eOSI'),
     comfortB:GN('eComfortB'), sbs:G('eSBS'), nrs:GN('eNRS'), ops:GN('eOPS'), flacc:GN('eFLACC'),
     capd:GN('eCAPD'), sophia:GN('eSOPHIA'),
+    tal:GN('eTal'), woodDownes:GN('eWoodDownes'), // v3_141
     // v3_135: ítems de las escalas desarrolladas
     escalasItems: (function(){
       const out = {};
