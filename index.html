@@ -226,6 +226,20 @@ tr:hover td{ background:var(--blue-50); }
 .tag.active{ background:var(--blue-50); border-color:var(--blue-400); color:var(--blue-800); }
 .tag.active-teal{ background:var(--teal-50); border-color:var(--teal-400); color:var(--teal-800); }
 
+/* ─── CURVA DE FLUJO INSPIRATORIO (VC-CMV) — v3_143 ─── */
+.curva-opt{ flex:1; min-width:150px; cursor:pointer; border:2px solid var(--border); border-radius:10px;
+  background:#fff; padding:8px 10px 6px; text-align:center; transition:all .12s; user-select:none; }
+.curva-opt:hover{ border-color:var(--blue-300); }
+.curva-opt.active{ border-color:var(--blue-500); background:var(--blue-50); }
+.curva-opt svg{ width:100%; height:56px; display:block; }
+.curva-opt .curva-nom{ font-size:12px; font-weight:700; color:var(--gray-800); margin-top:4px; }
+.curva-opt.active .curva-nom{ color:var(--blue-800); }
+.curva-opt .curva-alias{ font-size:10px; color:var(--text-muted); }
+.curva-opt .curva-trazo{ stroke:var(--gray-400); }
+.curva-opt.active .curva-trazo{ stroke:var(--blue-500); }
+.curva-opt .curva-relleno{ fill:var(--gray-100); }
+.curva-opt.active .curva-relleno{ fill:rgba(59,130,246,.18); }
+
 /* ─── MOTIVO DE RECONEXIÓN A ARM (multi-select, NO cuenta como técnica) ─── */
 .mtag{ display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:20px;
   font-size:11px; font-weight:500; cursor:pointer; border:1px solid var(--border);
@@ -1692,6 +1706,13 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <div id="fMotivoVMBlock" style="display:none">
       <div class="form-row">
         <div class="form-group">
+          <label>¿Desde cuándo está en ARM?</label>
+          <input type="date" id="fInicioARM">
+          <div class="form-hint">Fecha de inicio de la ventilación mecánica</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
           <label>¿Por qué está en ARM?</label>
           <select id="fCausaVM" onchange="onMotivoVMChange('f')">
             <option value="">Seleccioná el motivo...</option>
@@ -1710,23 +1731,16 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       </div>
     </div>
 
-    <!-- ARM / Ventilación -->
-    <div class="form-section" id="fSeccionARM">
-      <div class="form-section-title"><i class="ti ti-lungs"></i> ARM / Ventilación</div>
-      <div class="form-hint" style="margin-bottom:10px">Esta sección se completa una vez que el paciente ya está cargado, editando su ficha.</div>
-      <div class="form-row three">
-        <div class="form-group"><label>Fecha IOT</label><input type="date" id="fFIOT"></div>
-        <div class="form-group"><label>Fecha inicio ARM</label><input type="date" id="fInicioARM"></div>
-      </div>
-      <div class="form-row three">
-        <div class="form-group"><label>VMNI / CAFO previo</label><input type="text" id="fVMNI" placeholder="Sí / No / Tipo"></div>
-        <div class="form-group"><label>Prono (sesiones)</label><input type="number" id="fProno" inputmode="numeric"></div>
-        <div class="form-group"><label>TQT</label><select id="fTQT"><option value="">-</option><option value="No">No</option><option value="Sí - percutánea">Sí - percutánea</option><option value="Sí - quirúrgica">Sí - quirúrgica</option></select></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Fecha fin ARM / extubación</label><input type="date" id="fFinARM"></div>
-        <div class="form-group"><label>Reintubado</label><select id="fReintubado"><option value="">-</option><option value="No">No</option><option value="Sí">Sí</option></select></div>
-      </div>
+    <!-- v3_143: la sección "ARM / Ventilación" se retiró de la vista. Lo único que se
+         pregunta ahora es si ingresa en ARM y desde cuándo (arriba). Los campos se
+         mantienen ocultos para no perder los datos ya cargados en pacientes previos. -->
+    <div class="form-section" id="fSeccionARM" style="display:none">
+      <input type="hidden" id="fFIOT">
+      <input type="hidden" id="fVMNI">
+      <input type="hidden" id="fProno">
+      <input type="hidden" id="fTQT">
+      <input type="hidden" id="fFinARM">
+      <input type="hidden" id="fReintubado">
     </div>
 
     <div class="modal-footer">
@@ -2413,6 +2427,31 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-group"><label>VT (ml)</label><input type="number" id="eVT" inputmode="decimal" oninput="autoCalculate()" placeholder="ml"></div>
         <div class="form-group"><label>VT ml/kg PCP</label><input type="text" id="eVTkg" readonly style="background:var(--gray-50);color:var(--blue-800);font-weight:600"><div class="form-hint">VT / PCP del paciente</div></div>
       </div>
+      <!-- v3_143: curva de flujo inspiratorio — solo en VC-CMV -->
+      <div id="eCurvaFlujoBox" style="display:none;margin-top:8px;padding:10px 12px;background:var(--blue-50);border:1px solid var(--blue-200);border-radius:8px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--blue-700);margin-bottom:8px">Curva de flujo inspiratorio</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div class="curva-opt" id="eCurvaOptCuadrada" onclick="setCurvaFlujo('','Cuadrada')">
+            <svg viewBox="0 0 160 60" xmlns="http://www.w3.org/2000/svg">
+              <path class="curva-relleno" d="M28 48 L28 14 L104 14 L104 48 Z"/>
+              <line x1="8" y1="48" x2="152" y2="48" stroke="#cbd5e1" stroke-width="1.5"/>
+              <path class="curva-trazo" d="M8 48 L28 48 L28 14 L104 14 L104 48 L152 48" fill="none" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+            </svg>
+            <div class="curva-nom">Cuadrada</div>
+            <div class="curva-alias">Flujo constante</div>
+          </div>
+          <div class="curva-opt" id="eCurvaOptDesacelerada" onclick="setCurvaFlujo('','Desacelerada')">
+            <svg viewBox="0 0 160 60" xmlns="http://www.w3.org/2000/svg">
+              <path class="curva-relleno" d="M28 48 L28 14 L104 42 L104 48 Z"/>
+              <line x1="8" y1="48" x2="152" y2="48" stroke="#cbd5e1" stroke-width="1.5"/>
+              <path class="curva-trazo" d="M8 48 L28 48 L28 14 L104 42 L104 48 L152 48" fill="none" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+            </svg>
+            <div class="curva-nom">Desacelerada</div>
+            <div class="curva-alias">Flujo desacelerado</div>
+          </div>
+        </div>
+        <input type="hidden" id="eCurvaFlujo">
+      </div>
       <div class="form-row four">
         <div class="form-group"><label>FR seteada (rpm)</label><input type="number" id="eFR" inputmode="numeric" oninput="autoCalculate()"></div>
         <div class="form-group"><label>FR real (rpm)</label><input type="number" id="eFRreal" inputmode="numeric"></div>
@@ -2496,6 +2535,31 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         </div>
         <div class="form-group"><label>VT (ml)</label><input type="number" id="eVT2" inputmode="decimal" oninput="autoCalculate2()" placeholder="ml"></div>
         <div class="form-group"><label>VT ml/kg PCP</label><input type="text" id="eVTkg2" readonly style="background:var(--gray-50);color:var(--blue-800);font-weight:600"><div class="form-hint">VT / PCP del paciente</div></div>
+      </div>
+      <!-- v3_143: curva de flujo inspiratorio — solo en VC-CMV -->
+      <div id="eCurvaFlujoBox2" style="display:none;margin-top:8px;padding:10px 12px;background:var(--blue-50);border:1px solid var(--blue-200);border-radius:8px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--blue-700);margin-bottom:8px">Curva de flujo inspiratorio</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <div class="curva-opt" id="eCurvaOptCuadrada2" onclick="setCurvaFlujo('2','Cuadrada')">
+            <svg viewBox="0 0 160 60" xmlns="http://www.w3.org/2000/svg">
+              <path class="curva-relleno" d="M28 48 L28 14 L104 14 L104 48 Z"/>
+              <line x1="8" y1="48" x2="152" y2="48" stroke="#cbd5e1" stroke-width="1.5"/>
+              <path class="curva-trazo" d="M8 48 L28 48 L28 14 L104 14 L104 48 L152 48" fill="none" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+            </svg>
+            <div class="curva-nom">Cuadrada</div>
+            <div class="curva-alias">Flujo constante</div>
+          </div>
+          <div class="curva-opt" id="eCurvaOptDesacelerada2" onclick="setCurvaFlujo('2','Desacelerada')">
+            <svg viewBox="0 0 160 60" xmlns="http://www.w3.org/2000/svg">
+              <path class="curva-relleno" d="M28 48 L28 14 L104 42 L104 48 Z"/>
+              <line x1="8" y1="48" x2="152" y2="48" stroke="#cbd5e1" stroke-width="1.5"/>
+              <path class="curva-trazo" d="M8 48 L28 48 L28 14 L104 42 L104 48 L152 48" fill="none" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>
+            </svg>
+            <div class="curva-nom">Desacelerada</div>
+            <div class="curva-alias">Flujo desacelerado</div>
+          </div>
+        </div>
+        <input type="hidden" id="eCurvaFlujo2">
       </div>
       <div class="form-row four">
         <div class="form-group"><label>FR (rpm)</label><input type="number" id="eFR2" inputmode="numeric" oninput="autoCalculate2()"></div>
@@ -5092,7 +5156,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_143';
+const APP_VERSION = 'v3_144';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -7027,6 +7091,7 @@ function onARMingresoChange(val){
     const sel=document.getElementById('fCausaVM'); if(sel) sel.value='';
     const otro=document.getElementById('fCausaVMOtro'); if(otro) otro.value='';
     const w=document.getElementById('fCausaVMOtroWrap'); if(w) w.style.display='none';
+    const ini=document.getElementById('fInicioARM'); if(ini) ini.value='';  // v3_143
   }
 }
 // Muestra el texto libre solo si eligieron "Otro". pref: 'f' ficha · 'e' evolución
@@ -7350,10 +7415,39 @@ function calcTCTEvo(){
   document.getElementById('eTCTResultBox').style.display = 'flex';
 }
 
+// ── v3_143: curva de flujo inspiratorio (solo VC-CMV) ──
+// pref = '' (setting inicial) o '2' (setting post-modificación).
+// Volver a clicar la opción activa la deselecciona.
+function setCurvaFlujo(pref, val){
+  const hid = document.getElementById('eCurvaFlujo'+pref);
+  if(!hid) return;
+  if(hid.value === val) val = '';   // toggle
+  hid.value = val;
+  pintarCurvaFlujo(pref);
+}
+function pintarCurvaFlujo(pref){
+  const val = document.getElementById('eCurvaFlujo'+pref)?.value || '';
+  ['Cuadrada','Desacelerada'].forEach(nom=>{
+    const el = document.getElementById('eCurvaOpt'+nom+pref);
+    if(el) el.classList.toggle('active', val === nom);
+  });
+}
+// Muestra u oculta el selector según el modo elegido
+function actualizarCurvaFlujo(pref, modo){
+  const box = document.getElementById('eCurvaFlujoBox'+pref);
+  if(box) box.style.display = (modo === 'VC-CMV') ? 'block' : 'none';
+  if(modo !== 'VC-CMV'){
+    const hid = document.getElementById('eCurvaFlujo'+pref);
+    if(hid) hid.value = '';
+  }
+  pintarCurvaFlujo(pref);
+}
+
 function onModoChange(val){
   const box = document.getElementById('ePCCSVBox');
   if(box) box.style.display = val==='PC-CSV' ? 'block' : 'none';
   if(val!=='PC-CSV'){['eP01','eDeltaPocc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});}
+  actualizarCurvaFlujo('', val);
   autoCalculate();
 }
 
@@ -7361,6 +7455,7 @@ function onModoChange2(val){
   const box = document.getElementById('ePCCSVBox2');
   if(box) box.style.display = val==='PC-CSV' ? 'block' : 'none';
   if(val!=='PC-CSV'){['eP012','eDeltaPocc2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});}
+  actualizarCurvaFlujo('2', val);
   autoCalculate2();
 }
 
@@ -7374,6 +7469,9 @@ function toggleModSetting(el){
       const el=document.getElementById(id); if(el) el.value='';
     });
     const b=document.getElementById('ePCCSVBox2'); if(b) b.style.display='none';
+    const cb=document.getElementById('eCurvaFlujoBox2'); if(cb) cb.style.display='none';
+    const ch=document.getElementById('eCurvaFlujo2'); if(ch) ch.value='';
+    pintarCurvaFlujo('2');
     const ct=document.getElementById('ctMultiplesBox2'); if(ct){ct.style.display='none';ct.innerHTML='';}
   }
 }
@@ -7475,7 +7573,7 @@ function resetGrupoFields(){
   // Campos respiratorio
   const rARM=document.getElementById('fRespARM'); if(rARM) rARM.value='';
   { const b=document.getElementById('fMotivoVMBlock'); if(b) b.style.display='none';
-    ['fCausaVM','fCausaVMOtro'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
+    ['fCausaVM','fCausaVMOtro','fInicioARM'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
     const w=document.getElementById('fCausaVMOtroWrap'); if(w) w.style.display='none'; }
   const rO2=document.getElementById('fRespO2Dep'); if(rO2) rO2.value='';
   // Campos quemado
@@ -9665,6 +9763,7 @@ const EVO_LABELS = {
   vniModo:'VNI modo', vniPi:'VNI Pi', vniVt:'VNI Vt', vniFr:'VNI FR', vniPeep:'VNI PEEP', vniFio2:'VNI FiO₂ (%)', vniMascara:'VNI máscara',
   ti:'Ti (s)', pc:'Presión control', peept:'PEEP total', rinsp:'Resistencia insp.', flujo:'Flujo (L/min)',
   mp:'Poder mecánico', p01:'P0.1', deltaPocc:'ΔPocc', hco3:'HCO₃', lactato:'Lactato',
+  curvaFlujo:'Curva de flujo insp.', curvaFlujo2:'Curva de flujo insp. (post-mod.)',
   fc:'FC (lpm)', tam:'TAM (mmHg)', pic:'PIC (mmHg)', etco2:'EtCO₂ (mmHg)', spo2Mon:'SpO₂ monitor (%)', frMon:'FR monitor',
   ventSed:'Relación pac.-ventilador', dolorAuto:'Dolor (autorreporte)', dolorEscala:'Escala de dolor',
   sedacion:'Sedación', analgesia:'Analgesia', bnm:'BNM', vasoact:'Vasoactivos', otrosFarmacos:'Otros fármacos',
@@ -9693,7 +9792,7 @@ const EVO_SKIP_CAMPOS = new Set([
   'id','patientId','date','hora','turno','kine','kineUser','tipo','tipo_evo','editedAt','editedBy',
   'armDia','tecnicas','logros','obs','frecuencia','tolerancia','noAtencion','conciencia','orientacion',
   // mecánica (ya en sección Mecánica ventilatoria)
-  'modo','vt','vtkg','fr','frReal','peep','fio2','ppico','pplat','dp','crs',
+  'modo','curvaFlujo','curvaFlujo2','vt','vtkg','fr','frReal','peep','fio2','ppico','pplat','dp','crs',
   // EAB (ya en su sección)
   'ph','pco2','po2','spo2','pafi','eabExtra',
   // neuro/sedación mostrado
@@ -9893,14 +9992,14 @@ function evoCardHTML(e, i){
   ]);
   // 4) Mecánica ventilatoria — setting inicial
   const secVM = evoSeccionGrid('Mecánica ventilatoria', [
-    [e.modo,'Modo'], [e.vt,'VT (ml)'], [e.vtkg,'ml/kg'], [e.fr,'FR set'], [e.frReal,'FR real'],
+    [e.modo,'Modo'], [e.curvaFlujo,'Curva de flujo'], [e.vt,'VT (ml)'], [e.vtkg,'ml/kg'], [e.fr,'FR set'], [e.frReal,'FR real'],
     [e.peep,'PEEP'], [e.fio2,'FiO₂ %'], [e.map,'MAP'], [e.ti,'Ti (s)'], [e.pc,'PC'], [e.ppico,'Ppico'],
     [e.pplat,'Pplat'], [e.peept,'PEEP total'], [e.dp,'DP'], [e.crs,'Crs'], [e.rinsp,'R insp.'],
     [e.flujo,'Flujo'], [e.mp,'Poder mec.'], [e.er,'Er'], [e.ct,'Ct'], [e.p01,'P0.1'], [e.deltaPocc,'ΔPocc']
   ]);
   // 4b) Mecánica — post modificación (solo si se marcó el cambio de setting)
   const secVM2 = e.modSetting ? evoSeccionGrid('Mecánica — post modificación', [
-    [e.modo2,'Modo'], [e.vt2,'VT (ml)'], [e.vtkg2,'ml/kg'], [e.fr2,'FR set'], [e.peep2,'PEEP'],
+    [e.modo2,'Modo'], [e.curvaFlujo2,'Curva de flujo'], [e.vt2,'VT (ml)'], [e.vtkg2,'ml/kg'], [e.fr2,'FR set'], [e.peep2,'PEEP'],
     [e.fio22,'FiO₂ %'], [e.ti2,'Ti (s)'], [e.pc2,'PC'], [e.ppico2,'Ppico'], [e.pplat2,'Pplat'],
     [e.peept2,'PEEP total'], [e.dp2,'DP'], [e.crs2,'Crs'], [e.rinsp2,'R insp.'], [e.flujo2,'Flujo'],
     [e.mp2,'Poder mec.'], [e.er2,'Er'], [e.ct2,'Ct'], [e.p012,'P0.1'], [e.deltaPocc2,'ΔPocc']
@@ -10502,8 +10601,7 @@ function openNuevoPaciente(){
   });
   ['fFechaNac','fSemGest','fEdadCalc','fEdadCorregida','fPercPeso','fPercTalla','fPercIMC']
     .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
-  // ARM/Ventilación se completa después, editando al paciente ya creado
-  document.getElementById('fSeccionARM').style.display = 'none';
+  { const sA=document.getElementById('fSeccionARM'); if(sA) sA.style.display='none'; }
   // Sector y cama: preseleccionar sector actual si corresponde
   const salaInicial = currentSector || '';
   document.getElementById('fSala').value = salaInicial;
@@ -10609,8 +10707,9 @@ function openEditPaciente(id){
   });
   M('fOtrosAnt',p.otrosAnt);
   document.getElementById('fObesidadCalc').value = gradoObesidad(p.imc) || 'Sin sobrepeso';
-  // ARM/Ventilación: visible para poder completarlo o actualizarlo
-  document.getElementById('fSeccionARM').style.display = 'block';
+  // v3_143: la sección ARM/Ventilación quedó oculta (solo se pregunta si ingresa
+  // en ARM y desde cuándo). Los campos siguen existiendo para conservar los datos.
+  { const sA=document.getElementById('fSeccionARM'); if(sA) sA.style.display='none'; }
   M('fCausaVM',p.causaVM); M('fCausaVMOtro',p.causaVMOtro); M('fFIOT',p.fIOT);
   onARMingresoChange(p.grupoRespARM||''); onMotivoVMChange('f'); M('fInicioARM',p.inicioARM); M('fVMNI',p.vmni);
   M('fProno',p.prono); M('fTQT',p.tqt); M('fFinARM',p.finARM); M('fReintubado',p.reintubado);
@@ -10672,6 +10771,33 @@ async function guardarPaciente(){
   }
 
   const apellido = G('fApellido');
+
+  // ── v3_143: aviso de cama ocupada ──────────────────────
+  // No se bloquea el guardado (a veces hace falta el solapamiento por unas horas),
+  // pero se pide confirmación para evitar cargar dos pacientes en la misma cama sin querer.
+  {
+    const salaSel = G('fSala'), camaSel = G('fCama');
+    const ocupante = patients.find(p =>
+      p.estado === 'Activo' &&
+      p.sala === salaSel &&
+      String(p.cama||'').trim() === String(camaSel).trim() &&
+      p.id !== editPacId
+    );
+    if(ocupante){
+      const seguir = confirm(
+        `⚠️ La cama ${camaSel} de ${SALA_LABEL[salaSel] || salaSel} ya está ocupada.\n\n` +
+        `Paciente actual: ${ocupante.apellido}, ${ocupante.nombre}\n\n` +
+        `Si guardás, van a quedar dos pacientes activos en la misma cama.\n` +
+        `¿Querés continuar igual?`
+      );
+      if(!seguir){
+        const elCama = document.getElementById('fCama');
+        if(elCama){ elCama.scrollIntoView({behavior:'smooth', block:'center'}); try{ elCama.focus({preventScroll:true}); }catch(e){} }
+        return;
+      }
+    }
+  }
+
   _guardandoPac = true;
   try{
   const peso = parseFloat(G('fPeso')) || null;
@@ -10978,8 +11104,14 @@ function openEvolucion(patientId){
     'eObs','eInterfazPrincipal','eInterfazEsp',
     'eVR','eAAGrad','eAaRatio','eLactato','eP01','eDeltaPocc',
     'eModo2','eVT2','eVTkg2','eFR2','ePEEP2','eFiO22','eTi2','ePpico2','ePplat2','ePEEPt2',
-    'ePC2','eDP2','eCrs2','eRinsp2','eFlujo2','eMP2','eER2','eCT2','eP012','eDeltaPocc2'];
+    'ePC2','eDP2','eCrs2','eRinsp2','eFlujo2','eMP2','eER2','eCT2','eP012','eDeltaPocc2',
+    'eCurvaFlujo','eCurvaFlujo2'];
   nFields.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  // v3_143: reiniciar los selectores de curva de flujo inspiratorio
+  ['','2'].forEach(pref=>{
+    const box=document.getElementById('eCurvaFlujoBox'+pref); if(box) box.style.display='none';
+    pintarCurvaFlujo(pref);
+  });
   { const c=document.getElementById('eabExtraContainer'); if(c) c.innerHTML=''; }
   document.querySelectorAll('#modalEvo .tag.active').forEach(t=>t.classList.remove('active'));
   ['msSedacion','msAnalgesia','msBNM','msVasoact'].forEach(resetMultiselect);
@@ -11278,7 +11410,7 @@ const EVO_FIELD_MAP = {
   cnFlujo:'eCNflujo', mvFio2:'eMVfio2', mrFlujo:'eMRflujo',
   cnafFlujo:'eCNAFflujo', cnafFio2:'eCNAFfio2',
   vniModo:'eVNIModo', vniPi:'eVNIPi', vniVt:'eVNIVt', vniFr:'eVNIFr', vniPeep:'eVNIPeep', vniFio2:'eVNIFio2', vniMascara:'eVNIMascara',
-  modo:'eModo', vt:'eVT', vtkg:'eVTkg', fr:'eFR', frReal:'eFRreal', peep:'ePEEP',
+  modo:'eModo', curvaFlujo:'eCurvaFlujo', vt:'eVT', vtkg:'eVTkg', fr:'eFR', frReal:'eFRreal', peep:'ePEEP',
   fc:'eFC', tas:'eTAS', tad:'eTAD', tam:'eTAM', spo2Mon:'eSpO2Mon', frMon:'eFRMon',
   pic:'ePIC', etco2:'eEtCO2', temp:'eTemp', fio2:'eFiO2', ti:'eTi', pc:'ePC',
   balon:'eBalon', map:'eMAP', comfortB:'eComfortB', sbs:'eSBS', nrs:'eNRS',
@@ -11293,7 +11425,7 @@ const EVO_FIELD_MAP = {
   rass:'eRASS', cpot:'eCPOT', camicu:'eCAMICU', ventSed:'eVentSed',
   dolorAuto:'eDolorAuto', dolorEscala:'eDolorEscala', otrosFarmacos:'eOtrosFarmacos',
   akm1:'eAKM1', mrc:'eMRC',
-  modo2:'eModo2', vt2:'eVT2', vtkg2:'eVTkg2', fr2:'eFR2', peep2:'ePEEP2',
+  modo2:'eModo2', curvaFlujo2:'eCurvaFlujo2', vt2:'eVT2', vtkg2:'eVTkg2', fr2:'eFR2', peep2:'ePEEP2',
   fio22:'eFiO22', ti2:'eTi2', pc2:'ePC2', ppico2:'ePpico2', pplat2:'ePplat2',
   peept2:'ePEEPt2', dp2:'eDP2', crs2:'eCrs2', rinsp2:'eRinsp2', flujo2:'eFlujo2',
   mp2:'eMP2', er2:'eER2', ct2:'eCT2', p012:'eP012', deltaPocc2:'eDeltaPocc2',
@@ -11441,6 +11573,17 @@ function precargarCamposEvolucion(evo){
     if(tagMS && !tagMS.classList.contains('active')) toggleModSetting(tagMS);
   }
 
+  // v3_143: reflejar los bloques que dependen del modo ventilatorio elegido
+  // (parámetros PC-CSV y curva de flujo en VC-CMV), sin borrar lo cargado.
+  [['','eModo'], ['2','eModo2']].forEach(([pref, idModo])=>{
+    const m = document.getElementById(idModo)?.value || '';
+    const bp = document.getElementById('ePCCSVBox'+pref);
+    if(bp) bp.style.display = (m === 'PC-CSV') ? 'block' : 'none';
+    const bc = document.getElementById('eCurvaFlujoBox'+pref);
+    if(bc) bc.style.display = (m === 'VC-CMV') ? 'block' : 'none';
+    pintarCurvaFlujo(pref);
+  });
+
   // Evaluación de músculos respiratorios
   if(evo.musResp){
     const tagMR = document.getElementById('tagMusRespTag');
@@ -11543,7 +11686,7 @@ async function guardarEvolucion(){
     cnFlujo:G('eCNflujo'), mvFio2:G('eMVfio2'), mrFlujo:G('eMRflujo'),
     cnafFlujo:GN('eCNAFflujo'), cnafFio2:GN('eCNAFfio2'),
     vniModo:G('eVNIModo'), vniPi:GN('eVNIPi'), vniVt:GN('eVNIVt'), vniFr:GN('eVNIFr'), vniPeep:GN('eVNIPeep'), vniFio2:GN('eVNIFio2'), vniMascara:G('eVNIMascara'),
-    modo:G('eModo'), vt:GN('eVT'), vtkg:GN('eVTkg'), fr:GN('eFR'), frReal:GN('eFRreal'), peep:GN('ePEEP'),
+    modo:G('eModo'), curvaFlujo:G('eCurvaFlujo'), vt:GN('eVT'), vtkg:GN('eVTkg'), fr:GN('eFR'), frReal:GN('eFRreal'), peep:GN('ePEEP'),
     fc:GN('eFC'), tas:GN('eTAS'), tad:GN('eTAD'), tam:G('eTAM'), spo2Mon:GN('eSpO2Mon'), frMon:GN('eFRMon'), pic:GN('ePIC'), etco2:GN('eEtCO2'), temp:GN('eTemp'),
     fio2:GN('eFiO2'), ti:GN('eTi'), pc:GN('ePC'),
     vr:GN('eVR'), aaGrad:GN('eAAGrad'), aaRatio:GN('eAaRatio'), lactato:GN('eLactato'),
@@ -11561,7 +11704,7 @@ async function guardarEvolucion(){
     akm1:G('eAKM1'), mrc:G('eMRC'),
     // Mecánica post-modificación
     modSetting: document.getElementById('tagModSetting')?.classList.contains('active') || false,
-    modo2:G('eModo2'), vt2:GN('eVT2'), vtkg2:GN('eVTkg2'), fr2:GN('eFR2'),
+    modo2:G('eModo2'), curvaFlujo2:G('eCurvaFlujo2'), vt2:GN('eVT2'), vtkg2:GN('eVTkg2'), fr2:GN('eFR2'),
     peep2:GN('ePEEP2'), fio22:GN('eFiO22'), ti2:GN('eTi2'), pc2:GN('ePC2'),
     ppico2:GN('ePpico2'), pplat2:GN('ePplat2'), peept2:GN('ePEEPt2'),
     dp2:GN('eDP2'), crs2:GN('eCrs2'), rinsp2:GN('eRinsp2'), flujo2:GN('eFlujo2'),
