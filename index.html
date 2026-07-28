@@ -5092,11 +5092,21 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_142';
+const APP_VERSION = 'v3_143';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
 const MAESTRO_DNI = '34407792';
+// v3_143: criterio ÚNICO para las acciones de jefatura (backup, restore y
+// borrado total). Antes cada función comparaba a mano contra 'rodriguezd',
+// que era el usuario del sistema viejo; con el login por DNI de Kinexa esa
+// comparación nunca daba verdadera y salía "Acción no autorizada".
+function esJefatura(u){
+  const usr = u || (typeof currentUser !== 'undefined' ? currentUser : null);
+  if(!usr) return false;
+  if(usr.esMaestro === true) return true;
+  return [MAESTRO_DNI, 'rodriguezd'].includes(String(usr.user||'').trim());
+}
 async function rpc(fn, args){
   const r = await fetch(KX_URL+'/rest/v1/rpc/'+fn, { method:'POST', headers:KX_HEADERS, body:JSON.stringify(args||{}) });
   if(!r.ok){ throw new Error((await r.text())||('HTTP '+r.status)); }
@@ -5931,7 +5941,7 @@ function launchApp(){
   // Backup/Restore completo: SOLO la jefatura de Kinexa (Lic. Rodríguez Daniel) — v3_99
   // El login ahora es por DNI, así que se identifica por DNI (34407792). Se deja
   // 'rodriguezd' por compatibilidad con sesiones del sistema anterior.
-  const esRodriguez = ['34407792','rodriguezd'].includes(currentUser.user);
+  const esRodriguez = esJefatura(currentUser);
   ['btnBackupJSON','btnRestoreJSON','btnWipeAll'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.style.display = esRodriguez ? '' : 'none';
@@ -13031,7 +13041,7 @@ function exportarDatos(){
 // ════════════════════════════════════════════════════════
 function descargarBackupCompleto(){
   // Guardia de seguridad: aunque el botón está oculto, verificamos el usuario.
-  if(currentUser?.user !== 'rodriguezd'){
+  if(!esJefatura()){
     showToast('Acción no autorizada','error');
     return;
   }
@@ -13061,7 +13071,7 @@ function descargarBackupCompleto(){
 
 async function restaurarBackupCompleto(event){
   // Guardia de seguridad
-  if(currentUser?.user !== 'rodriguezd'){
+  if(!esJefatura()){
     showToast('Acción no autorizada','error');
     return;
   }
@@ -13128,7 +13138,7 @@ async function restaurarBackupCompleto(event){
 //  Pensado para limpiar los datos de prueba antes del piloto real.
 // ════════════════════════════════════════════════════════
 async function borrarTodosLosPacientes(){
-  if(currentUser?.user !== 'rodriguezd'){
+  if(!esJefatura()){
     showToast('Acción no autorizada','error');
     return;
   }
