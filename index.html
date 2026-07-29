@@ -5168,7 +5168,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_145';
+const APP_VERSION = 'v3_146';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -6999,10 +6999,48 @@ function showSection(id){
 // ════════════════════════════════════════════════════════
 //  MODALS
 // ════════════════════════════════════════════════════════
-function openModal(id){ document.getElementById(id).classList.add('open'); }
-function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+// ── v3_146: protección contra cierres accidentales ──────────────
+// Los modales de carga (paciente, evolución, neuro, deglución, egreso) ya no se
+// cierran al tocar el fondo: se perdía todo lo cargado de un dedazo. Además, si
+// hay datos escritos sin guardar, la X y el botón Cancelar piden confirmación.
+const MODALES_PROTEGIDOS = ['modalPaciente','modalEvo','modalEvoMin','modalNeuro','modalDeglusion','modalEgreso','modalERC'];
+const modalSucio = {};
+
+function marcarModalLimpio(id){ modalSucio[id] = false; }
+function marcarModalSucioDesde(target){
+  if(!target || !target.closest) return;
+  const m = target.closest('.modal-overlay');
+  if(m && MODALES_PROTEGIDOS.includes(m.id)) modalSucio[m.id] = true;
+}
+// Cualquier tecleo, selección o tag clickeado dentro del modal lo marca como "con datos"
+document.addEventListener('input',  e=>marcarModalSucioDesde(e.target), true);
+document.addEventListener('change', e=>marcarModalSucioDesde(e.target), true);
+document.addEventListener('click',  e=>{
+  if(e.target?.closest?.('.tag, .mtag, .curva-opt, .ant-chip, .dec-btn')) marcarModalSucioDesde(e.target);
+}, true);
+
+function openModal(id){
+  marcarModalLimpio(id);            // arranca limpio en cada apertura
+  document.getElementById(id).classList.add('open');
+}
+// forzar = true → cierre programático (después de guardar), sin preguntar nada
+function closeModal(id, forzar){
+  if(!forzar && MODALES_PROTEGIDOS.includes(id) && modalSucio[id]){
+    const ok = confirm('Hay datos cargados que todavía no se guardaron.\n\nSi cerrás ahora se pierden.\n\n¿Cerrar igual?');
+    if(!ok) return;
+  }
+  marcarModalLimpio(id);
+  document.getElementById(id).classList.remove('open');
+}
 document.querySelectorAll('.modal-overlay').forEach(m=>{
-  m.addEventListener('click', e=>{ if(e.target===m) m.classList.remove('open'); });
+  m.addEventListener('click', e=>{
+    if(e.target !== m) return;                       // el click fue adentro del cuadro
+    if(MODALES_PROTEGIDOS.includes(m.id)){
+      showToast('Para cerrar, usá el botón Cancelar o la ✕','info');
+      return;                                        // el fondo ya no cierra
+    }
+    m.classList.remove('open');
+  });
 });
 
 // ════════════════════════════════════════════════════════
@@ -9495,7 +9533,7 @@ async function guardarFichaNeuro(){
 
   await persistAll();
   showToast('Ficha neurológica guardada','success');
-  closeModal('modalNeuro');
+  closeModal('modalNeuro', true);
 }
 
 // ── Exportar ficha neurológica como HTML imprimible ──────
@@ -9761,7 +9799,7 @@ async function confirmarEgreso(){
   }
 
   await persistAll();
-  closeModal('modalEgreso');
+  closeModal('modalEgreso', true);
   renderAll();
 }
 
@@ -10889,7 +10927,7 @@ async function guardarPaciente(){
     addLog('create', `Nuevo paciente: ${apellido}, ${data.nombre}`);
   }
   await persistAll();
-  closeModal('modalPaciente');
+  closeModal('modalPaciente', true);
   showToast('Paciente guardado','success');
   renderAll();
   } finally { _guardandoPac = false; }
@@ -11830,7 +11868,7 @@ async function guardarEvolucion(){
     addLog('evolve_edit',`Edición de evolución de ${p?.apellido}, ${p?.nombre} (${fmtDate(date)} — ${evo.turno})`);
     showToast('Evolución actualizada','success');
     editingEvoId = null;
-    closeModal('modalEvo');
+    closeModal('modalEvo', true);
     renderAll();
     return;
   }
@@ -11851,6 +11889,7 @@ async function guardarEvolucion(){
   document.getElementById('eDolorEscalaRow').style.display = 'none';
   document.querySelectorAll('#modalEvo .tag.active').forEach(t=>t.classList.remove('active'));
   actualizarContadorHistorial('evoHistCount', currentEvoPacId);
+  marcarModalLimpio('modalEvo'); marcarModalLimpio('modalEvoMin');  // v3_146
   renderAll();
   ofrecerEvolucionIA(evo, currentEvoPacId); // opción de redactar la evolución con IA
   } finally {
@@ -13073,7 +13112,7 @@ async function guardarEvalDeglusion(){
   await persistAll();
   addLog('eval_deg', `Eval. deglución ${degTipo} — ${p.apellido}: ${resultadoTxt}`);
   showToast('Evaluación guardada','success');
-  closeModal('modalDeglusion');
+  closeModal('modalDeglusion', true);
   // Actualizar banner en el modal de evolución
   renderBannerDeglusion(degPacId);
 }
