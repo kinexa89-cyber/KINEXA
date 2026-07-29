@@ -1720,6 +1720,8 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             <option value="IRA">IRA (insuficiencia respiratoria aguda)</option>
             <option value="Shock">Shock</option>
             <option value="POP">POP (postoperatorio)</option>
+            <option value="Protección de VAS">Protección de VAS (vía aérea superior)</option>
+            <option value="Obstrucción de VAS">Obstrucción de VAS (vía aérea superior)</option>
             <option value="Otro">Otro</option>
           </select>
         </div>
@@ -1889,6 +1891,8 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
                 <option value="IRA">IRA (insuficiencia respiratoria aguda)</option>
                 <option value="Shock">Shock</option>
                 <option value="POP">POP (postoperatorio)</option>
+                <option value="Protección de VAS">Protección de VAS (vía aérea superior)</option>
+                <option value="Obstrucción de VAS">Obstrucción de VAS (vía aérea superior)</option>
                 <option value="Otro">Otro</option>
               </select>
             </div>
@@ -2833,6 +2837,14 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
               <option value="Si">Sí</option>
               <option value="No">No</option>
             </select>
+          </div>
+          <!-- v3_145: PVE exitosa pero NO se extubó → motivo (texto libre) -->
+          <div id="pveExitNoExtubBox" style="display:none">
+            <div class="form-group">
+              <label>Motivo de no extubación</label>
+              <input type="text" id="ePVEExitNoExtubMotivo" placeholder="Ej: decisión del equipo médico, pendiente de procedimiento, mal manejo de secreciones…">
+              <div class="form-hint">Por qué no se extubó a pesar de la PVE exitosa</div>
+            </div>
           </div>
           <div id="pveExitExtubDetalle" style="display:none">
             <div class="form-row">
@@ -5156,7 +5168,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_144';
+const APP_VERSION = 'v3_145';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -6658,6 +6670,7 @@ function construirTextoEvo(evo, p){
     if(evo.pve && evo.pve !== '' && evo.pve !== 'No'){
       add('PVE realizada', 'Sí'); add('Tipo de PVE', evo.pveTipo);
       add('Duración de PVE (min)', evo.pveMin); add('Resultado de PVE', evo.pveResult);
+      add('Motivo de no extubación', evo.pveExitNoExtubMotivo);
     } else if(evo.pve === 'No'){
       add('PVE realizada', 'No'); add('Situación sin PVE', evo.pveNoExtubTipo);
     }
@@ -7083,7 +7096,7 @@ function populateCama(sala, selected){
 }
 
 // ── v3_127: Motivo de ARM ────────────────────────────────
-const MOTIVOS_VM = ['Deterioro del estado de conciencia','IRA','Shock','POP','Otro'];
+const MOTIVOS_VM = ['Deterioro del estado de conciencia','IRA','Shock','POP','Protección de VAS','Obstrucción de VAS','Otro'];
 function onARMingresoChange(val){
   const b = document.getElementById('fMotivoVMBlock');
   if(b) b.style.display = (val === 'Si') ? 'block' : 'none';
@@ -7158,7 +7171,8 @@ function onPVEChange(val){
     document.getElementById('pveSinPVEReIOTMotivo').style.display='none';
   }
   if(val!=='Si'){
-    ['ePVEtmin','ePVETipo','ePVEresult','ePVEExitExtub','ePVEExtubTipo','eInterfazPE','ePVEFallidaExtub','ePVEExitReIOT','ePVEExitReIOTMotivo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['ePVEtmin','ePVETipo','ePVEresult','ePVEExitExtub','ePVEExtubTipo','eInterfazPE','ePVEFallidaExtub','ePVEExitReIOT','ePVEExitReIOTMotivo','ePVEExitNoExtubMotivo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    { const nb=document.getElementById('pveExitNoExtubBox'); if(nb) nb.style.display='none'; }
     document.getElementById('pveExitosa').style.display='none';
     document.getElementById('pveFallida').style.display='none';
     document.getElementById('pveExitExtubDetalle').style.display='none';
@@ -7176,15 +7190,20 @@ function onPVEResultChange(val){
   document.getElementById('pveExitosa').style.display = val==='Exitosa' ? 'block' : 'none';
   document.getElementById('pveFallida').style.display = val==='Fallida' ? 'block' : 'none';
   if(val!=='Exitosa'){
-    ['ePVEExitExtub','ePVEExtubTipo','eInterfazPE','ePVEExitReIOT','ePVEExitReIOTMotivo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+    ['ePVEExitExtub','ePVEExtubTipo','eInterfazPE','ePVEExitReIOT','ePVEExitReIOTMotivo','ePVEExitNoExtubMotivo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('pveExitExtubDetalle').style.display='none';
     document.getElementById('pveExitReIOTMotivo').style.display='none';
+    { const nb=document.getElementById('pveExitNoExtubBox'); if(nb) nb.style.display='none'; }
   }
   if(val!=='Fallida'){ const el=document.getElementById('ePVEFallidaExtub');if(el)el.value=''; }
 }
 
 function onPVEExitExtubChange(val){
   document.getElementById('pveExitExtubDetalle').style.display = val==='Si' ? 'block' : 'none';
+  // v3_145: el motivo de no extubación aparece solo cuando la respuesta es "No"
+  { const nb = document.getElementById('pveExitNoExtubBox');
+    if(nb) nb.style.display = val==='No' ? 'block' : 'none';
+    if(val!=='No'){ const m=document.getElementById('ePVEExitNoExtubMotivo'); if(m) m.value=''; } }
   if(val!=='Si'){
     ['ePVEExtubTipo','eInterfazPE','ePVEExitReIOT','ePVEExitReIOTMotivo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
     document.getElementById('pveExitReIOTMotivo').style.display='none';
@@ -7252,9 +7271,9 @@ function actualizarArbolPVEPorInterfaz(tipo){
   if(tqtBlock) tqtBlock.style.display = esTQT ? 'block' : 'none';
   if(esTQT){
     ['ePVE','ePVENoExtubTipo','ePVENoInterfaz','ePVENoReIOT','ePVENoReIOTMotivo',
-     'ePVEtmin','ePVETipo','ePVEresult','ePVEExitExtub','ePVEExtubTipo','eInterfazPE','ePVEFallidaExtub','ePVEExitReIOT','ePVEExitReIOTMotivo']
+     'ePVEtmin','ePVETipo','ePVEresult','ePVEExitExtub','ePVEExtubTipo','eInterfazPE','ePVEFallidaExtub','ePVEExitReIOT','ePVEExitReIOTMotivo','ePVEExitNoExtubMotivo']
       .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
-    ['pveSinPVE','pveConPVE','pveExitosa','pveFallida','pveExitExtubDetalle','pveSinPVEReIOTMotivo','pveExitReIOTMotivo'].forEach(id=>{
+    ['pveSinPVE','pveConPVE','pveExitosa','pveFallida','pveExitExtubDetalle','pveSinPVEReIOTMotivo','pveExitReIOTMotivo','pveExitNoExtubBox'].forEach(id=>{
       const el = document.getElementById(id); if(el) el.style.display='none';
     });
   } else {
@@ -9799,7 +9818,7 @@ const EVO_SKIP_CAMPOS = new Set([
   'rass','cpot','camicu','akm1',
   // PVE (sección propia)
   'pve','pveTipo','pveMin','pveResult','pveNoExtubTipo','pveNoInterfaz','pveNoReIOT','pveNoReIOTMotivo',
-  'pveExitExtub','pveExtubTipo','pveExitReIOT','pveExitReIOTMotivo','pveFallidaExtub','extubacion',
+  'pveExitExtub','pveExtubTipo','pveExitReIOT','pveExitReIOTMotivo','pveFallidaExtub','extubacion','pveExitNoExtubMotivo',
   'pveTQTColocado','pveTQTDuracion','pveTQTNocheReconexion','pveTQTMotivo',
   'interfazPE','nPVE',
   // decanulación (sección propia via fmtDecanulacionResumen)
@@ -9861,6 +9880,7 @@ function fmtPVEResumen(e){
     if(e.pveResult) it('Resultado', e.pveResult);
     if(e.pveResult==='Exitosa'){
       if(e.pveExitExtub) it('¿Se extubó?', e.pveExitExtub);
+      if(e.pveExitNoExtubMotivo) it('Motivo de no extubación', e.pveExitNoExtubMotivo);
       if(e.pveExtubTipo) it('Tipo de extubación', e.pveExtubTipo);
       if(e.pveExitReIOT) it('¿ReIOT?', e.pveExitReIOT);
       if(e.pveExitReIOTMotivo) it('Motivo reIOT', e.pveExitReIOTMotivo);
@@ -11083,7 +11103,7 @@ function openEvolucion(patientId){
     'eAKM1','eMRC',
     'ePVE','ePVETipo','ePVEtmin','ePVEresult','eInterfazPE',
     'ePVENoExtubTipo','ePVENoInterfaz','ePVENoReIOT','ePVENoReIOTMotivo',
-    'ePVEExitExtub','ePVEExtubTipo','ePVEFallidaExtub','ePVEExitReIOT','ePVEExitReIOTMotivo',
+    'ePVEExitExtub','ePVEExtubTipo','ePVEFallidaExtub','ePVEExitReIOT','ePVEExitReIOTMotivo','ePVEExitNoExtubMotivo',
     'ePVETQTColocado','ePVETQTDuracion','ePVETQTNocheReconexion',
     'eCuffM','eCuffT','eCuffN','eOclusionCanula','eDeglusion',
     'eTipoCan','eCanDI','eCanDE','eEstadoBajon',
@@ -11433,6 +11453,7 @@ const EVO_FIELD_MAP = {
   pveNoExtubTipo:'ePVENoExtubTipo', pveNoInterfaz:'ePVENoInterfaz',
   pveNoReIOT:'ePVENoReIOT', pveNoReIOTMotivo:'ePVENoReIOTMotivo',
   pveExitExtub:'ePVEExitExtub', pveExtubTipo:'ePVEExtubTipo', pveFallidaExtub:'ePVEFallidaExtub',
+  pveExitNoExtubMotivo:'ePVEExitNoExtubMotivo',
   pveExitReIOT:'ePVEExitReIOT', pveExitReIOTMotivo:'ePVEExitReIOTMotivo',
   pveTQTColocado:'ePVETQTColocado', pveTQTDuracion:'ePVETQTDuracion', pveTQTNocheReconexion:'ePVETQTNocheReconexion',
   interfazPE:'eInterfazPE',
@@ -11714,6 +11735,7 @@ async function guardarEvolucion(){
     pveNoExtubTipo:G('ePVENoExtubTipo'), pveNoInterfaz:G('ePVENoInterfaz'),
     pveNoReIOT:G('ePVENoReIOT'), pveNoReIOTMotivo:G('ePVENoReIOTMotivo'),
     pveExitExtub:G('ePVEExitExtub'), pveExtubTipo:G('ePVEExtubTipo'),
+    pveExitNoExtubMotivo:G('ePVEExitNoExtubMotivo'),
     pveExitReIOT:G('ePVEExitReIOT'), pveExitReIOTMotivo:G('ePVEExitReIOTMotivo'),
     pveFallidaExtub:G('ePVEFallidaExtub'),
     pveTQTColocado:G('ePVETQTColocado'), pveTQTDuracion:G('ePVETQTDuracion'),
