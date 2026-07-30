@@ -2462,6 +2462,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-group"><label>PEEP (cmH₂O)</label><input type="number" id="ePEEP" inputmode="decimal" step="0.5" oninput="autoCalculate()"></div>
         <div class="form-group"><label>FiO₂ (%)</label><input type="number" id="eFiO2" inputmode="numeric" min="21" max="100" oninput="calcIndicesOxigenacion()"></div>
         <div class="form-group"><label>Ti total (seg)</label><input type="number" id="eTi" inputmode="decimal" step="0.1"></div>
+        <div class="form-group"><label>Pausa insp. (seg)</label><input type="text" id="ePausaInsp" inputmode="decimal" placeholder="Ej: 0.2" onblur="normalizarDecimal(this)"></div>
       </div>
       <div class="form-row four">
         <div class="form-group"><label>Ppico (cmH₂O)</label><input type="number" id="ePpico" inputmode="decimal" oninput="autoCalculate()"></div>
@@ -2570,6 +2571,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-group"><label>PEEP (cmH₂O)</label><input type="number" id="ePEEP2" inputmode="decimal" step="0.5" oninput="autoCalculate2()"></div>
         <div class="form-group"><label>FiO₂ (%)</label><input type="number" id="eFiO22" inputmode="numeric" min="21" max="100"></div>
         <div class="form-group"><label>Ti total (seg)</label><input type="number" id="eTi2" inputmode="decimal" step="0.1"></div>
+        <div class="form-group"><label>Pausa insp. (seg)</label><input type="text" id="ePausaInsp2" inputmode="decimal" placeholder="Ej: 0.2" onblur="normalizarDecimal(this)"></div>
       </div>
       <div class="form-row four">
         <div class="form-group"><label>Ppico (cmH₂O)</label><input type="number" id="ePpico2" inputmode="decimal" oninput="autoCalculate2()"></div>
@@ -2690,6 +2692,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             <option>Mucoso/Saliva</option>
             <option>Purulento</option>
             <option>Hemático</option>
+            <option>Carbonáceo</option>
             <option>Con restos de alimento</option>
           </select>
         </div>
@@ -2713,6 +2716,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             <option>Mucopurulenta</option>
             <option>Mucohemática</option>
             <option>Hemática</option>
+            <option>Carbonácea</option>
             <option>Con restos de alimento</option>
           </select>
         </div>
@@ -4949,7 +4953,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <select id="emSecTQTCant"><option value="">-</option><option>Escasas</option><option>Moderadas</option><option>Abundantes</option></select>
         </div>
         <div class="form-group"><label>Calidad de secreciones</label>
-          <select id="emSecTQTCal"><option value="">-</option><option>Mucosas</option><option>Mucopurulentas</option><option>Purulentas</option><option>Mucohemáticas</option><option>Hemáticas</option></select>
+          <select id="emSecTQTCal"><option value="">-</option><option>Mucosas</option><option>Mucopurulentas</option><option>Purulentas</option><option>Mucohemáticas</option><option>Hemáticas</option><option>Carbonáceas</option></select>
         </div>
       </div>
     </div>
@@ -5168,7 +5172,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_146';
+const APP_VERSION = 'v3_147';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -6646,7 +6650,7 @@ function construirTextoEvo(evo, p){
     add('VNI FR', evo.vniFr); add('VNI PEEP', evo.vniPeep); add('VNI FiO2 (%)', evo.vniFio2); add('VNI máscara', evo.vniMascara);
     add('Modo ventilatorio', evo.modo); add('VT (ml)', evo.vt); add('VT/kg PBW (ml/kg)', evo.vtkg);
     add('FR seteada', evo.fr); add('FR real', evo.frReal);
-    add('PEEP (cmH2O)', evo.peep); add('FiO2 (%)', evo.fio2); add('Ti (s)', evo.ti); add('Presión control (cmH2O)', evo.pc);
+    add('PEEP (cmH2O)', evo.peep); add('FiO2 (%)', evo.fio2); add('Ti (s)', evo.ti); add('Pausa inspiratoria (s)', evo.pausaInsp); add('Presión control (cmH2O)', evo.pc);
     add('P pico (cmH2O)', evo.ppico); add('P plateau (cmH2O)', evo.pplat); add('PEEP total (cmH2O)', evo.peept);
     add('Driving pressure (cmH2O)', evo.dp); add('Compliance Crs (ml/cmH2O)', evo.crs);
     add('Resistencia inspiratoria', evo.rinsp); add('Flujo (L/min)', evo.flujo);
@@ -7047,6 +7051,17 @@ document.querySelectorAll('.modal-overlay').forEach(m=>{
 //  TOAST
 // ════════════════════════════════════════════════════════
 let toastTimer;
+// v3_147: unifica el formato de los decimales escritos a mano (0,3 → 0.3).
+// parseFloat corta en la coma, así que sin esto "0,3" se guardaría como 0.
+function normalizarDecimal(el){
+  if(!el) return;
+  let v = String(el.value || '').trim().replace(',', '.').replace(/[^0-9.]/g, '');
+  const partes = v.split('.');
+  if(partes.length > 2) v = partes[0] + '.' + partes.slice(1).join('');
+  const n = parseFloat(v);
+  el.value = isNaN(n) ? '' : String(n);
+}
+
 function showToast(msg, type='info'){
   const t = document.getElementById('toast');
   const icons = { info:'ti-info-circle', success:'ti-circle-check', error:'ti-alert-circle' };
@@ -7521,7 +7536,7 @@ function toggleModSetting(el){
   const box = document.getElementById('accVent2Box');
   box.style.display = el.classList.contains('active') ? 'block' : 'none';
   if(!el.classList.contains('active')){
-    ['eModo2','eVT2','eVTkg2','eFR2','ePEEP2','eFiO22','eTi2','ePpico2','ePplat2','ePEEPt2',
+    ['eModo2','eVT2','eVTkg2','eFR2','ePEEP2','eFiO22','eTi2','ePausaInsp2','ePpico2','ePplat2','ePEEPt2',
      'ePC2','eDP2','eCrs2','eRinsp2','eFlujo2','eMP2','eER2','eCT2','eP012','eDeltaPocc2'].forEach(id=>{
       const el=document.getElementById(id); if(el) el.value='';
     });
@@ -9818,7 +9833,7 @@ const EVO_LABELS = {
   cnFlujo:'Cánula nasal (L/min)', mvFio2:'Máscara Venturi FiO₂ (%)', mrFlujo:'Máscara reservorio (L/min)',
   cnafFlujo:'CNAF flujo (L/min)', cnafFio2:'CNAF FiO₂ (%)',
   vniModo:'VNI modo', vniPi:'VNI Pi', vniVt:'VNI Vt', vniFr:'VNI FR', vniPeep:'VNI PEEP', vniFio2:'VNI FiO₂ (%)', vniMascara:'VNI máscara',
-  ti:'Ti (s)', pc:'Presión control', peept:'PEEP total', rinsp:'Resistencia insp.', flujo:'Flujo (L/min)',
+  ti:'Ti (s)', pausaInsp:'Pausa inspiratoria (s)', pausaInsp2:'Pausa inspiratoria (s) (post-mod.)', pc:'Presión control', peept:'PEEP total', rinsp:'Resistencia insp.', flujo:'Flujo (L/min)',
   mp:'Poder mecánico', p01:'P0.1', deltaPocc:'ΔPocc', hco3:'HCO₃', lactato:'Lactato',
   curvaFlujo:'Curva de flujo insp.', curvaFlujo2:'Curva de flujo insp. (post-mod.)',
   fc:'FC (lpm)', tam:'TAM (mmHg)', pic:'PIC (mmHg)', etco2:'EtCO₂ (mmHg)', spo2Mon:'SpO₂ monitor (%)', frMon:'FR monitor',
@@ -9849,7 +9864,7 @@ const EVO_SKIP_CAMPOS = new Set([
   'id','patientId','date','hora','turno','kine','kineUser','tipo','tipo_evo','editedAt','editedBy',
   'armDia','tecnicas','logros','obs','frecuencia','tolerancia','noAtencion','conciencia','orientacion',
   // mecánica (ya en sección Mecánica ventilatoria)
-  'modo','curvaFlujo','curvaFlujo2','vt','vtkg','fr','frReal','peep','fio2','ppico','pplat','dp','crs',
+  'modo','curvaFlujo','curvaFlujo2','vt','vtkg','fr','frReal','peep','fio2','ppico','pplat','dp','crs','pausaInsp','pausaInsp2',
   // EAB (ya en su sección)
   'ph','pco2','po2','spo2','pafi','eabExtra',
   // neuro/sedación mostrado
@@ -10051,14 +10066,14 @@ function evoCardHTML(e, i){
   // 4) Mecánica ventilatoria — setting inicial
   const secVM = evoSeccionGrid('Mecánica ventilatoria', [
     [e.modo,'Modo'], [e.curvaFlujo,'Curva de flujo'], [e.vt,'VT (ml)'], [e.vtkg,'ml/kg'], [e.fr,'FR set'], [e.frReal,'FR real'],
-    [e.peep,'PEEP'], [e.fio2,'FiO₂ %'], [e.map,'MAP'], [e.ti,'Ti (s)'], [e.pc,'PC'], [e.ppico,'Ppico'],
+    [e.peep,'PEEP'], [e.fio2,'FiO₂ %'], [e.map,'MAP'], [e.ti,'Ti (s)'], [e.pausaInsp,'Pausa insp. (s)'], [e.pc,'PC'], [e.ppico,'Ppico'],
     [e.pplat,'Pplat'], [e.peept,'PEEP total'], [e.dp,'DP'], [e.crs,'Crs'], [e.rinsp,'R insp.'],
     [e.flujo,'Flujo'], [e.mp,'Poder mec.'], [e.er,'Er'], [e.ct,'Ct'], [e.p01,'P0.1'], [e.deltaPocc,'ΔPocc']
   ]);
   // 4b) Mecánica — post modificación (solo si se marcó el cambio de setting)
   const secVM2 = e.modSetting ? evoSeccionGrid('Mecánica — post modificación', [
     [e.modo2,'Modo'], [e.curvaFlujo2,'Curva de flujo'], [e.vt2,'VT (ml)'], [e.vtkg2,'ml/kg'], [e.fr2,'FR set'], [e.peep2,'PEEP'],
-    [e.fio22,'FiO₂ %'], [e.ti2,'Ti (s)'], [e.pc2,'PC'], [e.ppico2,'Ppico'], [e.pplat2,'Pplat'],
+    [e.fio22,'FiO₂ %'], [e.ti2,'Ti (s)'], [e.pausaInsp2,'Pausa insp. (s)'], [e.pc2,'PC'], [e.ppico2,'Ppico'], [e.pplat2,'Pplat'],
     [e.peept2,'PEEP total'], [e.dp2,'DP'], [e.crs2,'Crs'], [e.rinsp2,'R insp.'], [e.flujo2,'Flujo'],
     [e.mp2,'Poder mec.'], [e.er2,'Er'], [e.ct2,'Ct'], [e.p012,'P0.1'], [e.deltaPocc2,'ΔPocc']
   ]) : '';
@@ -11132,7 +11147,7 @@ function openEvolucion(patientId){
   document.getElementById('eHora').value = ahora.getHours().toString().padStart(2,'0') + ':' + ahora.getMinutes().toString().padStart(2,'0');
   document.getElementById('eTurno').value = currentShift();
   document.getElementById('eKine').value = currentUser.name;
-  const nFields = ['eModo','eVT','eVTkg','eFR','eFRreal','ePEEP','eFiO2','eTi','ePC',
+  const nFields = ['eModo','eVT','eVTkg','eFR','eFRreal','ePEEP','eFiO2','eTi','ePausaInsp','ePC',
     'ePpico','ePplat','ePEEPt','eDP','eCrs','eRinsp','eFlujo','eMP','eER','eCT',
     'ePH','ePCO2','ePO2','eHCO3','eSpO2','ePAFI','eInterfaz',
     'eFC','eTAS','eTAD','eTAM','eSpO2Mon','eFRMon','ePIC','eEtCO2','eTemp',
@@ -11161,7 +11176,7 @@ function openEvolucion(patientId){
     'eMRCFlexCadD','eMRCExtRodD','eMRCDorsiTobD','eMRCFlexCadI','eMRCExtRodI','eMRCDorsiTobI',
     'eObs','eInterfazPrincipal','eInterfazEsp',
     'eVR','eAAGrad','eAaRatio','eLactato','eP01','eDeltaPocc',
-    'eModo2','eVT2','eVTkg2','eFR2','ePEEP2','eFiO22','eTi2','ePpico2','ePplat2','ePEEPt2',
+    'eModo2','eVT2','eVTkg2','eFR2','ePEEP2','eFiO22','eTi2','ePausaInsp2','ePpico2','ePplat2','ePEEPt2',
     'ePC2','eDP2','eCrs2','eRinsp2','eFlujo2','eMP2','eER2','eCT2','eP012','eDeltaPocc2',
     'eCurvaFlujo','eCurvaFlujo2'];
   nFields.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
@@ -11470,7 +11485,7 @@ const EVO_FIELD_MAP = {
   vniModo:'eVNIModo', vniPi:'eVNIPi', vniVt:'eVNIVt', vniFr:'eVNIFr', vniPeep:'eVNIPeep', vniFio2:'eVNIFio2', vniMascara:'eVNIMascara',
   modo:'eModo', curvaFlujo:'eCurvaFlujo', vt:'eVT', vtkg:'eVTkg', fr:'eFR', frReal:'eFRreal', peep:'ePEEP',
   fc:'eFC', tas:'eTAS', tad:'eTAD', tam:'eTAM', spo2Mon:'eSpO2Mon', frMon:'eFRMon',
-  pic:'ePIC', etco2:'eEtCO2', temp:'eTemp', fio2:'eFiO2', ti:'eTi', pc:'ePC',
+  pic:'ePIC', etco2:'eEtCO2', temp:'eTemp', fio2:'eFiO2', ti:'eTi', pausaInsp:'ePausaInsp', pc:'ePC',
   balon:'eBalon', map:'eMAP', comfortB:'eComfortB', sbs:'eSBS', nrs:'eNRS',
   ops:'eOPS', flacc:'eFLACC', capd:'eCAPD', sophia:'eSOPHIA',
   tal:'eTal', woodDownes:'eWoodDownes',
@@ -11484,7 +11499,7 @@ const EVO_FIELD_MAP = {
   dolorAuto:'eDolorAuto', dolorEscala:'eDolorEscala', otrosFarmacos:'eOtrosFarmacos',
   akm1:'eAKM1', mrc:'eMRC',
   modo2:'eModo2', curvaFlujo2:'eCurvaFlujo2', vt2:'eVT2', vtkg2:'eVTkg2', fr2:'eFR2', peep2:'ePEEP2',
-  fio22:'eFiO22', ti2:'eTi2', pc2:'ePC2', ppico2:'ePpico2', pplat2:'ePplat2',
+  fio22:'eFiO22', ti2:'eTi2', pausaInsp2:'ePausaInsp2', pc2:'ePC2', ppico2:'ePpico2', pplat2:'ePplat2',
   peept2:'ePEEPt2', dp2:'eDP2', crs2:'eCrs2', rinsp2:'eRinsp2', flujo2:'eFlujo2',
   mp2:'eMP2', er2:'eER2', ct2:'eCT2', p012:'eP012', deltaPocc2:'eDeltaPocc2',
   pve:'ePVE', pveTipo:'ePVETipo', pveMin:'ePVEtmin', pveResult:'ePVEresult',
@@ -11747,7 +11762,7 @@ async function guardarEvolucion(){
     vniModo:G('eVNIModo'), vniPi:GN('eVNIPi'), vniVt:GN('eVNIVt'), vniFr:GN('eVNIFr'), vniPeep:GN('eVNIPeep'), vniFio2:GN('eVNIFio2'), vniMascara:G('eVNIMascara'),
     modo:G('eModo'), curvaFlujo:G('eCurvaFlujo'), vt:GN('eVT'), vtkg:GN('eVTkg'), fr:GN('eFR'), frReal:GN('eFRreal'), peep:GN('ePEEP'),
     fc:GN('eFC'), tas:GN('eTAS'), tad:GN('eTAD'), tam:G('eTAM'), spo2Mon:GN('eSpO2Mon'), frMon:GN('eFRMon'), pic:GN('ePIC'), etco2:GN('eEtCO2'), temp:GN('eTemp'),
-    fio2:GN('eFiO2'), ti:GN('eTi'), pc:GN('ePC'),
+    fio2:GN('eFiO2'), ti:GN('eTi'), pausaInsp:GN('ePausaInsp'), pc:GN('ePC'),
     vr:GN('eVR'), aaGrad:GN('eAAGrad'), aaRatio:GN('eAaRatio'), lactato:GN('eLactato'),
     p01:GN('eP01'), deltaPocc:GN('eDeltaPocc'),
     ppico:GN('ePpico'), pplat:GN('ePplat'), peept:GN('ePEEPt'),
@@ -11764,7 +11779,7 @@ async function guardarEvolucion(){
     // Mecánica post-modificación
     modSetting: document.getElementById('tagModSetting')?.classList.contains('active') || false,
     modo2:G('eModo2'), curvaFlujo2:G('eCurvaFlujo2'), vt2:GN('eVT2'), vtkg2:GN('eVTkg2'), fr2:GN('eFR2'),
-    peep2:GN('ePEEP2'), fio22:GN('eFiO22'), ti2:GN('eTi2'), pc2:GN('ePC2'),
+    peep2:GN('ePEEP2'), fio22:GN('eFiO22'), ti2:GN('eTi2'), pausaInsp2:GN('ePausaInsp2'), pc2:GN('ePC2'),
     ppico2:GN('ePpico2'), pplat2:GN('ePplat2'), peept2:GN('ePEEPt2'),
     dp2:GN('eDP2'), crs2:GN('eCrs2'), rinsp2:GN('eRinsp2'), flujo2:GN('eFlujo2'),
     mp2:GN('eMP2'), er2:GN('eER2'), ct2:GN('eCT2'),
@@ -11875,7 +11890,7 @@ async function guardarEvolucion(){
   addLog('evolve',`Evolución de ${p?.apellido}, ${p?.nombre} (${fmtDate(date)} — ${evo.turno})`);
   showToast('Evolución guardada','success');
   // Reset
-  const nFields = ['eVT','eVTkg','eFR','eFRreal','ePEEP','eFiO2','eTi','ePC','ePpico','ePplat','ePEEPt','eDP','eCrs','eRinsp','eFlujo',
+  const nFields = ['eVT','eVTkg','eFR','eFRreal','ePEEP','eFiO2','eTi','ePausaInsp','ePC','ePpico','ePplat','ePEEPt','eDP','eCrs','eRinsp','eFlujo',
     'eMP','eER','eCT','ePH','ePCO2','ePO2','eHCO3','eSpO2','ePAFI',
     'eOtrosFarmacos','ePVEtmin','eCuffM','eCuffT','eCuffN','eCanDI','eCanDE','eObs',
     'eFC','eTAS','eTAD','eTAM','eSpO2Mon','eFRMon','ePIC','eEtCO2','eTemp','eDolorEscala'];
