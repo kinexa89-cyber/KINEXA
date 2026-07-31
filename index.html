@@ -1757,6 +1757,21 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <input type="hidden" id="fReintubado">
     </div>
 
+    <!-- v3_154: texto libre al pie de la ficha -->
+    <div class="form-section">
+      <div class="form-section-title"><i class="ti ti-notes"></i> Observaciones</div>
+      <div class="form-group">
+        <textarea id="fObservaciones" rows="3" placeholder="Antecedentes relevantes, particularidades del paciente, avisos para el equipo..."></textarea>
+      </div>
+    </div>
+
+    <div class="form-section">
+      <div class="form-section-title"><i class="ti ti-target-arrow"></i> Objetivos terapéuticos</div>
+      <div class="form-group">
+        <textarea id="fObjetivos" rows="3" placeholder="Objetivos del plan kinesiológico para este paciente..."></textarea>
+      </div>
+    </div>
+
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalPaciente')">Cancelar</button>
       <button class="btn btn-success" onclick="guardarPaciente()"><i class="ti ti-device-floppy"></i>Guardar paciente</button>
@@ -3289,6 +3304,8 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           </div>
         </div>
 
+        <!-- v3_154: TCT y ficha neurológica, solo para el grupo neurológico -->
+        <div id="eNeuroSoloNeuro">
         <!-- TCT — Trunk Control Test -->
         <div style="margin-top:10px">
           <div class="dec-label">TCT — Trunk Control Test</div>
@@ -3347,6 +3364,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             <i class="ti ti-brain"></i> Abrir ficha neurológica completa
           </button>
         </div>
+        </div><!-- fin eNeuroSoloNeuro -->
       </div>
       <!-- Pre/Post quirúrgico -->
       <div id="eGrupoQx" style="display:none">
@@ -5185,7 +5203,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_151';
+const APP_VERSION = 'v3_154';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -7703,6 +7721,7 @@ function resetGrupoFields(){
     if(el){ el.checked=false; el.closest('.ant-chip')?.classList.remove('is-checked'); }
   });
   // Campos amputado
+  ['fObservaciones','fObjetivos'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   ['fAmpNivel','fAmpLado','fAmpMotivo','fAmpCausa'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   // Campos trauma
   { const el=document.getElementById('fTraumaLesiones'); if(el) el.value=''; }
@@ -9084,7 +9103,12 @@ function actualizarGrupoEvo(tipoKine){
   // Solo cuentan para "Evaluación específica" los grupos que aún tienen sub-bloque propio
   // (neurológico, pre/post Qx, amputado). Respiratorio/post UTI/quemado sin otro sub-bloque
   // ya no abren un acordeón vacío.
-  const showNeuro = tipoKine === 'neurologico';
+  // v3_153: conciencia y FAC dejaron de ser exclusivos del grupo neurológico.
+  // Aplican a cualquier paciente que no esté en ARM, sea cual sea su grupo.
+  // v3_154: el TCT y la ficha neurológica completa siguen siendo solo del grupo neurológico.
+  const showNeuro = !!tipoKine;
+  const soloNeuro = document.getElementById('eNeuroSoloNeuro');
+  if(soloNeuro) soloNeuro.style.display = (tipoKine === 'neurologico') ? 'block' : 'none';
   const showQx = tipoKine === 'pre_qx' || tipoKine === 'post_qx';
   const showAmputado = tipoKine === 'amputado';
   const showAny = showNeuro || showQx || showAmputado;
@@ -9102,7 +9126,9 @@ function actualizarGrupoEvo(tipoKine){
   document.getElementById('eGrupoAmputado').style.display = showAmputado ? 'block' : 'none';
   if(tipoKine){
     const icon = iconos[tipoKine] || 'ti-stethoscope';
-    const label = labels[tipoKine] || 'Evaluación específica';
+    const propio = { pre_qx:1, post_qx:1, amputado:1, neurologico:1 };
+    // Si el grupo no tiene sub-bloque propio, el acordeón solo trae la evaluación funcional
+    const label = propio[tipoKine] ? (labels[tipoKine] || 'Evaluación específica') : 'Evaluación funcional';
     document.getElementById('accGrupoTitle').innerHTML = `<i class="ti ${icon}" style="margin-right:6px;color:var(--purple-400)"></i>${label}`;
   }
 }
@@ -10077,9 +10103,14 @@ function evoCardHTML(e, i){
   const INTERFAZ_ESP_LABEL = { VAN_AA:'Aire ambiente', VAN_O2:'VAN con O₂', CNAF:'CNAF', VNI:'VNI', TQT_O2:'TQT espontáneo + O₂', TQT_AA:'TQT espontáneo', CN:'Cánula nasal', MV:'Máscara Venturi', MR:'Máscara reservorio' };
 
   // Valores combinados
+  // v3_153: en aire ambiente (y en TQT espontáneo) la interfaz principal y la
+  // específica traen el mismo texto, y quedaba "Aire ambiente · Aire ambiente".
+  const _espTxt = e.interfazEsp ? (INTERFAZ_ESP_LABEL[e.interfazEsp] || e.interfazEsp) : '';
+  const _mismoTxt = (a,b) => String(a||'').normalize('NFC').trim().toLowerCase()
+                          === String(b||'').normalize('NFC').trim().toLowerCase();
   const interfazTxt = e.interfaz
-    ? (e.interfaz + (e.interfazEsp ? ' · ' + (INTERFAZ_ESP_LABEL[e.interfazEsp]||e.interfazEsp) : ''))
-    : (e.interfazEsp ? (INTERFAZ_ESP_LABEL[e.interfazEsp]||e.interfazEsp) : '');
+    ? (_espTxt && !_mismoTxt(_espTxt, e.interfaz) ? e.interfaz + ' · ' + _espTxt : e.interfaz)
+    : _espTxt;
   const motivoVMTxt = e.motivoVM ? (e.motivoVM==='Otro' && e.motivoVMOtro ? 'Otro: '+e.motivoVMOtro : e.motivoVM) : '';
   const posicionTxt = e.posicionARM ? (e.posicionARM + (e.pronoCiclo ? ' ('+e.pronoCiclo+')' : '')) : '';
   const taTxt = (e.tas!==''&&e.tas!=null && e.tad!==''&&e.tad!=null) ? `${e.tas}/${e.tad}` : '';
@@ -10807,6 +10838,7 @@ function openEditPaciente(id){
     M('fQxCarga', p.grupoQxCarga||'');
   }
   if(p.tipoKine==='amputado'){
+    M('fObservaciones',p.observaciones||''); M('fObjetivos',p.objetivos||'');
     M('fAmpNivel',p.grupoAmpNivel||''); M('fAmpLado',p.grupoAmpLado||''); M('fAmpMotivo',p.grupoAmpMotivo||''); M('fAmpCausa',p.grupoAmpCausa||'');
   }
   if(p.tipoKine==='trauma'){ M('fTraumaLesiones', p.grupoTraumaLesiones||''); }
@@ -10961,6 +10993,7 @@ async function guardarPaciente(){
     grupoQuemAreas: ['Cara','Cuello','ToraxAnt','Dorso','Abdomen','MMSS_der','MMSS_izq','MMII_der','MMII_izq','Perine','ViaAerea']
       .filter(a=>{ const el=document.getElementById('fQuem'+a); return el?.checked; })
       .map(a=>{ const el=document.getElementById('fQuem'+a); return el?.value; }),
+    observaciones:G('fObservaciones')||null, objetivos:G('fObjetivos')||null,
     grupoAmpNivel:G('fAmpNivel')||null, grupoAmpLado:G('fAmpLado')||null, grupoAmpMotivo:G('fAmpMotivo')||null, grupoAmpCausa:G('fAmpCausa')||null,
     grupoCRMcec:G('fCRMcec')||null, grupoCRMtiempo:G('fCRMtiempo')||null,
     grupoQxServicio:G('fQxServicio')||null, grupoQxOtro:G('fQxOtroTexto')||null,
@@ -12236,6 +12269,7 @@ function renderIndPrestaciones(mesStr){
   <div class="kpi-row" style="margin-bottom:16px">
     <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-checklist"></i></div><div class="kpi-content"><div class="label">Técnicas registradas</div><div class="value">${totalTecnicas}</div><div class="sub">${entries.length} técnicas distintas</div></div></div>
     <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-clipboard-check"></i></div><div class="kpi-content"><div class="label">Prestaciones generales</div><div class="value">${totalPrestGen}</div><div class="sub">ARM/TQT ×6 · resto ×2</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon amber"><i class="ti ti-stethoscope"></i></div><div class="kpi-content"><div class="label">Procedimientos</div><div class="value">${procedimientosTotalEnMes('',mesStr)+fichasNeuroEnMes('',mesStr)}</div><div class="sub">PVE, decanulación, evaluaciones</div></div></div>
     <div class="kpi-card"><div class="kpi-icon purple"><i class="ti ti-notes"></i></div><div class="kpi-content"><div class="label">Evoluciones del mes</div><div class="value">${evolucionesEnMes('',mesStr)}</div><div class="sub">registros clínicos</div></div></div>
   </div>
 
@@ -12416,6 +12450,35 @@ function prestacionesGeneralesEnMes(sala, mesStr){
     }, 0);
 }
 
+// v3_152: procedimientos que el equipo ya deja asentados en la evolución pero
+// que hasta ahora no sumaban ninguna prestación. Todos valen 1 y se cuentan
+// una vez por evolución (si en una misma visita se hizo PVE y extubación, son 2).
+const PROCEDIMIENTOS_ESP = [
+  { label:'PVE (prueba de ventilación espontánea)', test: e => e.pve === 'Si' },
+  { label:'Extubación',                            test: e => String(e.extubacion||'').startsWith('Sí') },
+  { label:'Prueba de oclusión de cánula',          test: e => !!e.decTolOclusion },
+  { label:'Blue test',                             test: e => (Array.isArray(e.decBlueTest) && e.decBlueTest.length > 0) || !!e.blueTest },
+  { label:'Prueba de válvula de fonación',         test: e => !!e.decTolValvula },
+  { label:'Decanulación',                          test: e => e.decDecanulado === 'Si' },
+  { label:'Evaluación MRC-Sumy',                   test: e => e.mrcTotal !== null && e.mrcTotal !== undefined && e.mrcTotal !== '' },
+];
+const _cumple = (proc, e) => { try { return !!proc.test(e); } catch(_){ return false; } };
+
+function procedimientoEspEnMes(sala, mesStr, label){
+  const proc = PROCEDIMIENTOS_ESP.find(x => x.label === label);
+  if(!proc) return 0;
+  return _evosDelMes(sala, mesStr).filter(e => _cumple(proc, e)).length;
+}
+function procedimientosTotalEnMes(sala, mesStr){
+  return _evosDelMes(sala, mesStr)
+    .reduce((tot, e) => tot + PROCEDIMIENTOS_ESP.filter(pr => _cumple(pr, e)).length, 0);
+}
+// Las fichas neurológicas no viven en la evolución sino en el paciente
+function fichasNeuroEnMes(sala, mesStr){
+  return patients.filter(p => !sala || p.sala === sala)
+    .reduce((tot, p) => tot + (p.fichasNeuro || []).filter(f => String(f.fecha||'').startsWith(mesStr)).length, 0);
+}
+
 function prestacionesEspEnMes(sala, mesStr, tipoEsp){
   // Cuenta las evoluciones que tienen esa prestación específica registrada
   const objetivo = tipoEsp ? _normPrest(tipoEsp) : null;
@@ -12425,7 +12488,10 @@ function prestacionesEspEnMes(sala, mesStr, tipoEsp){
 }
 
 function prestacionesTotalesEnMes(sala, mesStr){
-  return prestacionesGeneralesEnMes(sala, mesStr) + prestacionesEspTotalEnMes(sala, mesStr);
+  return prestacionesGeneralesEnMes(sala, mesStr)
+       + prestacionesEspTotalEnMes(sala, mesStr)
+       + procedimientosTotalEnMes(sala, mesStr)
+       + fichasNeuroEnMes(sala, mesStr);
 }
 
 function evolucionesEnMes(sala, mesStr){
@@ -12693,6 +12759,10 @@ function renderIndMensual(mesStr){
         <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Prestaciones específicas</td></tr>
         ${fila('Total de prestaciones específicas', s=>prestacionesEspTotalEnMes(s,mesStr))}
         ${PRESTACIONES_ESP.map(esp => fila(esp, s=>prestacionesEspEnMes(s,mesStr,esp))).join('')}
+        <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Procedimientos y evaluaciones</td></tr>
+        ${fila('Total de procedimientos', s=>procedimientosTotalEnMes(s,mesStr)+fichasNeuroEnMes(s,mesStr))}
+        ${PROCEDIMIENTOS_ESP.map(pr => fila(pr.label, s=>procedimientoEspEnMes(s,mesStr,pr.label))).join('')}
+        ${fila('Evaluación neurológica (ficha)', s=>fichasNeuroEnMes(s,mesStr))}
         <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">ARM / Ventilación mecánica</td></tr>
         ${filaARM('Días de ARMI totales', s=>patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0))}
         ${filaARM('Días de TET', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.interfaz==='TET'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
@@ -12992,6 +13062,10 @@ async function exportarIndicadores(vista, mesStr){
     rows.push(['PRESTACIONES ESPECÍFICAS']);
     rows.push(calcFila('Total de prestaciones específicas', s=>prestacionesEspTotalEnMes(s,mesStr)));
     PRESTACIONES_ESP.forEach(esp => rows.push(calcFila(esp, s=>prestacionesEspEnMes(s,mesStr,esp))));
+    rows.push(['PROCEDIMIENTOS Y EVALUACIONES']);
+    rows.push(calcFila('Total de procedimientos', s=>procedimientosTotalEnMes(s,mesStr)+fichasNeuroEnMes(s,mesStr)));
+    PROCEDIMIENTOS_ESP.forEach(pr => rows.push(calcFila(pr.label, s=>procedimientoEspEnMes(s,mesStr,pr.label))));
+    rows.push(calcFila('Evaluación neurológica (ficha)', s=>fichasNeuroEnMes(s,mesStr)));
     rows.push(['ARM / VENTILACIÓN']);
     rows.push(calcFila('Días de ARMI totales', s=>patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0)));
     rows.push(calcFila('Días de TET', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.interfaz==='TET'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
