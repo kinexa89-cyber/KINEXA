@@ -5203,7 +5203,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_154';
+const APP_VERSION = 'v3_156';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -6969,7 +6969,7 @@ function autoCalculate(){
 
   // ── VT ml/kg PCP ─────────────────────────────────────
   const p = patients.find(x=>x.id===currentEvoPacId);
-  const pcpVal = p ? (p.pcp || calcPCP(p.talla, p.genero)) : null;
+  const pcpVal = pcpDePaciente(p);
   if(vt !== null && pcpVal){
     setF('eVTkg', (vt / pcpVal).toFixed(1));
   }
@@ -7012,7 +7012,7 @@ function autoCalculate(){
   // ── Ventilatory Ratio = (FR × VT_mL × PaCO₂) / (PCP × 100 × 37.5) ──
   const pco2 = get('ePCO2');
   const p2 = patients.find(x=>x.id===currentEvoPacId);
-  const pcpVR = p2 ? (p2.pcp || calcPCP(p2.talla, p2.genero)) : null;
+  const pcpVR = pcpDePaciente(p2);
   if(fr !== null && vt !== null && pco2 !== null && pcpVR && pcpVR > 0){
     const vr = (fr * vt * pco2) / (pcpVR * 100 * 37.5);
     setF('eVR', vr.toFixed(2));
@@ -7624,7 +7624,7 @@ function autoCalculate2(){
   if(vt!==null&&dp!==null&&dp>0) setF('eCrs2',(vt/dp).toFixed(1));
   if(ppico!==null&&pplat!==null&&flujo!==null&&flujo>0) setF('eRinsp2',((ppico-pplat)/(flujo/60)).toFixed(2));
   const p=patients.find(x=>x.id===currentEvoPacId);
-  const pcpVal=p?(p.pcp||calcPCP(p.talla,p.genero)):null;
+  const pcpVal=pcpDePaciente(p);
   if(vt!==null&&pcpVal) setF('eVTkg2',(vt/pcpVal).toFixed(1));
   const crs=get('eCrs2'), rinsp=get('eRinsp2');
   if(crs!==null&&rinsp!==null){
@@ -8342,6 +8342,17 @@ function precargarVentilacionUltimaEvo(patientId){
 }
 
 // ── Árbol de decisión ventilatorio ──────────────────────
+// v3_155: campos de oxigenoterapia no invasiva y VNI. Con el paciente en ARM
+// invasiva (TET/TQT) no pueden tener valor: si el kine cargó, por ejemplo, una
+// Venturi y después corrigió a "Sí, en ARM", los sub-bloques se ocultaban pero
+// el dato quedaba adentro y se guardaba igual.
+const CAMPOS_O2_NO_INVASIVO = ['eCNflujo','eMVfio2','eMRflujo','eCNAFflujo','eCNAFfio2',
+  'eVNIModo','eVNIPi','eVNIVt','eVNIFr','eVNIPeep','eVNIFio2','eVNIMascara'];
+const CLAVES_O2_NO_INVASIVO = ['cnFlujo','mvFio2','mrFlujo','cnafFlujo','cnafFio2',
+  'vniModo','vniPi','vniVt','vniFr','vniPeep','vniFio2','vniMascara'];
+// Una evolución está en ARM invasiva si tiene TET/TQT y no tiene interfaz espontánea
+const evoEnARMinvasiva = e => !e?.interfazEsp && (e?.interfaz === 'TET' || e?.interfaz === 'TQT');
+
 function setARMStatus(enARM){
   document.getElementById('eBtnArmSi').className = 'dec-btn' + (enARM ? ' dec-arm-si' : '');
   document.getElementById('eBtnArmNo').className = 'dec-btn' + (!enARM ? ' dec-arm-no' : '');
@@ -8365,6 +8376,8 @@ function setARMStatus(enARM){
     // Resetear botones de no-ARM
     document.querySelectorAll('#eSubArmNo .dec-btn').forEach(b=>{ b.classList.remove('dec-sel','dec-sel-tqt'); });
     document.getElementById('eInterfazEsp').value = '';
+    // v3_155: además de ocultar, vaciar. Si no, el dato viaja escondido hasta el guardado.
+    CAMPOS_O2_NO_INVASIVO.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
     // Mostrar TQT block si la interfaz ARM ya tiene TQT seleccionado
     const iface = document.getElementById('eInterfazPrincipal').value;
     const esTQTarm = iface === 'TQT';
@@ -8995,7 +9008,7 @@ function calcCVporPCP(){
   if(isNaN(cv)){ if(pcpInput) pcpInput.value=''; return; }
   // Buscar PCP del paciente actual
   const p = patients.find(x=>x.id===currentEvoPacId);
-  const pcp = p ? (p.pcp || calcPCP(p.talla, p.genero)) : null;
+  const pcp = pcpDePaciente(p);
   if(pcp && pcp>0){
     const ratio = (cv/pcp).toFixed(1);
     if(pcpInput) pcpInput.value = ratio + ' mL/kg';
@@ -10125,13 +10138,17 @@ function evoCardHTML(e, i){
     [e.tal,'Score de Tal'], [e.woodDownes,'Wood-Downes mod.']
   ]);
   // 2) Ventilación / interfaz + O₂ + VNI
+  // v3_155: en ARM invasiva no se muestran los campos de O₂ no invasivo, aunque
+  // hayan quedado guardados por el error anterior.
+  const _ARMinv = evoEnARMinvasiva(e);
+  const _sinO2NI = v => _ARMinv ? '' : v;
   const secVent = evoSeccionGrid('Ventilación / Interfaz', [
     [interfazTxt,'Interfaz'], [motivoVMTxt,'Motivo de ARM'], [e.balon,'Balón'], [e.diasVE,'Día de vent. espontánea'], [e.armDiametro,'Diámetro TET/cán. (mm)'], [e.tetADS,'TET a ADS (cm)'],
     [posicionTxt,'Posición'], [e.cuffLeak,'Cuff leak test'],
-    [e.cnFlujo,'Cánula nasal (L/min)'], [e.mvFio2,'Venturi FiO₂ (%)'], [e.mrFlujo,'Reservorio (L/min)'],
-    [e.cnafFlujo,'CNAF flujo (L/min)'], [e.cnafFio2,'CNAF FiO₂ (%)'],
-    [e.vniModo,'VNI modo'], [e.vniPi,'VNI Pi'], [e.vniVt,'VNI Vt'], [e.vniFr,'VNI FR'],
-    [e.vniPeep,'VNI PEEP'], [e.vniFio2,'VNI FiO₂ (%)'], [e.vniMascara,'VNI máscara']
+    [_sinO2NI(e.cnFlujo),'Cánula nasal (L/min)'], [_sinO2NI(e.mvFio2),'Venturi FiO₂ (%)'], [_sinO2NI(e.mrFlujo),'Reservorio (L/min)'],
+    [_sinO2NI(e.cnafFlujo),'CNAF flujo (L/min)'], [_sinO2NI(e.cnafFio2),'CNAF FiO₂ (%)'],
+    [_sinO2NI(e.vniModo),'VNI modo'], [_sinO2NI(e.vniPi),'VNI Pi'], [_sinO2NI(e.vniVt),'VNI Vt'], [_sinO2NI(e.vniFr),'VNI FR'],
+    [_sinO2NI(e.vniPeep),'VNI PEEP'], [_sinO2NI(e.vniFio2),'VNI FiO₂ (%)'], [_sinO2NI(e.vniMascara),'VNI máscara']
   ]);
   // 3) Neurológico / Sedoanalgesia
   const secNeuro = evoSeccionGrid('Neurológico / Sedoanalgesia', [
@@ -10775,7 +10792,7 @@ function openEditPaciente(id){
   const M = (fid, val) => { const el=document.getElementById(fid); if(el) el.value = val||''; };
   M('fApellido',p.apellido); M('fNombre',p.nombre); M('fDNI',p.dni); M('fEdad',p.edad); M('fGenero',p.genero);
   M('fPeso',p.peso); M('fTalla',p.talla); M('fIMC', (p.peso&&p.talla)?(p.peso/Math.pow(p.talla/100,2)).toFixed(1):'');
-  { const pcpEdit = calcPCP(p.talla, p.genero); M('fPCP', pcpEdit!==null ? pcpEdit.toFixed(1)+' kg' : ''); }
+  { const pcpEdit = pcpSegunSala(p.talla, p.genero, p.sala); M('fPCP', pcpEdit!==null ? pcpEdit.toFixed(1)+' kg' : ''); }
   M('fSala',p.sala);
   populateCama(p.sala, p.cama);
   M('fFIHosp',p.fIHosp); M('fFIUTI',p.fIUTI);
@@ -10957,7 +10974,7 @@ async function guardarPaciente(){
   const talla = parseFloat(G('fTalla')) || null;
   const imc = (peso && talla) ? +(peso/Math.pow(talla/100,2)).toFixed(1) : null;
   const genero = G('fGenero');
-  const pcp = calcPCP(talla, genero);
+  const pcp = pcpSegunSala(talla, genero, G('fSala'));   // v3_156
   // v3_130: los antecedentes salen de la lista que corresponda a la sala
   const esPed = esSalaPediatrica(G('fSala'));
   const antecedentes = esPed
@@ -11052,6 +11069,21 @@ async function eliminarPaciente(id){
   addLog('delete',`Eliminó: ${p?.apellido}, ${p?.nombre}`);
   showToast('Paciente eliminado');
   renderAll();
+}
+
+// v3_156: PCP según el tipo de sala. En adultos, Devine; en pediatría, el peso
+// del percentil 50 para la talla y el sexo. Antes la ficha MOSTRABA el pediátrico
+// pero GUARDABA el de Devine, que con tallas chicas da negativo (60 cm → -34 kg),
+// y de ahí salían los mL/kg absurdos del bloque de ventilación protectora.
+function pcpSegunSala(talla, genero, sala){
+  return esSalaPediatrica(sala) ? pcpPediatrico(talla, genero) : calcPCP(talla, genero);
+}
+// PCP de un paciente ya guardado, recalculando si el dato viejo quedó mal
+function pcpDePaciente(p){
+  if(!p) return null;
+  const correcto = pcpSegunSala(p.talla, p.genero, p.sala);
+  if(correcto !== null && correcto !== undefined) return correcto;
+  return (p.pcp != null && p.pcp > 0) ? p.pcp : null;
 }
 
 // Fórmula de Devine — Peso Corporal Predicho (PCP)
@@ -11397,8 +11429,8 @@ function openEvolucion(patientId){
   // ── PCP ──
   const pcpBox = document.getElementById('pcpBox');
   const pcpContent = document.getElementById('pcpContent');
-  const pcpVal = p.pcp || calcPCP(p.talla, p.genero);
-  if(pcpVal && p.talla && enARM){
+  const pcpVal = pcpDePaciente(p);   // v3_156: pediátrico o Devine según la sala
+  if(pcpVal && pcpVal > 0 && p.talla && enARM){
     pcpBox.style.display = 'block';
     const vol6 = pcpVal*6, vol7 = pcpVal*7, vol8 = pcpVal*8;
     pcpContent.innerHTML = `
@@ -12002,6 +12034,13 @@ async function guardarEvolucion(){
       ecoDE:G('eEcoDE'), ecoEspInsp:G('eEcoEspInsp'), ecoEspEsp:G('eEcoEspEsp'), ecoTFdi:G('eEcoTFdi')
     } : null,
   };
+
+  // v3_155: con ARM invasiva no puede quedar oxigenoterapia no invasiva cargada.
+  // Es imposible clínicamente (un paciente con TET no está con Venturi), así que
+  // se limpia acá aunque el formulario haya dejado pasar algo.
+  if(evoEnARMinvasiva(evo)){
+    CLAVES_O2_NO_INVASIVO.forEach(k => { evo[k] = ''; });
+  }
 
   const editandoId = editingEvoId;
   if(editandoId){
