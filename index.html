@@ -5203,7 +5203,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_156';
+const APP_VERSION = 'v3_157';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -10855,7 +10855,6 @@ function openEditPaciente(id){
     M('fQxCarga', p.grupoQxCarga||'');
   }
   if(p.tipoKine==='amputado'){
-    M('fObservaciones',p.observaciones||''); M('fObjetivos',p.objetivos||'');
     M('fAmpNivel',p.grupoAmpNivel||''); M('fAmpLado',p.grupoAmpLado||''); M('fAmpMotivo',p.grupoAmpMotivo||''); M('fAmpCausa',p.grupoAmpCausa||'');
   }
   if(p.tipoKine==='trauma'){ M('fTraumaLesiones', p.grupoTraumaLesiones||''); }
@@ -10863,6 +10862,9 @@ function openEditPaciente(id){
     MRC_CAMPOS.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=p.grupoMRC[id]||''; });
     calcMRCIngreso();
   }
+  // v3_157: observaciones y objetivos son de todos los pacientes, no solo de los
+  // amputados. Habían quedado adentro de ese bloque, así que no se recuperaban.
+  M('fObservaciones', p.observaciones||''); M('fObjetivos', p.objetivos||'');
   M('fTQTMin',p.tqtMin); M('fTQTMinTipo',p.tqtMinTipo); M('fTQTMinID',p.tqtMinID); M('fTQTMinED',p.tqtMinED);
   toggleTQTMinDetalle();
   // Antecedentes
@@ -10951,7 +10953,7 @@ async function guardarPaciente(){
       p.estado === 'Activo' &&
       p.sala === salaSel &&
       String(p.cama||'').trim() === String(camaSel).trim() &&
-      p.id !== editPacId
+      String(p.id) !== String(editPacId)   // v3_157: el id puede venir como texto
     );
     if(ocupante){
       const seguir = confirm(
@@ -11026,11 +11028,24 @@ async function guardarPaciente(){
     causaVM:G('fCausaVM'), causaVMOtro:G('fCausaVMOtro'), fIOT:G('fFIOT'), inicioARM:G('fInicioARM'), vmni:G('fVMNI'),
     prono:parseInt(G('fProno'))||0, tqt:G('fTQT'), finARM:G('fFinARM'), reintubado:G('fReintubado'),
   };
-  if(editPacId){
-    const idx = patients.findIndex(x=>x.id===editPacId);
-    patients[idx] = { ...patients[idx], ...data };
+  if(editPacId != null && editPacId !== ''){
+    // v3_157: comparación tolerante al tipo de dato. Si el id no aparece, se avisa
+    // en vez de seguir de largo: antes eso terminaba creando un paciente nuevo.
+    const idx = patients.findIndex(x => String(x.id) === String(editPacId));
+    if(idx < 0){
+      showToast('No se encontró el paciente que estabas editando. Volvé a abrirlo desde la lista.','error');
+      return;
+    }
+    patients[idx] = { ...patients[idx], ...data, id: patients[idx].id };
     addLog('edit', `Editó paciente: ${apellido}, ${data.nombre}`);
   } else {
+    // v3_157: última barrera contra el duplicado. Si el formulario está en modo
+    // "Editar paciente" pero por lo que sea se perdió el id, no se crea uno nuevo.
+    const tituloModal = document.getElementById('modalPacTitulo')?.textContent || '';
+    if(tituloModal.trim().toLowerCase().startsWith('editar')){
+      showToast('Se perdió la referencia del paciente que estabas editando. Cerrá la ficha y volvé a abrirla desde la lista.','error');
+      return;
+    }
     data.id = Date.now();
     // Un paciente recién cargado siempre arranca Activo; el egreso se gestiona aparte
     data.estado = 'Activo';
