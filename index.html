@@ -3515,6 +3515,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <span class="tag" onclick="toggleTag(this)">Traslado a QX</span>
           <span class="tag" onclick="toggleTag(this)">Traslado a otro sector</span>
           <span class="tag" onclick="toggleTag(this)">Evaluación de deglución</span>
+          <span class="tag" onclick="toggleTag(this)">Rehabilitación de la deglución</span>
           <span class="tag" onclick="toggleTag(this)">Toma de aspirado traqueal</span>
           <span class="tag" onclick="toggleTag(this)">Toma de minibal</span>
           <span class="tag" onclick="toggleTag(this)">Toma de virológico</span>
@@ -5184,7 +5185,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_148';
+const APP_VERSION = 'v3_151';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -5648,6 +5649,7 @@ async function loadFromSupabase(){
     patients = pacs || [];
     // v3_148: las evoluciones eliminadas quedan marcadas en la base y se descartan acá
     evoluciones = (evos || []).filter(e => e && !e._borrada);
+    marcarTodoSincronizado();   // v3_150: lo recién bajado ya está en la nube
     savePacientes(); saveEvos();
     setSyncStatus('ok');
     renderAll();
@@ -5658,20 +5660,53 @@ async function loadFromSupabase(){
   }
 }
 
+// ── v3_150: sincronización incremental ──────────────────────────
+// Antes cada guardado reenviaba TODOS los pacientes y TODAS las evoluciones,
+// de a una y esperando la respuesta de cada una. Con 500 evoluciones cargadas
+// eso son 500 viajes a la nube: de ahí los 30 segundos para guardar. Ahora se
+// guarda una huella de cada registro y solo se manda lo que realmente cambió.
+const _limpiarObj = obj => JSON.parse(JSON.stringify(obj, (k,v) => v === undefined ? null : v));
+let _huellas = {};   // 'evolucion:123' → huella del contenido ya subido
+
+function _huella(txt){
+  let h = 5381;
+  for(let i=0; i<txt.length; i++){ h = ((h*33) ^ txt.charCodeAt(i)) >>> 0; }
+  return h.toString(36) + ':' + txt.length;
+}
+// Después de bajar datos, lo local y lo de la nube son idénticos: se anota
+// la huella de todo para no reenviar nada que no se haya tocado.
+function marcarTodoSincronizado(){
+  _huellas = {};
+  for(const p of patients){ if(p?.id) _huellas['paciente:'+p.id] = _huella(JSON.stringify(_limpiarObj(p))); }
+  for(const e of evoluciones){ if(e?.id) _huellas['evolucion:'+e.id] = _huella(JSON.stringify(_limpiarObj(e))); }
+}
+
 async function saveToSupabase(){
+  if(DEMO){ setSyncStatus('ok'); return; }
+  // Armar la lista de lo que cambió respecto de la última sincronización
+  const pendientes = [];
+  for(const p of patients){
+    if(!p?.id) continue;
+    const json = JSON.stringify(_limpiarObj(p)), clave = 'paciente:'+p.id, h = _huella(json);
+    if(_huellas[clave] !== h) pendientes.push({ clave, h, tipo:'paciente', id:p.id, data:JSON.parse(json) });
+  }
+  for(const e of evoluciones){
+    if(!e?.id || !e.patientId) continue;
+    const json = JSON.stringify(_limpiarObj(e)), clave = 'evolucion:'+e.id, h = _huella(json);
+    if(_huellas[clave] !== h) pendientes.push({ clave, h, tipo:'evolucion', id:e.id, data:JSON.parse(json) });
+  }
+  if(!pendientes.length){ setSyncStatus('ok'); return; }   // no hay nada para mandar
+
   setSyncStatus('syncing');
   try {
-    if(DEMO){ setSyncStatus('ok'); return; }
-    // Limpiar datos antes de enviar: reemplazar undefined por null
-    const cleanObj = obj => JSON.parse(JSON.stringify(obj, (k,v) => v === undefined ? null : v));
-    // Guarda cada paciente y cada evolución como un bloque de datos en la base central
-    for(const p of patients){
-      if(!p.id) continue;
-      await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'paciente', p_id:String(p.id), p_data:cleanObj(p) });
-    }
-    for(const e of evoluciones){
-      if(!e.id || !e.patientId) continue;
-      await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'evolucion', p_id:String(e.id), p_data:cleanObj(e) });
+    // De a 6 en paralelo: si alguna vez hay muchos cambios juntos (por ejemplo
+    // al restaurar un backup) no se hace la cola de a uno.
+    for(let i=0; i<pendientes.length; i+=6){
+      const lote = pendientes.slice(i, i+6);
+      await Promise.all(lote.map(r =>
+        rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:r.tipo, p_id:String(r.id), p_data:r.data })
+          .then(()=>{ _huellas[r.clave] = r.h; })
+      ));
     }
     setSyncStatus('ok');
   } catch(e){
@@ -10147,7 +10182,7 @@ function evoCardHTML(e, i){
           ${e.armDia ? `<span class="badge badge-amber" style="font-size:10px">ARM día ${e.armDia}</span>` : ''}
           ${e.frecuencia?`<span class="badge badge-purple" style="font-size:10px">${e.frecuencia==='manana'?'Mañana':e.frecuencia==='cada3'?'Cada 3d':e.frecuencia==='cada5'?'Cada 5d':'Sin criterio'}</span>`:''}
         </div>
-        <span class="evo-kine"><i class="ti ti-user" style="font-size:11px"></i> ${e.kine||'—'}${puedeEditarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" onclick="editarEvolucion(${e.id})" title="Editar (disponible hasta 24 hs después de la carga)"><i class="ti ti-pencil"></i></button>` : ''}${puedeEliminarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarEvolucion(${e.id})" title="Eliminar evolución"><i class="ti ti-trash"></i></button>` : ''}</span>
+        <span class="evo-kine"><i class="ti ti-user" style="font-size:11px"></i> ${e.kine||'—'}${puedeEditarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" onclick="editarEvolucion(${e.id})" title="Editar (disponible hasta 24 hs después de la carga)"><i class="ti ti-pencil"></i></button>` : ''}${puedeEliminarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarEvolucion(${e.id})" title="${currentUser?.role === 'admin' ? 'Eliminar evolución' : 'Eliminar (disponible hasta 24 hs después de la carga)'}"><i class="ti ti-trash"></i></button>` : ''}</span>
       </div>
       ${e.noAtencion && e.noAtencion!=='Sí se realizó atención' ? `<div style="font-size:12px;color:var(--amber-600);font-weight:600;margin-bottom:4px">⚠ ${e.noAtencion}</div>` : ''}
       ${e.conciencia ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">${e.conciencia}${e.orientacion?'. '+e.orientacion:''}</div>` : ''}
@@ -11494,16 +11529,25 @@ function puedeEditarEvolucion(evo){
 // asiento que explique por qué.
 function puedeEliminarEvolucion(evo){
   if(!evo || !currentUser) return false;
-  if(currentUser.role !== 'admin') return false;
   if(evo.tipo === 'traslado' || evo.tipo === 'alta' || evo.tipo === 'obito') return false;
-  return true;
+  // Jefatura y administradores: cualquier evolución, sin límite de tiempo
+  if(currentUser.role === 'admin') return true;
+  // v3_149: el resto del equipo puede borrar únicamente las propias,
+  // y solo dentro de las 24 hs de haberlas cargado (misma regla que la edición).
+  const esAutor = evo.kineUser
+    ? evo.kineUser === currentUser.user
+    : (evo.kine || '') === currentUser.name;
+  if(!esAutor) return false;
+  return (Date.now() - evo.id) <= VENTANA_EDICION_EVO_MS;
 }
 
 async function eliminarEvolucion(evoId){
   const evo = evoluciones.find(e => e.id === evoId);
   if(!evo){ showToast('No se encontró la evolución','error'); return; }
   if(!puedeEliminarEvolucion(evo)){
-    showToast('Solo la jefatura y los administradores pueden eliminar evoluciones','error');
+    showToast(currentUser?.role === 'admin'
+      ? 'Esta evolución no se puede eliminar'
+      : 'Solo podés eliminar tus propias evoluciones, dentro de las 24 hs de haberlas cargado', 'error');
     return;
   }
   const p = patients.find(x => x.id === evo.patientId);
@@ -12058,7 +12102,7 @@ function buscarHistorial(){
             <span style="font-size:12px;font-weight:700;color:var(--blue-800)">${fmtDate(e.date)}</span>
             <span class="badge badge-gray" style="font-size:9px">${e.turno}</span>
             ${tolBadge}
-            <span style="font-size:10px;color:var(--text-muted);margin-left:auto">${e.kine}${puedeEditarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" onclick="editarEvolucion(${e.id})" title="Editar (disponible hasta 24 hs después de la carga)"><i class="ti ti-pencil"></i></button>` : ''}${puedeEliminarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarEvolucion(${e.id})" title="Eliminar evolución"><i class="ti ti-trash"></i></button>` : ''}</span>
+            <span style="font-size:10px;color:var(--text-muted);margin-left:auto">${e.kine}${puedeEditarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" onclick="editarEvolucion(${e.id})" title="Editar (disponible hasta 24 hs después de la carga)"><i class="ti ti-pencil"></i></button>` : ''}${puedeEliminarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarEvolucion(${e.id})" title="${currentUser?.role === 'admin' ? 'Eliminar evolución' : 'Eliminar (disponible hasta 24 hs después de la carga)'}"><i class="ti ti-trash"></i></button>` : ''}</span>
           </div>
           ${items.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:5px">${items.map(([v,k])=>`<span style="font-size:11px;background:#fff;border:1px solid var(--border);padding:2px 7px;border-radius:5px"><b>${k}:</b> ${v}</span>`).join('')}</div>` : ''}
           ${tags ? `<div style="margin-bottom:4px">${tags}</div>` : ''}
@@ -12318,27 +12362,54 @@ function deglucionEnMes(sala, mesStr){
 
 // ── Prestaciones ─────────────────────────────────────────
 // Técnicas específicas que cuentan como prestación especial
+// v3_151: la lista tiene que coincidir 1 a 1 con los tags del bloque
+// "Prestaciones específicas" de la evolución. Faltaban cuatro (traslado a otro
+// sector, toma de virológico, esputo y la rehabilitación de la deglución), así
+// que esas prestaciones se cargaban pero no se contaban en ningún lado.
 const PRESTACIONES_ESP = [
-  'Evaluación de deglución',
-  'Toma de aspirado traqueal',
-  'Toma de minibal',
   'Traslado a TAC',
   'Traslado a QX',
-  'Cambio de cánula de TQT',
-  'Asistencia TQT percutánea',
+  'Traslado a otro sector',
+  'Evaluación de deglución',
+  'Rehabilitación de la deglución',
+  'Toma de aspirado traqueal',
+  'Toma de minibal',
+  'Toma de virológico',
+  'Esputo',
   'Asistencia IOT',
+  'Asistencia TQT percutánea',
   'Asistencia BAL',
   'Asistencia decúbito prono',
   'Asistencia decúbito supino',
+  'Cambio de cánula de TQT',
 ];
 
-function esTecnicaEsp(tec){
-  return PRESTACIONES_ESP.some(p => tec?.toLowerCase().includes(p.toLowerCase().split(' ').slice(0,2).join(' ').toLowerCase()));
+// Comparación exacta y tolerante a acentos/mayúsculas. Antes se comparaba por
+// las primeras palabras ("traslado a"), lo que confundía prestaciones distintas.
+const _normPrest = t => String(t||'').normalize('NFC').trim().toLowerCase();
+const _SET_PREST_ESP = new Set(PRESTACIONES_ESP.map(_normPrest));
+
+function esTecnicaEsp(tec){ return _SET_PREST_ESP.has(_normPrest(tec)); }
+
+// Evoluciones del mes/sector sobre las que se cuenta
+function _evosDelMes(sala, mesStr){
+  return evoluciones.filter(e =>
+    !e.tipo && e.date?.startsWith(mesStr) &&
+    (!sala || patients.find(p => p.id === e.patientId)?.sala === sala)
+  );
+}
+
+// Total de prestaciones específicas: suma TODAS las marcadas en cada evolución,
+// no una por evolución. Si en una misma visita se hizo aspirado y traslado a TAC,
+// son dos prestaciones.
+function prestacionesEspTotalEnMes(sala, mesStr){
+  return _evosDelMes(sala, mesStr)
+    .reduce((tot, e) => tot + (e.tecnicas || []).filter(esTecnicaEsp).length, 0);
 }
 
 function prestacionesGeneralesEnMes(sala, mesStr){
   // ARM/TQT → 6 prestaciones por evolución; resto → 2
-  return evoluciones.filter(e=>!e.tipo && e.date?.startsWith(mesStr) && (!sala || patients.find(p=>p.id===e.patientId)?.sala===sala))
+  return _evosDelMes(sala, mesStr)
     .reduce((total, e)=>{
       const enARMoTQT = e.interfaz==='TET' || e.interfaz==='TQT' || (e.interfaz||'').includes('TQT espontáneo');
       return total + (enARMoTQT ? 6 : 2);
@@ -12346,18 +12417,15 @@ function prestacionesGeneralesEnMes(sala, mesStr){
 }
 
 function prestacionesEspEnMes(sala, mesStr, tipoEsp){
-  // Cuenta las evoluciones que tienen esa técnica específica registrada
-  return evoluciones.filter(e=>{
-    if(e.tipo || !e.date?.startsWith(mesStr)) return false;
-    if(sala){ const p=patients.find(x=>x.id===e.patientId); if(!p||p.sala!==sala) return false; }
-    const tecnicas = e.tecnicas||[];
-    return tecnicas.some(t=> tipoEsp ? t?.toLowerCase().includes(tipoEsp.toLowerCase()) : esTecnicaEsp(t));
-  }).length;
+  // Cuenta las evoluciones que tienen esa prestación específica registrada
+  const objetivo = tipoEsp ? _normPrest(tipoEsp) : null;
+  return _evosDelMes(sala, mesStr).filter(e =>
+    (e.tecnicas || []).some(t => objetivo ? _normPrest(t) === objetivo : esTecnicaEsp(t))
+  ).length;
 }
 
 function prestacionesTotalesEnMes(sala, mesStr){
-  return prestacionesGeneralesEnMes(sala, mesStr) +
-    PRESTACIONES_ESP.reduce((s, esp)=>s + prestacionesEspEnMes(sala, mesStr, esp.split(' ').slice(0,3).join(' ')), 0);
+  return prestacionesGeneralesEnMes(sala, mesStr) + prestacionesEspTotalEnMes(sala, mesStr);
 }
 
 function evolucionesEnMes(sala, mesStr){
@@ -12576,7 +12644,7 @@ function renderIndMensual(mesStr){
 
   const totalEvo = evolucionesEnMes('', mesStr);
   const totalPrestGen = prestacionesGeneralesEnMes('', mesStr);
-  const totalPrestEsp = PRESTACIONES_ESP.reduce((s,esp)=>s+prestacionesEspEnMes('',mesStr,esp.split(' ').slice(0,3).join(' ')),0);
+  const totalPrestEsp = prestacionesEspTotalEnMes('', mesStr);
   const totalPrestTot = totalPrestGen + totalPrestEsp;
   const totalARM = patients.reduce((s,p)=>s+diasARMenMes(p,mesStr),0);
   const totalTET = diasTETenMes(mesStr);
@@ -12623,16 +12691,8 @@ function renderIndMensual(mesStr){
         ${fila('Prestaciones totales del servicio', s=>prestacionesTotalesEnMes(s,mesStr))}
         ${fila('Prestaciones generales (ARM/TQT ×6, resto ×2)', s=>prestacionesGeneralesEnMes(s,mesStr))}
         <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Prestaciones específicas</td></tr>
-        ${fila('Evaluación de deglución', s=>prestacionesEspEnMes(s,mesStr,'Evaluación de deglución'))}
-        ${fila('Toma de muestra resp. (aspirado/miniBAL)', s=>prestacionesEspEnMes(s,mesStr,'aspirado')+prestacionesEspEnMes(s,mesStr,'minibal'))}
-        ${fila('Traslado a TAC', s=>prestacionesEspEnMes(s,mesStr,'TAC'))}
-        ${fila('Traslado a QX', s=>prestacionesEspEnMes(s,mesStr,'QX'))}
-        ${fila('Cambio de cánula de TQT', s=>prestacionesEspEnMes(s,mesStr,'Cambio de cánula'))}
-        ${fila('Asistencia TQT percutánea', s=>prestacionesEspEnMes(s,mesStr,'Asistencia TQT'))}
-        ${fila('Asistencia IOT', s=>prestacionesEspEnMes(s,mesStr,'Asistencia IOT'))}
-        ${fila('Asistencia BAL', s=>prestacionesEspEnMes(s,mesStr,'Asistencia BAL'))}
-        ${fila('Asistencia decúbito prono', s=>prestacionesEspEnMes(s,mesStr,'prono'))}
-        ${fila('Asistencia decúbito supino', s=>prestacionesEspEnMes(s,mesStr,'supino'))}
+        ${fila('Total de prestaciones específicas', s=>prestacionesEspTotalEnMes(s,mesStr))}
+        ${PRESTACIONES_ESP.map(esp => fila(esp, s=>prestacionesEspEnMes(s,mesStr,esp))).join('')}
         <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">ARM / Ventilación mecánica</td></tr>
         ${filaARM('Días de ARMI totales', s=>patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0))}
         ${filaARM('Días de TET', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.interfaz==='TET'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
@@ -12930,16 +12990,8 @@ async function exportarIndicadores(vista, mesStr){
     rows.push(calcFila('Prestaciones totales', s=>prestacionesTotalesEnMes(s,mesStr)));
     rows.push(calcFila('Prestaciones generales', s=>prestacionesGeneralesEnMes(s,mesStr)));
     rows.push(['PRESTACIONES ESPECÍFICAS']);
-    rows.push(calcFila('Evaluación de deglución', s=>prestacionesEspEnMes(s,mesStr,'Evaluación de deglución')));
-    rows.push(calcFila('Toma de muestra resp.', s=>prestacionesEspEnMes(s,mesStr,'aspirado')+prestacionesEspEnMes(s,mesStr,'minibal')));
-    rows.push(calcFila('Traslado a TAC', s=>prestacionesEspEnMes(s,mesStr,'TAC')));
-    rows.push(calcFila('Traslado a QX', s=>prestacionesEspEnMes(s,mesStr,'QX')));
-    rows.push(calcFila('Cambio cánula TQT', s=>prestacionesEspEnMes(s,mesStr,'Cambio de cánula')));
-    rows.push(calcFila('Asistencia TQT', s=>prestacionesEspEnMes(s,mesStr,'Asistencia TQT')));
-    rows.push(calcFila('Asistencia IOT', s=>prestacionesEspEnMes(s,mesStr,'Asistencia IOT')));
-    rows.push(calcFila('Asistencia BAL', s=>prestacionesEspEnMes(s,mesStr,'Asistencia BAL')));
-    rows.push(calcFila('Asistencia decúbito prono', s=>prestacionesEspEnMes(s,mesStr,'prono')));
-    rows.push(calcFila('Asistencia decúbito supino', s=>prestacionesEspEnMes(s,mesStr,'supino')));
+    rows.push(calcFila('Total de prestaciones específicas', s=>prestacionesEspTotalEnMes(s,mesStr)));
+    PRESTACIONES_ESP.forEach(esp => rows.push(calcFila(esp, s=>prestacionesEspEnMes(s,mesStr,esp))));
     rows.push(['ARM / VENTILACIÓN']);
     rows.push(calcFila('Días de ARMI totales', s=>patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0)));
     rows.push(calcFila('Días de TET', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.interfaz==='TET'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
