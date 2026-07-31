@@ -5203,7 +5203,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_157';
+const APP_VERSION = 'v3_158';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -5664,9 +5664,9 @@ async function loadFromSupabase(){
       rpc('kinexa_registros', { p_token:TOKEN, p_tipo:'evolucion' }),
     ]);
     // En el modelo central el objeto ya viene entero (con id / patientId adentro)
-    patients = pacs || [];
+    patients = normalizarPacientes(pacs);                       // v3_158
     // v3_148: las evoluciones eliminadas quedan marcadas en la base y se descartan acá
-    evoluciones = (evos || []).filter(e => e && !e._borrada);
+    evoluciones = normalizarEvoluciones((evos || []).filter(e => e && !e._borrada));
     marcarTodoSincronizado();   // v3_150: lo recién bajado ya está en la nube
     savePacientes(); saveEvos();
     setSyncStatus('ok');
@@ -5739,9 +5739,21 @@ async function saveToSupabase(){
 // ════════════════════════════════════════════════════════
 // Usuarios: gestionados en la base de Kinexa (tabla usuarios, vía RPC)
 
-let patients = LS.get('hbee_patients') || []; // v3_100: datos semilla de prueba eliminados para el piloto real
+// v3_158: los identificadores viajan a la nube como texto y a veces vuelven así.
+// Si en pantalla son número y en la lista son texto, la app deja de reconocer al
+// paciente: avisa que su propia cama está ocupada y al guardar lo duplica en vez
+// de modificarlo. Se normalizan a número en cuanto entran, una sola vez.
+const _numId = v => { const n = Number(v); return (v !== null && v !== '' && Number.isFinite(n)) ? n : v; };
+function normalizarPacientes(lista){
+  return (lista || []).filter(Boolean).map(p => ({ ...p, id: _numId(p.id) }));
+}
+function normalizarEvoluciones(lista){
+  return (lista || []).filter(Boolean).map(e => ({ ...e, id: _numId(e.id), patientId: _numId(e.patientId) }));
+}
 
-let evoluciones = LS.get('hbee_evos') || []; // v3_100: datos semilla de prueba eliminados
+let patients = normalizarPacientes(LS.get('hbee_patients')); // v3_100: datos semilla de prueba eliminados para el piloto real
+
+let evoluciones = normalizarEvoluciones(LS.get('hbee_evos')); // v3_100: datos semilla de prueba eliminados
 
 let logs = LS.get('hbee_logs') || [];
 let currentUser = null;
