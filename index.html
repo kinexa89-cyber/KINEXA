@@ -703,7 +703,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     </div>
     <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:14px">
       <input type="checkbox" id="loginRecordar" style="width:16px;height:16px;margin-top:2px;accent-color:var(--blue-600);cursor:pointer;flex-shrink:0">
-      <label for="loginRecordar" style="font-size:12px;color:var(--text-muted);cursor:pointer;margin:0;line-height:1.4">Recordar mi sesión en esta computadora<br><span style="font-size:10.5px;color:var(--text-light)">No lo actives en computadoras compartidas</span></label>
+      <label for="loginRecordar" style="font-size:12px;color:var(--text-muted);cursor:pointer;margin:0;line-height:1.4">Mantener la sesión abierta en este dispositivo<br><span style="font-size:10.5px;color:var(--text-light)">No lo actives en equipos compartidos. La sesión se cierra sola a las 12 horas.</span></label>
     </div>
     <button class="btn btn-primary btn-block" id="btnLogin" onclick="doLogin()"><i class="ti ti-login"></i>Ingresar</button>
     <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="mostrarInicio()"><i class="ti ti-arrow-left"></i>Volver</button>
@@ -5186,7 +5186,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_160';
+const APP_VERSION = 'v3_161';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -5206,8 +5206,49 @@ async function rpc(fn, args){
   if(!r.ok){ throw new Error((await r.text())||('HTTP '+r.status)); }
   const t = await r.text(); return t ? JSON.parse(t) : null;
 }
-function guardarSesionKx(u){ TOKEN=u.token; USER=u; try{ sessionStorage.setItem('kinexa_token',u.token); sessionStorage.setItem('kinexa_user',JSON.stringify(u)); }catch(e){} }
-function limpiarSesionKx(){ TOKEN=null; USER=null; try{ sessionStorage.removeItem('kinexa_token'); sessionStorage.removeItem('kinexa_user'); }catch(e){} }
+// ── v3_161: sesión persistente ──────────────────────────────────
+// Antes la sesión vivía SOLO en sessionStorage, que el navegador borra al cerrar
+// la pestaña. En el celular, bloquear la pantalla o cambiar de app puede
+// descartar la pestaña, así que al volver pedía usuario y clave de nuevo. Y el
+// casillero "Recordar mi sesión" no lo leía nadie: era decorativo.
+// Ahora, si el usuario lo marca, la sesión va a localStorage y sobrevive al
+// cierre del navegador, con vencimiento a las 12 horas (un turno largo).
+const SESION_HORAS = 12;
+function sesionRecordada(){ return document.getElementById('loginRecordar')?.checked === true; }
+
+function guardarSesionKx(u, recordar){
+  TOKEN = u.token; USER = u;
+  const persistir = (recordar === undefined) ? sesionRecordada() : !!recordar;
+  const payload = JSON.stringify(u);
+  try {
+    sessionStorage.setItem('kinexa_token', u.token);
+    sessionStorage.setItem('kinexa_user', payload);
+  } catch(e){}
+  try {
+    if(persistir){
+      localStorage.setItem('kinexa_token', u.token);
+      localStorage.setItem('kinexa_user', payload);
+      localStorage.setItem('kinexa_exp', String(Date.now() + SESION_HORAS*3600*1000));
+    } else {
+      localStorage.removeItem('kinexa_token');
+      localStorage.removeItem('kinexa_user');
+      localStorage.removeItem('kinexa_exp');
+    }
+  } catch(e){}
+}
+function limpiarSesionKx(){
+  TOKEN=null; USER=null;
+  try{ sessionStorage.removeItem('kinexa_token'); sessionStorage.removeItem('kinexa_user'); }catch(e){}
+  try{ localStorage.removeItem('kinexa_token'); localStorage.removeItem('kinexa_user'); localStorage.removeItem('kinexa_exp'); }catch(e){}
+}
+// Renueva el vencimiento mientras la persona sigue trabajando
+function renovarSesionKx(){
+  try {
+    if(localStorage.getItem('kinexa_token')){
+      localStorage.setItem('kinexa_exp', String(Date.now() + SESION_HORAS*3600*1000));
+    }
+  } catch(e){}
+}
 let KX_SECTORES = [];
 // Arma la pantalla de sectores y las opciones de sala a partir de los sectores de la institución
 // ── v3_129: tipo de sala (adultos / pediátrico) ──────────
@@ -5427,7 +5468,7 @@ async function doRegistrar(){
     const login = await rpc('kinexa_login', { p_institucion_id: Number(instId), p_dni:aDni, p_clave:aDni });
     const s = Array.isArray(login) ? login[0] : login;
     if(!s || !s.token) throw new Error('No se pudo iniciar sesión después del registro.');
-    guardarSesionKx({ token:s.token, user:aDni, name:(aNombre+' '+aApellido).trim(), role:'admin', institucion_id:Number(instId) });
+    guardarSesionKx({ token:s.token, user:aDni, name:(aNombre+' '+aApellido).trim(), role:'admin', institucion_id:Number(instId) }, false);
     // 3) Guardar sectores y kinesiólogos
     await rpc('kinexa_setup', { p_token:TOKEN, p_config:{ institucion:inst, sectores, usuarios } });
     // 4) Cargar sectores y entrar a la app
@@ -6007,18 +6048,58 @@ async function doLogin(){
 // Restaurar sesión si la pestaña se recargó (F5) con sesión vigente
 async function tryRestoreSession(){
   try {
-    const tok = sessionStorage.getItem('kinexa_token');
-    const usr = sessionStorage.getItem('kinexa_user');
+    let tok = sessionStorage.getItem('kinexa_token');
+    let usr = sessionStorage.getItem('kinexa_user');
+    let desdeDispositivo = false;
+    // v3_161: si la pestaña no la tiene, buscar la sesión guardada en el dispositivo
+    if(!tok || !usr){
+      const exp = parseInt(localStorage.getItem('kinexa_exp') || '0', 10);
+      if(exp && Date.now() < exp){
+        tok = localStorage.getItem('kinexa_token');
+        usr = localStorage.getItem('kinexa_user');
+        desdeDispositivo = true;
+      } else if(exp){
+        limpiarSesionKx();   // venció: se descarta
+      }
+    }
     if(!tok || !usr) return;
     const user = JSON.parse(usr);
     TOKEN = tok; USER = user;
+    if(desdeDispositivo){
+      // Reponerla en la pestaña y correr el vencimiento
+      try {
+        sessionStorage.setItem('kinexa_token', tok);
+        sessionStorage.setItem('kinexa_user', usr);
+      } catch(e){}
+      renovarSesionKx();
+      const chk = document.getElementById('loginRecordar');
+      if(chk) chk.checked = true;
+    }
     try {
       const sects = await rpc('kinexa_sectores', { p_token: TOKEN });
       aplicarSectoresKinexa(sects);
-    } catch(eSec){ aplicarSectoresKinexa([]); }
+    } catch(eSec){
+      // v3_161: si el token dejó de valer, no seguir con una sesión rota
+      const msg = String(eSec?.message||'').toLowerCase();
+      if(msg.includes('token') || msg.includes('sesi') || msg.includes('401') || msg.includes('403')){
+        limpiarSesionKx(); return;
+      }
+      aplicarSectoresKinexa([]);
+    }
     startSession(USER);
   } catch(e){ limpiarSesionKx(); }
 }
+// v3_161: mientras la persona usa la app, se corre el vencimiento de la sesión.
+// Como máximo se toca el almacenamiento una vez por minuto.
+let _ultRenov = 0;
+['click','keydown','visibilitychange'].forEach(ev=>{
+  document.addEventListener(ev, ()=>{
+    if(!TOKEN) return;
+    const ahora = Date.now();
+    if(ahora - _ultRenov > 60000){ _ultRenov = ahora; renovarSesionKx(); }
+  }, true);
+});
+
 // Al cargar: poblar instituciones e intentar restaurar sesión
 cargarInstitucionesKinexa();
 tryRestoreSession();
