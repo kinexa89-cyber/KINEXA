@@ -2200,6 +2200,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             <option>+1 Inquieto</option><option>0 Alerta y tranquilo</option><option>-1 Somnoliento</option>
             <option>-2 Sedación leve</option><option>-3 Sedación moderada</option>
             <option>-4 Sedación profunda</option><option>-5 Sin respuesta</option>
+            <option>No evaluable</option>
           </select>
         </div>
         <div class="form-group"><label>CPOT / Dolor</label>
@@ -3726,6 +3727,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
               <option>-1 — Somnoliento</option>
               <option>+1 — Inquieto</option>
               <option>+2 — Agitado</option>
+              <option>No evaluable</option>
             </select>
           </div>
         </div>
@@ -5186,7 +5188,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_161';
+const APP_VERSION = 'v3_162';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -7193,6 +7195,51 @@ document.querySelectorAll('.modal-overlay').forEach(m=>{
 //  TOAST
 // ════════════════════════════════════════════════════════
 let toastTimer;
+// ── v3_162: decimales en iPhone ─────────────────────────────────
+// El teclado numérico de iOS muestra COMA, no punto, según el idioma del
+// teléfono. En un campo <input type="number"> el navegador considera inválido
+// "36,5" y devuelve un valor vacío: el kine escribe el dato, lo ve en pantalla
+// y al guardar se pierde sin ningún aviso. La solución es aceptar la coma y
+// convertirla a punto en cuanto se escribe.
+function _esCampoDecimal(el){
+  if(!el || el.tagName !== 'INPUT') return false;
+  return el.getAttribute('inputmode') === 'decimal' ||
+         (el.type === 'number' && el.getAttribute('step') && el.getAttribute('step') !== '1');
+}
+// Los campos numéricos pasan a ser de texto para que iOS no descarte la coma;
+// se conserva el teclado numérico con inputmode.
+function habilitarDecimalesIOS(raiz){
+  (raiz || document).querySelectorAll('input[inputmode="decimal"]').forEach(el=>{
+    if(el.type === 'number'){
+      el.dataset.eraNumber = '1';
+      el.type = 'text';
+      el.setAttribute('inputmode', 'decimal');
+    }
+  });
+}
+document.addEventListener('DOMContentLoaded', ()=>habilitarDecimalesIOS());
+habilitarDecimalesIOS();
+// Los campos que se creen más adelante (EAB extra, escalas dinámicas) también
+// se convierten al abrirse cualquier modal.
+document.addEventListener('click', ()=>{ setTimeout(()=>habilitarDecimalesIOS(), 120); }, true);
+
+// Mientras se escribe: la coma se transforma en punto y se descarta lo que no
+// sea número. Se respeta la posición del cursor para no molestar al escribir.
+document.addEventListener('input', e=>{
+  const el = e.target;
+  if(!_esCampoDecimal(el) || el.type === 'number') return;
+  const antes = el.value;
+  const pos = el.selectionStart;
+  let v = antes.replace(',', '.').replace(/[^0-9.\-]/g, '');
+  const partes = v.split('.');
+  if(partes.length > 2) v = partes[0] + '.' + partes.slice(1).join('');
+  if(v.indexOf('-') > 0) v = v.replace(/-/g, '');   // el signo solo al principio
+  if(v !== antes){
+    el.value = v;
+    try{ el.setSelectionRange(pos, pos); }catch(_){}
+  }
+}, true);
+
 // v3_147: unifica el formato de los decimales escritos a mano (0,3 → 0.3).
 // parseFloat corta en la coma, así que sin esto "0,3" se guardaría como 0.
 function normalizarDecimal(el){
