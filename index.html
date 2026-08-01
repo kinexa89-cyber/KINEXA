@@ -1058,6 +1058,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     <div class="modal-header">
       <div>
         <h3 id="modalPacTitulo">Nuevo paciente</h3>
+        <input type="hidden" id="fEditPacId">
         <div class="modal-subtitle">Datos de ingreso al servicio de kinesiología</div>
       </div>
       <button class="modal-close" onclick="closeModal('modalPaciente')">&times;</button>
@@ -4316,46 +4317,28 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         </div>
       </div>
 
-      <div class="deg-section-title">PASS — Postural Assessment Scale for Stroke (12 ítems)</div>
+      <div class="deg-section-title">PASS — Postural Assessment Scale for Stroke Patients (12 ítems)</div>
       <div style="background:var(--gray-50);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px">
-        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Cada ítem: 0=No puede · 1=Ayuda importante · 2=Poca ayuda · 3=Sin ayuda. Total máximo: 36</div>
+        <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px">Versión española. Movilidad (ítems 1-7, máx. 21) + Equilibrio (ítems 8-12, máx. 15). Total máximo: 36. Equipamiento: mesa de 50 cm de altura y cronómetro.</div>
         <table style="width:100%;border-collapse:collapse;font-size:12px">
-          <thead>
-            <tr style="background:var(--purple-50)"><th colspan="2" style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted)">Mantener postura (7 ítems, max 21)</th></tr>
-          </thead>
-          <tbody>            <tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Decúbito supino</td>
-              <td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS1" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede, incluso con ayuda</option><option value="1">1 — Puede con ayuda importante</option><option value="2">2 — Puede con poca ayuda</option><option value="3">3 — Puede sin ayuda</option></select></td></tr>
-            <tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Decúbito lateral hacia lado afectado</td>
-              <td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS2" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede, incluso con ayuda</option><option value="1">1 — Puede con ayuda importante</option><option value="2">2 — Puede con poca ayuda</option><option value="3">3 — Puede sin ayuda</option></select></td></tr>
-            <tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Decúbito lateral hacia lado sano</td>
-              <td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS3" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede, incluso con ayuda</option><option value="1">1 — Puede con ayuda importante</option><option value="2">2 — Puede con poca ayuda</option><option value="3">3 — Puede sin ayuda</option></select></td></tr>
-            <tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Sedestación sin apoyo en borde de cama</td>
-              <td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS4" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede, incluso con ayuda</option><option value="1">1 — Puede con ayuda importante</option><option value="2">2 — Puede con poca ayuda</option><option value="3">3 — Puede sin ayuda</option></select></td></tr>
-            <tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Bipedestación con apoyo</td>
-              <td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS5" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede, incluso con ayuda</option><option value="1">1 — Puede con ayuda importante</option><option value="2">2 — Puede con poca ayuda</option><option value="3">3 — Puede sin ayuda</option></select></td></tr>
-            <tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Bipedestación sin apoyo</td>
-              <td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS6" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede, incluso con ayuda</option><option value="1">1 — Puede con ayuda importante</option><option value="2">2 — Puede con poca ayuda</option><option value="3">3 — Puede sin ayuda</option></select></td></tr>
-            <tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Apoyo monopodal lado afectado</td>
-              <td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS7" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede, incluso con ayuda</option><option value="1">1 — Puede con ayuda importante</option><option value="2">2 — Puede con poca ayuda</option><option value="3">3 — Puede sin ayuda</option></select></td></tr>
-            <tr style="background:var(--teal-50)"><td colspan="2" style="padding:5px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted);font-weight:700">Cambiar de postura (5 ítems, max 15)</td></tr>            <tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Decúbito supino → decúbito lateral</td>
-              <td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS8" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede, incluso con ayuda</option><option value="1">1 — Puede con ayuda importante</option><option value="2">2 — Puede con poca ayuda</option><option value="3">3 — Puede sin ayuda</option></select></td></tr>
-            <tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Decúbito lateral → decúbito supino</td>
-              <td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS9" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede, incluso con ayuda</option><option value="1">1 — Puede con ayuda importante</option><option value="2">2 — Puede con poca ayuda</option><option value="3">3 — Puede sin ayuda</option></select></td></tr>
-            <tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Decúbito supino → sedestación al borde</td>
-              <td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS10" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede, incluso con ayuda</option><option value="1">1 — Puede con ayuda importante</option><option value="2">2 — Puede con poca ayuda</option><option value="3">3 — Puede sin ayuda</option></select></td></tr>
-            <tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Sedestación → bipedestación</td>
-              <td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS11" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede, incluso con ayuda</option><option value="1">1 — Puede con ayuda importante</option><option value="2">2 — Puede con poca ayuda</option><option value="3">3 — Puede sin ayuda</option></select></td></tr>
-            <tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Bipedestación → sedestación</td>
-              <td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS12" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede, incluso con ayuda</option><option value="1">1 — Puede con ayuda importante</option><option value="2">2 — Puede con poca ayuda</option><option value="3">3 — Puede sin ayuda</option></select></td></tr>
-          </tbody>
+          <tbody><tr style="background:var(--purple-50)"><th colspan="2" style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted)">Movilidad (ítems 1-7, máx. 21)</th></tr><tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Ítem 1. En decúbito supino, girarse por el lado afecto</td><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS1" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede realizar la actividad</option><option value="1">1 — Con ayuda importante</option><option value="2">2 — Con ayuda moderada</option><option value="3">3 — Sin ayuda</option></select></td></tr><tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Ítem 2. En decúbito supino, girarse por el lado no afecto</td><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS2" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede realizar la actividad</option><option value="1">1 — Con ayuda importante</option><option value="2">2 — Con ayuda moderada</option><option value="3">3 — Sin ayuda</option></select></td></tr><tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Ítem 3. De supino a sentado al borde de la cama o camilla</td><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS3" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede realizar la actividad</option><option value="1">1 — Con ayuda importante</option><option value="2">2 — Con ayuda moderada</option><option value="3">3 — Sin ayuda</option></select></td></tr><tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Ítem 4. Sentado sobre la camilla o cama, pasar a decúbito supino</td><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS4" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede realizar la actividad</option><option value="1">1 — Con ayuda importante</option><option value="2">2 — Con ayuda moderada</option><option value="3">3 — Sin ayuda</option></select></td></tr><tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Ítem 5. Sentado sobre la camilla o cama, levantarse</td><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS5" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede realizar la actividad</option><option value="1">1 — Con ayuda importante</option><option value="2">2 — Con ayuda moderada</option><option value="3">3 — Sin ayuda</option></select></td></tr><tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Ítem 6. De pie, pasar a sentado</td><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS6" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede realizar la actividad</option><option value="1">1 — Con ayuda importante</option><option value="2">2 — Con ayuda moderada</option><option value="3">3 — Sin ayuda</option></select></td></tr><tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Ítem 7. De pie, poder coger un objeto del suelo</td><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS7" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — No puede realizar la actividad</option><option value="1">1 — Con ayuda importante</option><option value="2">2 — Con ayuda moderada</option><option value="3">3 — Sin ayuda</option></select></td></tr><tr style="background:var(--purple-50)"><th colspan="2" style="padding:5px 8px;border-bottom:1px solid var(--border);text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted)">Equilibrio (ítems 8-12, máx. 15)</th></tr><tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Ítem 8. Sentado sin apoyo al borde de la cama o camilla, los pies tocan el suelo</td><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS8" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — Imposible</option><option value="1">1 — Necesita un apoyo moderado de una mano</option><option value="2">2 — Se mantiene sentado más de 10 segundos sin ayuda</option><option value="3">3 — Se mantiene sentado más de 5 minutos sin ayuda</option></select></td></tr><tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Ítem 9. De pie con apoyo</td><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS9" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — Imposible</option><option value="1">1 — Necesita dos personas</option><option value="2">2 — Ayuda moderada de una persona</option><option value="3">3 — Necesita solo la ayuda de una mano del paciente</option></select></td></tr><tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Ítem 10. De pie sin apoyo</td><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS10" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — Imposible</option><option value="1">1 — Puede mantenerse de pie al menos 10 segundos sin ayuda (probablemente de manera muy asimétrica)</option><option value="2">2 — Puede mantenerse de pie al menos un minuto sin ayuda</option><option value="3">3 — Puede mantenerse de pie al menos un minuto sin ayuda y además puede hacer movimientos amplios del/los miembro(s) superior(es) por encima del hombro</option></select></td></tr><tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Ítem 11. Apoyo monopodal del lado afecto sin ningún tipo de ayuda</td><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS11" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — Imposible</option><option value="1">1 — Sólo unos segundos ≤ 5</option><option value="2">2 — Más de 5 segundos ≤ 10</option><option value="3">3 — Más de 10 segundos</option></select></td></tr><tr><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100);font-size:12px">Ítem 12. Apoyo monopodal del lado sano sin ningún tipo de ayuda</td><td style="padding:5px 8px;border-bottom:1px solid var(--gray-100)"><select id="nPASS12" onchange="calcPASSNeuro()" class="barthel-sel"><option value="">-</option><option value="0">0 — Imposible</option><option value="1">1 — Sólo unos segundos ≤ 5</option><option value="2">2 — Más de 5 segundos ≤ 10</option><option value="3">3 — Más de 10 segundos</option></select></td></tr></tbody>
         </table>
-        <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;gap:16px">
-          <div style="text-align:center;flex:1;background:var(--purple-50);border-radius:6px;padding:6px">
+        <div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:10px;padding-top:8px;border-top:1px solid var(--border)">
+          <div style="text-align:center;min-width:78px">
+            <div style="font-size:11px;color:var(--text-muted)">Movilidad</div>
+            <div style="font-size:17px;font-weight:800;color:var(--purple-600)" id="neuroPASSMovTxt">-</div><div style="font-size:10px;color:var(--text-muted)">/21 · corte 8,5</div>
+          </div>
+          <div style="text-align:center;min-width:78px">
+            <div style="font-size:11px;color:var(--text-muted)">Equilibrio</div>
+            <div style="font-size:17px;font-weight:800;color:var(--purple-600)" id="neuroPASSEqTxt">-</div><div style="font-size:10px;color:var(--text-muted)">/15 · corte 3,5</div>
+          </div>
+          <div style="text-align:center;min-width:78px">
             <div style="font-size:11px;color:var(--text-muted)">Total PASS</div>
-            <div style="font-size:22px;font-weight:800;color:var(--purple-700)" id="neuroPASSTotal">-</div><div style="font-size:10px;color:var(--text-muted)">/36</div>
+            <div style="font-size:22px;font-weight:800;color:var(--purple-700)" id="neuroPASSTotal">-</div><div style="font-size:10px;color:var(--text-muted)">/36 · corte 12,5</div>
             <div style="font-size:11px;font-weight:600;color:var(--purple-600)" id="neuroPASSCat"></div>
           </div>
         </div>
+        <div style="font-size:10px;color:var(--text-muted);margin-top:8px">Cambio mínimo detectable: agudo 1,8 · subagudo 2,2 · crónico 3,2</div>
         <input type="hidden" id="neuroPASSMov"><input type="hidden" id="neuroPASSEq">
       </div>
 
@@ -5203,7 +5186,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_158';
+const APP_VERSION = 'v3_160';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -9289,19 +9272,52 @@ function calcBarthelNeuro(){
   else { document.getElementById('neuroBarthelActTotal').textContent='-'; document.getElementById('neuroBarthelActCat').textContent=''; }
 }
 
+// v3_160: PASS versión española. Movilidad = ítems 1-7 (máx 21), Equilibrio =
+// ítems 8-12 (máx 15). Puntos de corte: movilidad 8,5 · equilibrio 3,5 · total 12,5.
 function calcPASSNeuro(){
-  const mantIds = ['nPASS1','nPASS2','nPASS3','nPASS4','nPASS5','nPASS6','nPASS7'];
-  const cambIds = ['nPASS8','nPASS9','nPASS10','nPASS11','nPASS12'];
-  const allIds = [...mantIds,...cambIds];
-  const vals = allIds.map(id=>{ const v=document.getElementById(id)?.value; return v===''?null:parseInt(v); });
+  const movIds = ['nPASS1','nPASS2','nPASS3','nPASS4','nPASS5','nPASS6','nPASS7'];
+  const eqIds  = ['nPASS8','nPASS9','nPASS10','nPASS11','nPASS12'];
+  const val = id => { const v = document.getElementById(id)?.value; return v==='' || v==null ? null : parseInt(v); };
+  const vals = [...movIds, ...eqIds].map(val);
   const llenos = vals.filter(v=>v!==null).length;
-  if(llenos===0){ document.getElementById('neuroPASSTotal').textContent='-'; document.getElementById('neuroPASSCat').textContent=''; return; }
-  const total = vals.reduce((s,v)=>s+(v||0),0);
-  document.getElementById('neuroPASSTotal').textContent = llenos<12 ? total+'*' : total;
-  document.getElementById('neuroPASSMov').value = mantIds.reduce((s,id)=>s+(parseInt(document.getElementById(id)?.value)||0),0);
-  document.getElementById('neuroPASSEq').value = cambIds.reduce((s,id)=>s+(parseInt(document.getElementById(id)?.value)||0),0);
-  const cat = total<=9?'Dependencia severa — alto riesgo de caída':total<=18?'Dependencia moderada':total<=27?'Dependencia leve':'Independencia postural';
-  document.getElementById('neuroPASSCat').textContent = llenos<12 ? `${llenos}/12 ítems` : cat;
+  const elTot = document.getElementById('neuroPASSTotal');
+  const elCat = document.getElementById('neuroPASSCat');
+  const elMovT = document.getElementById('neuroPASSMovTxt');
+  const elEqT  = document.getElementById('neuroPASSEqTxt');
+
+  if(llenos===0){
+    if(elTot) elTot.textContent='-';
+    if(elCat) elCat.textContent='';
+    if(elMovT) elMovT.textContent='-';
+    if(elEqT) elEqT.textContent='-';
+    document.getElementById('neuroPASSMov').value='';
+    document.getElementById('neuroPASSEq').value='';
+    return;
+  }
+  const sumMov = movIds.reduce((s,id)=>s+(val(id)||0),0);
+  const sumEq  = eqIds.reduce((s,id)=>s+(val(id)||0),0);
+  const total  = sumMov + sumEq;
+  const movCompleto = movIds.every(id=>val(id)!==null);
+  const eqCompleto  = eqIds.every(id=>val(id)!==null);
+  const completo    = llenos === 12;
+
+  if(elMovT) elMovT.textContent = movCompleto ? sumMov : sumMov+'*';
+  if(elEqT)  elEqT.textContent  = eqCompleto  ? sumEq  : sumEq+'*';
+  if(elTot)  elTot.textContent  = completo ? total : total+'*';
+  document.getElementById('neuroPASSMov').value = movCompleto ? sumMov : '';
+  document.getElementById('neuroPASSEq').value  = eqCompleto  ? sumEq  : '';
+
+  if(!completo){
+    if(elCat) elCat.textContent = `${llenos}/12 ítems`;
+    return;
+  }
+  // Interpretación según los puntos de corte de la versión española
+  const bajoMov = sumMov <= 8.5, bajoEq = sumEq <= 3.5, bajoTot = total <= 12.5;
+  let txt;
+  if(bajoTot) txt = 'Por debajo del punto de corte (≤12,5)';
+  else if(bajoMov || bajoEq) txt = 'Total sobre el corte, subescala por debajo';
+  else txt = 'Por encima de los puntos de corte';
+  if(elCat) elCat.textContent = txt;
 }
 
 function calcPfeifferNeuro(){
@@ -10754,6 +10770,7 @@ function filterPacientes(q){
 // ════════════════════════════════════════════════════════
 function openNuevoPaciente(){
   editPacId = null;
+  { const h=document.getElementById('fEditPacId'); if(h) h.value=''; }   // v3_159
   document.getElementById('modalPacTitulo').textContent = 'Nuevo paciente';
   document.querySelectorAll('#modalPaciente .field-error').forEach(el=>el.classList.remove('field-error'));
   document.querySelectorAll('#modalPaciente .field-error-label').forEach(el=>el.classList.remove('field-error-label'));
@@ -10795,9 +10812,12 @@ function openNuevoPaciente(){
 }
 
 function openEditPaciente(id){
-  const p = patients.find(x=>x.id===id);
-  if(!p) return;
-  editPacId = id;
+  const p = patients.find(x => String(x.id) === String(id));
+  if(!p){ showToast('No se encontró ese paciente en la lista','error'); return; }
+  editPacId = p.id;
+  // v3_159: el id queda además dentro del formulario. Si algo pisa la variable
+  // global, el formulario sigue sabiendo a quién está editando.
+  { const h=document.getElementById('fEditPacId'); if(h) h.value = String(p.id); }
   document.getElementById('modalPacTitulo').textContent = 'Editar paciente';
   document.querySelectorAll('#modalPaciente .field-error').forEach(el=>el.classList.remove('field-error'));
   document.querySelectorAll('#modalPaciente .field-error-label').forEach(el=>el.classList.remove('field-error-label'));
@@ -10956,6 +10976,11 @@ async function guardarPaciente(){
 
   const apellido = G('fApellido');
 
+  // v3_159: quién se está editando. Se toma del formulario y, si ahí no hay nada,
+  // de la variable global. Basta con que uno de los dos lo sepa.
+  const idEdicion = (document.getElementById('fEditPacId')?.value || '').trim()
+                 || (editPacId != null ? String(editPacId) : '');
+
   // ── v3_143: aviso de cama ocupada ──────────────────────
   // No se bloquea el guardado (a veces hace falta el solapamiento por unas horas),
   // pero se pide confirmación para evitar cargar dos pacientes en la misma cama sin querer.
@@ -10965,7 +10990,10 @@ async function guardarPaciente(){
       p.estado === 'Activo' &&
       p.sala === salaSel &&
       String(p.cama||'').trim() === String(camaSel).trim() &&
-      String(p.id) !== String(editPacId)   // v3_157: el id puede venir como texto
+      String(p.id) !== idEdicion &&        // v3_159
+      // ...y que además no sea la misma persona por nombre, por si se perdió el id
+      !(String(p.apellido||'').trim().toLowerCase() === apellido.trim().toLowerCase() &&
+        String(p.nombre||'').trim().toLowerCase() === G('fNombre').trim().toLowerCase())
     );
     if(ocupante){
       const seguir = confirm(
@@ -11040,31 +11068,49 @@ async function guardarPaciente(){
     causaVM:G('fCausaVM'), causaVMOtro:G('fCausaVMOtro'), fIOT:G('fFIOT'), inicioARM:G('fInicioARM'), vmni:G('fVMNI'),
     prono:parseInt(G('fProno'))||0, tqt:G('fTQT'), finARM:G('fFinARM'), reintubado:G('fReintubado'),
   };
-  if(editPacId != null && editPacId !== ''){
-    // v3_157: comparación tolerante al tipo de dato. Si el id no aparece, se avisa
-    // en vez de seguir de largo: antes eso terminaba creando un paciente nuevo.
-    const idx = patients.findIndex(x => String(x.id) === String(editPacId));
-    if(idx < 0){
-      showToast('No se encontró el paciente que estabas editando. Volvé a abrirlo desde la lista.','error');
-      return;
-    }
+  // v3_159: actualizar la ficha existente en vez de crear una nueva.
+  const actualizarFicha = (idx, motivo) => {
     patients[idx] = { ...patients[idx], ...data, id: patients[idx].id };
-    addLog('edit', `Editó paciente: ${apellido}, ${data.nombre}`);
+    addLog('edit', `Editó paciente: ${apellido}, ${data.nombre}${motivo ? ' ('+motivo+')' : ''}`);
+  };
+
+  let idx = idEdicion ? patients.findIndex(x => String(x.id) === idEdicion) : -1;
+
+  if(idx >= 0){
+    actualizarFicha(idx);
   } else {
-    // v3_157: última barrera contra el duplicado. Si el formulario está en modo
-    // "Editar paciente" pero por lo que sea se perdió el id, no se crea uno nuevo.
-    const tituloModal = document.getElementById('modalPacTitulo')?.textContent || '';
-    if(tituloModal.trim().toLowerCase().startsWith('editar')){
-      showToast('Se perdió la referencia del paciente que estabas editando. Cerrá la ficha y volvé a abrirla desde la lista.','error');
+    // No se pudo identificar por id. Antes de crear nada, se busca si esa persona
+    // ya está cargada: mismo apellido y nombre (o mismo documento) y activa.
+    const nombreF = G('fNombre'), dniF = G('fDNI');
+    const igual = (a,b) => String(a||'').normalize('NFC').trim().toLowerCase()
+                        === String(b||'').normalize('NFC').trim().toLowerCase();
+    const mismo = patients.findIndex(x => x.estado === 'Activo' && (
+      (dniF && igual(x.dni, dniF)) ||
+      (igual(x.apellido, apellido) && igual(x.nombre, nombreF))
+    ));
+
+    const tituloModal = (document.getElementById('modalPacTitulo')?.textContent || '').trim();
+    const enModoEdicion = tituloModal.toLowerCase().startsWith('editar');
+
+    if(mismo >= 0 && (enModoEdicion || confirm(
+        `Ya hay un paciente activo con esos datos:\n\n${patients[mismo].apellido}, ${patients[mismo].nombre}\n\n` +
+        `Aceptar = actualizar esa ficha\nCancelar = crear un paciente nuevo igual`))){
+      // Queda registrado para poder rastrear por qué se perdió la referencia
+      addLog('edit', `[diagnóstico] Ficha recuperada por nombre. idEdicion="${idEdicion}" · título="${tituloModal}" · global="${editPacId}"`);
+      actualizarFicha(mismo, 'recuperado por nombre');
+    } else if(enModoEdicion){
+      addLog('edit', `[diagnóstico] Edición sin referencia. idEdicion="${idEdicion}" · título="${tituloModal}" · global="${editPacId}"`);
+      showToast('No se pudo identificar al paciente que estabas editando. Cerrá la ficha, volvé a abrirla desde la lista y probá de nuevo.','error');
       return;
+    } else {
+      data.id = Date.now();
+      // Un paciente recién cargado siempre arranca Activo; el egreso se gestiona aparte
+      data.estado = 'Activo';
+      data.fEUTI = '';
+      data.fEK = '';
+      patients.unshift(data);
+      addLog('create', `Nuevo paciente: ${apellido}, ${data.nombre}`);
     }
-    data.id = Date.now();
-    // Un paciente recién cargado siempre arranca Activo; el egreso se gestiona aparte
-    data.estado = 'Activo';
-    data.fEUTI = '';
-    data.fEK = '';
-    patients.unshift(data);
-    addLog('create', `Nuevo paciente: ${apellido}, ${data.nombre}`);
   }
   await persistAll();
   closeModal('modalPaciente', true);
