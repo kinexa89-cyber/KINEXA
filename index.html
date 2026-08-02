@@ -5298,7 +5298,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_176';
+const APP_VERSION = 'v3_177';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -10821,6 +10821,26 @@ function fmtPVEResumen(e){
   return `<div class="evo-section-subtitle">PVE / Extubación</div><div class="evo-grid">${items.join('')}</div>`;
 }
 
+// v3_177: el día de ARM quedaba GUARDADO dentro de cada evolución cuando se
+// cargaba. Las evoluciones viejas conservan el número que se calculó en su
+// momento, así que una evolución que dice "aire ambiente" seguía mostrando
+// "ARM día 4" para siempre, aunque el cálculo ya estuviera corregido.
+// Ahora el badge se decide al mostrarlo, mirando lo que dice esa evolución:
+//   · si la evolución no está en ARM invasiva, no se muestra ningún día de ARM
+//   · si lo está, el día se recalcula desde el inicio de ARM del paciente
+function badgeDiaARM(e){
+  if(!evoEnARMinvasiva(e)) return '';          // esta evolución no está en ARM
+  const p = patients.find(x => String(x.id) === String(e.patientId));
+  let dia = null;
+  if(p && p.inicioARM && e.date){
+    const d = daysBetween(p.inicioARM, e.date);
+    if(d !== null && d >= 0) dia = d + 1;
+  }
+  if(dia === null) dia = e.armDia;             // sin fecha de inicio, lo guardado
+  if(!dia) return '';
+  return `<span class="badge badge-amber" style="font-size:10px">ARM día ${dia}</span>`;
+}
+
 // ── Fuerza muscular / músculos respiratorios (v3_111) ──
 function fmtFuerzaResumen(e){
   const items = [];
@@ -11005,7 +11025,7 @@ function evoCardHTML(e, i){
           ${tolBadge}
           ${e.diasHosp ? `<span class="badge badge-gray" style="font-size:10px">Internación día ${e.diasHosp}</span>` : ''}
           ${e.utiDia ? `<span class="badge badge-blue" style="font-size:10px">Sector día ${e.utiDia}</span>` : ''}
-          ${e.armDia ? `<span class="badge badge-amber" style="font-size:10px">ARM día ${e.armDia}</span>` : ''}
+          ${badgeDiaARM(e)}
           ${e.frecuencia?`<span class="badge badge-purple" style="font-size:10px">${e.frecuencia==='manana'?'Mañana':e.frecuencia==='cada3'?'Cada 3d':e.frecuencia==='cada5'?'Cada 5d':'Sin criterio'}</span>`:''}
         </div>
         <span class="evo-kine"><i class="ti ti-user" style="font-size:11px"></i> ${e.kine||'—'}${puedeEditarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" onclick="editarEvolucion(${e.id})" title="Editar (disponible hasta 24 hs después de la carga)"><i class="ti ti-pencil"></i></button>` : ''}${puedeEliminarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarEvolucion(${e.id})" title="${currentUser?.role === 'admin' ? 'Eliminar evolución' : 'Eliminar (disponible hasta 24 hs después de la carga)'}"><i class="ti ti-trash"></i></button>` : ''}</span>
