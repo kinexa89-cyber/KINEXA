@@ -1182,16 +1182,16 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <label>Grupo</label>
         <select id="fTipoKine" onchange="onGrupoChange(this.value)">
           <option value="">Seleccioná el grupo...</option>
-          <option value="respiratorio">🫁 Respiratorio</option>
-          <option value="neurologico">🧠 Neurológico</option>
-          <option value="pre_qx">🔪 Pre-quirúrgico</option>
-          <option value="post_qx">🔪 Post-quirúrgico</option>
-          <option value="amputado">🦾 Amputado</option>
-          <option value="quemado">🔥 Quemado</option>
-          <option value="trauma">🦴 Trauma</option>
-          <option value="cardiologico">🫀 Cardiológico</option>
-          <option value="oncologico">🎗️ Oncológico</option>
-          <option value="otro">📋 Otro</option>
+          <option value="respiratorio">Respiratorio</option>
+          <option value="neurologico">Neurológico</option>
+          <option value="pre_qx">Pre-quirúrgico</option>
+          <option value="post_qx">Post-quirúrgico</option>
+          <option value="amputado">Amputado</option>
+          <option value="quemado">Quemado</option>
+          <option value="trauma">Trauma</option>
+          <option value="cardiologico">Cardiológico</option>
+          <option value="oncologico">Oncológico</option>
+          <option value="otro">Otro</option>
         </select>
       </div>
 
@@ -3453,6 +3453,8 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--blue-700);margin-bottom:10px">
           <i class="ti ti-lungs"></i> Evaluación de músculos respiratorios
         </div>
+        <!-- v3_172: última evaluación del paciente, para comparar -->
+        <div id="musRespPrevia" style="display:none;background:#fff;border:1px solid var(--blue-200);border-radius:8px;padding:9px 11px;margin-bottom:11px"></div>
         <div class="form-row three">
           <div class="form-group">
             <label>PImax (cmH₂O)</label>
@@ -4738,10 +4740,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <div class="form-group">
         <label>Tipo</label>
         <select id="sugTipo">
-          <option value="sugerencia">💡 Sugerencia / mejora</option>
-          <option value="error">🐞 Reportar un error</option>
-          <option value="consulta">❓ Consulta</option>
-          <option value="otro">💬 Otro comentario</option>
+          <option value="sugerencia">Sugerencia / mejora</option>
+          <option value="error">Reportar un error</option>
+          <option value="consulta">Consulta</option>
+          <option value="otro">Otro comentario</option>
         </select>
       </div>
       <div class="form-group">
@@ -5271,9 +5273,24 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 // ════════════════════════════════════════════════════════
 //  STORAGE helpers
 // ════════════════════════════════════════════════════════
+// v3_173: el navegador da ~5 MB de almacenamiento local por sitio. Antes se
+// guardaba TODA la historia de la institución ahí y, al llenarse, setItem
+// lanzaba una excepción que nadie capturaba: el guardado se cortaba a la mitad.
+// Ahora el error se contiene y se avisa, en vez de romper la app.
+let _cuotaAvisada = false;
 const LS = {
   get: k => { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set: (k, v) => localStorage.setItem(k, JSON.stringify(v)),
+  set: (k, v) => {
+    try { localStorage.setItem(k, JSON.stringify(v)); return true; }
+    catch(e){
+      console.warn('No se pudo guardar en el dispositivo:', k, e?.name || e);
+      if(!_cuotaAvisada){
+        _cuotaAvisada = true;
+        try { showToast('El almacenamiento del dispositivo está lleno. Los datos se siguen guardando en la nube.','error'); } catch(_){}
+      }
+      return false;   // los datos siguen en memoria y en Supabase
+    }
+  },
 };
 
 // ── SUPABASE ──────────────────────────────────────────
@@ -5281,7 +5298,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_171';
+const APP_VERSION = 'v3_175';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -5677,7 +5694,8 @@ let CLAVE_LOGIN = ''; // solo en memoria, para precargar "clave actual"
 //  de por medio. Solo la jefatura ve la bandeja.
 // ════════════════════════════════════════════════════════
 let _sugerencias = [];
-const SUG_TIPO_LABEL = { sugerencia:'💡 Sugerencia', error:'🐞 Error', consulta:'❓ Consulta', otro:'💬 Comentario' };
+const SUG_TIPO_LABEL = { sugerencia:'Sugerencia', error:'Error', consulta:'Consulta', otro:'Comentario' };
+const SUG_TIPO_ICONO = { sugerencia:'ti-bulb', error:'ti-bug', consulta:'ti-help-circle', otro:'ti-message' };
 
 function abrirSugerencia(){
   ['sugTexto','sugDonde'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
@@ -5764,7 +5782,7 @@ function renderBandejaSugerencias(){
     return `<div class="historial-card" style="margin-bottom:10px;${leida?'opacity:.62':''}">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
         <div>
-          <div class="historial-name">${SUG_TIPO_LABEL[sg.tipo]||'💬 Comentario'}${sg.donde?` — ${escapeHTML(sg.donde)}`:''}</div>
+          <div class="historial-name"><i class="ti ${SUG_TIPO_ICONO[sg.tipo]||'ti-message'}" style="margin-right:4px"></i>${SUG_TIPO_LABEL[sg.tipo]||'Comentario'}${sg.donde?` — ${escapeHTML(sg.donde)}`:''}</div>
           <div class="historial-meta"><i class="ti ti-user"></i> ${escapeHTML(sg.autor||'—')}${sg.institucion?` · ${escapeHTML(sg.institucion)}`:''}${sg.sector?` · ${escapeHTML(sg.sector)}`:''}</div>
           <div class="historial-meta"><i class="ti ti-clock"></i> ${fmtDT(sg.fecha)} · Kinexa ${escapeHTML(sg.version||'—')}</div>
         </div>
@@ -5974,27 +5992,58 @@ async function guardarConfigKinexa(){
     if(btn){ btn.disabled=false; btn.innerHTML='<i class="ti ti-device-floppy"></i>Guardar cambios'; }
   }
 }
+// ── v3_174: carga en dos tiempos ────────────────────────────────
+// Antes la app esperaba a que bajaran TODOS los pacientes Y TODAS las
+// evoluciones antes de mostrar nada. Los pacientes son pocos y pesan poco;
+// las evoluciones son miles y son las que demoran. Ahora se muestran los
+// pacientes apenas llegan —el kinesiólogo ya puede trabajar— y las
+// evoluciones siguen bajando de fondo.
+//
+// Cuando el servidor sepa filtrar por fecha (hace falta una función nueva en
+// Supabase), pedirEvoluciones() va a traer solo lo reciente en vez de todo.
+async function pedirEvoluciones(){
+  // Se intenta primero la versión con filtro por fecha; si la base todavía no
+  // la tiene, se cae a la de siempre sin romper nada.
+  const desde = (() => {
+    const d = new Date(); d.setMonth(d.getMonth() - 6);
+    const p2 = n => String(n).padStart(2,'0');
+    return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
+  })();
+  try {
+    const r = await rpc('kinexa_registros_desde', { p_token:TOKEN, p_tipo:'evolucion', p_desde:desde });
+    return { datos: r, parcial: true, desde };
+  } catch(e){
+    const r = await rpc('kinexa_registros', { p_token:TOKEN, p_tipo:'evolucion' });
+    return { datos: r, parcial: false, desde:null };
+  }
+}
+
 async function loadFromSupabase(){
   setSyncStatus('syncing');
   cargarConfigCompartida(); // v3_110: baja la API key de Gemini compartida (no bloquea la carga)
   try {
-    const [pacs, evos] = await Promise.all([
-      rpc('kinexa_registros', { p_token:TOKEN, p_tipo:'paciente' }),
-      rpc('kinexa_registros', { p_token:TOKEN, p_tipo:'evolucion' }),
-    ]);
-    // En el modelo central el objeto ya viene entero (con id / patientId adentro)
+    // 1) Pacientes primero: es lo liviano y lo que se necesita para empezar
+    const pacs = await rpc('kinexa_registros', { p_token:TOKEN, p_tipo:'paciente' });
     patients = normalizarPacientes(pacs);                       // v3_158
+    savePacientes();
+    renderAll();                       // el equipo ya ve la sala y puede trabajar
+    avisarPacientesSinSector();        // v3_170
+
+    // 2) Evoluciones después, sin bloquear la pantalla
+    const { datos: evos, parcial, desde } = await pedirEvoluciones();
     // v3_148: las evoluciones eliminadas quedan marcadas en la base y se descartan acá
     evoluciones = normalizarEvoluciones((evos || []).filter(e => e && !e._borrada));
+    EVOS_DESDE = parcial ? desde : null;   // v3_174: hasta dónde llega lo que tenemos
+    DATOS_COMPLETOS = true;                // v3_173
     marcarTodoSincronizado();   // v3_150: lo recién bajado ya está en la nube
-    savePacientes(); saveEvos();
-    avisarPacientesSinSector();   // v3_170
+    saveEvos();
     setSyncStatus('ok');
     renderAll();
   } catch(e){
+    DATOS_COMPLETOS = false;   // v3_173: quedó solo lo que había en el dispositivo
     console.error(e);
     setSyncStatus('error');
-    showToast('Error al cargar desde Supabase. Modo local.','error');
+    showToast('Sin conexión: ves los pacientes activos y los últimos 30 días','error');
   }
 }
 
@@ -6107,6 +6156,14 @@ function normalizarEvoluciones(lista){
   return (lista || []).filter(Boolean).map(e => ({ ...e, id: _numId(e.id), patientId: _numId(e.patientId) }));
 }
 
+// v3_173: al arrancar, la memoria se llena con la caché local, que ahora es
+// PARCIAL (solo pacientes activos y últimos 30 días). Recién queda completa
+// cuando termina la descarga desde Supabase. Mientras tanto los indicadores
+// no pueden presentarse como definitivos.
+let DATOS_COMPLETOS = false;
+// v3_174: si el servidor filtró por fecha, acá queda desde cuándo tenemos
+// evoluciones en memoria. null = están todas.
+let EVOS_DESDE = null;
 let patients = normalizarPacientes(LS.get('hbee_patients')); // v3_100: datos semilla de prueba eliminados para el piloto real
 
 let evoluciones = normalizarEvoluciones(LS.get('hbee_evos')); // v3_100: datos semilla de prueba eliminados
@@ -6126,9 +6183,35 @@ let editingEvoId = null; // id de la evolución que se está editando (null = ca
   const MEMBRETE_HBEE = '';
 
 let evalDeglusion = LS.get('hbee_eval_deg') || [];
-function savePacientes(){ LS.set('hbee_patients', patients); }
+// ── v3_173: caché local acotada ─────────────────────────────────
+// El dispositivo ya no guarda la historia completa de la institución, sino solo
+// lo que hace falta para trabajar el día a día y para funcionar sin señal:
+// los pacientes activos y las evoluciones de los últimos DIAS_CACHE_LOCAL días.
+// Todo lo anterior vive en Supabase y se trae cuando alguien lo pide.
+// Así el almacenamiento deja de crecer para siempre.
+const DIAS_CACHE_LOCAL = 30;
+
+function _fechaCorteCache(){
+  const d = new Date();
+  d.setDate(d.getDate() - DIAS_CACHE_LOCAL);
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+
+function savePacientes(){
+  // Los pacientes egresados quedan en la nube; en el dispositivo solo los activos
+  const activos = patients.filter(p => p && p.estado === 'Activo');
+  LS.set('hbee_patients', activos);
+}
 function saveEvalDeg(){ LS.set('hbee_eval_deg', evalDeglusion); }
-function saveEvos(){ LS.set('hbee_evos', evoluciones); }
+function saveEvos(){
+  const corte = _fechaCorteCache();
+  const idsActivos = new Set(patients.filter(p => p && p.estado === 'Activo').map(p => String(p.id)));
+  const recientes = evoluciones.filter(e =>
+    e && String(e.date||'') >= corte && idsActivos.has(String(e.patientId))
+  );
+  LS.set('hbee_evos', recientes);
+}
 function saveLogs(){ LS.set('hbee_logs', logs); }
 
 // ════════════════════════════════════════════════════════
@@ -7631,13 +7714,33 @@ function showToast(msg, type='info'){
 // ════════════════════════════════════════════════════════
 const ES_MINIMOS = sala => /m[ií]nimos?/i.test(sala || '');
 
-const TIPO_KINE_LABEL = {
-  respiratorio:'🫁 Respiratorio', neurologico:'🧠 Neurológico',
-  pre_qx:'🔪 Pre-quirúrgico', post_qx:'🔪 Post-quirúrgico',
-  amputado:'🦾 Amputado', quemado:'🔥 Quemado', trauma:'🦴 Trauma',
-  cardiologico:'🫀 Cardiológico', oncologico:'🎗️ Oncológico', crm:'🫀 POP CRM',
-  post_uti:'🏥 Post UTI', otro:'📋 Otro'
+// v3_172: Windows 7 no trae fuente de emojis en color, así que los 🫁 🧠 🔥 se
+// veían como cuadraditos vacíos o directamente no se veían. Se separa el texto
+// del ícono: el texto va solo (funciona en todos lados) y el ícono se dibuja
+// con Tabler, la misma fuente de íconos que ya usa el resto de la app.
+const TIPO_KINE_TEXTO = {
+  respiratorio:'Respiratorio', neurologico:'Neurológico',
+  pre_qx:'Pre-quirúrgico', post_qx:'Post-quirúrgico',
+  amputado:'Amputado', quemado:'Quemado', trauma:'Trauma',
+  cardiologico:'Cardiológico', oncologico:'Oncológico', crm:'POP CRM',
+  post_uti:'Post UTI', otro:'Otro'
 };
+const TIPO_KINE_ICONO = {
+  respiratorio:'ti-lungs', neurologico:'ti-brain',
+  pre_qx:'ti-scalpel', post_qx:'ti-scalpel',
+  amputado:'ti-prosthesis', quemado:'ti-flame', trauma:'ti-bone',
+  cardiologico:'ti-heartbeat', oncologico:'ti-ribbon-health', crm:'ti-heartbeat',
+  post_uti:'ti-building-hospital', otro:'ti-clipboard'
+};
+// Texto plano (para títulos, informes, exportaciones y <option>)
+const TIPO_KINE_LABEL = TIPO_KINE_TEXTO;
+// Con ícono, para donde se puede usar HTML
+function tipoKineHTML(tipo){
+  if(!tipo) return '';
+  const txt = TIPO_KINE_TEXTO[tipo] || tipo;
+  const ico = TIPO_KINE_ICONO[tipo];
+  return (ico ? `<i class="ti ${ico}" style="margin-right:4px"></i>` : '') + escapeHTML(txt);
+}
 
 let currentEvoMinPacId = null;
 let currentNeuroData = {}; // fichas neurológicas por paciente
@@ -9401,6 +9504,36 @@ function actualizarHintVE(patientId, mostrar){
 }
 
 
+// v3_172: al evaluar músculos respiratorios, mostrar la última medición del
+// paciente para poder comparar sin tener que salir a buscarla al historial.
+function mostrarMusRespPrevia(patientId){
+  const box = document.getElementById('musRespPrevia');
+  if(!box) return;
+  const previa = evoluciones
+    .filter(e => e.patientId === patientId && !e.tipo && e.musResp &&
+                 Object.values(e.musResp).some(v => v !== '' && v !== null && v !== undefined))
+    .sort((a,b) => String(b.date + (b.hora||'')).localeCompare(String(a.date + (a.hora||''))))
+    .find(e => !editingEvoId || e.id !== editingEvoId);
+  if(!previa){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  const m = previa.musResp;
+  const campos = [
+    ['PImax', m.pimax, 'cmH₂O'], ['PEmax', m.pemax, 'cmH₂O'],
+    ['CV', m.cv, 'ml'], ['PFT', m.pft, 'L/min'], ['PFE', m.pfe, 'L/min'],
+    ['Excursión', m.ecoDE, 'cm'], ['Tdi insp.', m.ecoEspInsp, 'mm'],
+    ['Tdi esp.', m.ecoEspEsp, 'mm'], ['TFdi', m.ecoTFdi, '']
+  ].filter(([,v]) => v !== '' && v !== null && v !== undefined);
+  if(!campos.length){ box.style.display = 'none'; return; }
+  box.innerHTML =
+    `<div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.3px;color:var(--text-muted);margin-bottom:6px">` +
+    `<i class="ti ti-history"></i> Última evaluación — ${fmtDate(previa.date)}${previa.kine ? ' · '+escapeHTML(previa.kine) : ''}</div>` +
+    `<div style="display:flex;flex-wrap:wrap;gap:6px">` +
+    campos.map(([lab,v,u]) =>
+      `<span style="background:var(--blue-50);border:1px solid var(--blue-200);border-radius:6px;padding:3px 8px;font-size:11.5px">` +
+      `<strong>${lab}:</strong> ${escapeHTML(String(v))}${u?' '+u:''}</span>`).join('') +
+    `</div>`;
+  box.style.display = 'block';
+}
+
 // ── v3_171: qué bloques respiratorios corresponden en cada situación ──
 // El EAB hace falta en ARM, pero también con CAFO y con VNI. Las secreciones
 // hacen falta en ARM y también en el TQT sin ARM (respirando espontáneamente).
@@ -9505,7 +9638,9 @@ function calcEcoDiaf(){
 function toggleTagMusResp(el){
   el.classList.toggle('active');
   const panel = document.getElementById('musRespPanel');
-  panel.style.display = el.classList.contains('active') ? 'block' : 'none';
+  const abierto = el.classList.contains('active');
+  panel.style.display = abierto ? 'block' : 'none';
+  if(abierto) mostrarMusRespPrevia(currentEvoPacId);   // v3_172
   if(!el.classList.contains('active')){
     { const ep=document.getElementById('ecoDiafPanel'); if(ep) ep.style.display='none';
       const eb=document.getElementById('btnEcoDiaf'); if(eb) eb.classList.remove('active'); }
@@ -10872,10 +11007,35 @@ function evoCardHTML(e, i){
   </div>`;
 }
 
-function openHistorialRapido(patientId, desdeEvolucion){
+// v3_175: cuando la app tiene cargada solo una parte de la historia, el
+// historial de un paciente puede estar incompleto. Se trae el resto desde la
+// nube en ese momento, sin guardarlo en el dispositivo.
+async function completarHistorialPaciente(patientId){
+  if(!EVOS_DESDE) return;                       // están todas en memoria
+  if(_historialCompleto.has(String(patientId))) return;
+  try {
+    const res = await rpc('kinexa_evos_paciente', { p_token:TOKEN, p_patient_id:String(patientId) });
+    const traidas = normalizarEvoluciones((res || []).filter(e => e && !e._borrada));
+    const conocidas = new Set(evoluciones.map(e => String(e.id)));
+    const nuevas = traidas.filter(e => !conocidas.has(String(e.id)));
+    if(nuevas.length){
+      // Se suman a la memoria de esta sesión, pero NO a la caché del
+      // dispositivo: saveEvos() sigue guardando solo los últimos 30 días.
+      evoluciones = evoluciones.concat(nuevas);
+      marcarTodoSincronizado();
+    }
+    _historialCompleto.add(String(patientId));
+  } catch(e){
+    console.warn('No se pudo completar el historial del paciente:', e);
+  }
+}
+const _historialCompleto = new Set();
+
+async function openHistorialRapido(patientId, desdeEvolucion){
   const p = patients.find(x=>x.id===patientId);
   if(!p) return;
   histRapPacId = patientId;
+  await completarHistorialPaciente(patientId);   // v3_175
   const evos = evoluciones.filter(e=>e.patientId===patientId)
     .sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
   document.getElementById('histRapTitulo').textContent = `${p.apellido}, ${p.nombre}`;
@@ -11231,7 +11391,7 @@ function renderPatientRow(p, todayStr){
         ${(!tieneHoy && debeHoy) ? '<span class="badge badge-red" style="font-size:9px;"><i class="ti ti-alert-circle"></i> Sin evo. hoy</span>' : ''}
       </div>
       <div class="p-name" style="margin-top:4px">${escapeHTML(p.apellido)}, ${escapeHTML(p.nombre)}</div>
-      <div class="p-meta">${p.tipoKine?`<span class="tipo-kine-badge">${escapeHTML(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine)}</span> · `:''}${escapeHTML(p.diagnostico||'—')} · ${escapeHTML(edadTextoPaciente(p))} · ${diasUTI!=null?diasUTI+' días '+(''+diasUTI).replace(/\d+/,'')+' sector':'—'}</div>
+      <div class="p-meta">${p.tipoKine?`<span class="tipo-kine-badge">${tipoKineHTML(p.tipoKine)}</span> · `:''}${escapeHTML(p.diagnostico||'—')} · ${escapeHTML(edadTextoPaciente(p))} · ${diasUTI!=null?diasUTI+' días '+(''+diasUTI).replace(/\d+/,'')+' sector':'—'}</div>
     </div>
     <div class="p-actions">
       <button class="btn-evolve" onclick="openEvolucionAdaptado(${p.id})">
@@ -11319,7 +11479,7 @@ function filterDash(q){
           ${(!tieneHoy && debeHoy)?'<span class="badge badge-red" style="font-size:9px;"><i class="ti ti-alert-circle"></i> Sin evo. hoy</span>':''}
         </div>
         <div class="p-name" style="margin-top:4px">${escapeHTML(p.apellido)}, ${escapeHTML(p.nombre)}</div>
-        <div class="p-meta">${p.tipoKine?`<span class="tipo-kine-badge">${escapeHTML(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine)}</span> · `:''}${escapeHTML(p.diagnostico||'—')} · ${escapeHTML(edadTextoPaciente(p))} · ${diasUTI!=null?diasUTI+' días '+(''+diasUTI).replace(/\d+/,'')+' sector':'—'}</div>
+        <div class="p-meta">${p.tipoKine?`<span class="tipo-kine-badge">${tipoKineHTML(p.tipoKine)}</span> · `:''}${escapeHTML(p.diagnostico||'—')} · ${escapeHTML(edadTextoPaciente(p))} · ${diasUTI!=null?diasUTI+' días '+(''+diasUTI).replace(/\d+/,'')+' sector':'—'}</div>
       </div>
       <div class="p-actions">
         <button class="btn-evolve" onclick="openEvolucion(${p.id})"><i class="ti ti-stethoscope"></i> Evolucionar <span class="evo-count">${nEvo}</span></button>
@@ -12553,6 +12713,7 @@ function precargarCamposEvolucion(evo){
 
   // Evaluación de músculos respiratorios
   if(evo.musResp){
+    mostrarMusRespPrevia(currentEvoPacId);   // v3_172
     const tagMR = document.getElementById('tagMusRespTag');
     if(tagMR && !tagMR.classList.contains('active')) toggleTagMusResp(tagMR);
     const mr = evo.musResp;
@@ -12946,6 +13107,7 @@ function renderIndicadores(){
     </div>` : ''}
     <button class="btn btn-sm btn-success" onclick="exportarIndicadoresCompleto('${mesSel}')"><i class="ti ti-table-export"></i> Exportar TODO a Excel</button>
   </div>
+  ${!DATOS_COMPLETOS ? `<div style="margin:-4px 0 12px;padding:9px 12px;background:var(--amber-50);border:1px solid var(--amber-300);border-radius:8px;font-size:12px;color:var(--amber-800)"><i class="ti ti-alert-triangle"></i> <strong>Datos incompletos.</strong> No se pudo conectar con la nube, así que estos números salen solo de lo guardado en este dispositivo (pacientes activos y últimos 30 días). No los uses para reportar.</div>` : _avisoFueraDeAlcance(mesSel)}
   ${vistaActual!=='pacientes' ? `<div style="margin:-8px 0 14px;font-size:12px;color:var(--text-muted)"><i class="ti ti-calendar"></i> ${etiquetaPeriodo(mesSel)}${_avisoParcial(mesSel)}</div>` : ''}
   <div id="indBody"></div>`;
 
@@ -13075,6 +13237,18 @@ function cambiarMesInd(mes){
 // ── v3_163: selección de períodos ───────────────────────────────
 const _pDesde = per => (per||'').includes('..') ? per.split('..')[0] : (per || today().slice(0,7));
 const _pHasta = per => (per||'').includes('..') ? per.split('..')[1] : (per || today().slice(0,7));
+
+// v3_174: si el servidor mandó solo una parte de la historia, un período
+// anterior a esa fecha daría números incompletos sin que nadie lo note.
+function _avisoFueraDeAlcance(per){
+  if(!EVOS_DESDE) return '';
+  const r = rangoDe(per);
+  if(r.desde >= EVOS_DESDE) return '';
+  return `<div style="margin:-4px 0 12px;padding:9px 12px;background:var(--amber-50);border:1px solid var(--amber-300);border-radius:8px;font-size:12px;color:var(--amber-800)">` +
+    `<i class="ti ti-alert-triangle"></i> <strong>Período fuera del alcance cargado.</strong> ` +
+    `En este momento hay evoluciones desde el ${fmtDate(EVOS_DESDE)}. ` +
+    `Los números anteriores a esa fecha están incompletos.</div>`;
+}
 
 // Avisa cuando el período incluye el mes en curso y todavía no terminó
 function _avisoParcial(per){
