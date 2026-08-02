@@ -3515,6 +3515,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <div class="form-group" style="margin-bottom:6px"><label style="margin-bottom:6px;">Movilización</label>
         <div class="tag-group" id="tagsMovil">
           <span class="tag" onclick="toggleTag(this)">Movilización pasiva</span>
+          <span class="tag" onclick="toggleTag(this)">Cuidados posicionales</span>
           <span class="tag" onclick="toggleTag(this)">Movilización activo-asistida</span>
           <span class="tag" onclick="toggleTag(this)">Movilización activa</span>
           <span class="tag" onclick="toggleTag(this)">Rolados</span>
@@ -5188,7 +5189,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_162';
+const APP_VERSION = 'v3_163';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -12406,9 +12407,24 @@ function renderIndicadores(){
       <button class="btn btn-sm ${vistaActual==='prestaciones'?'btn-primary':'btn-ghost'}" onclick="cambiarVistaInd('prestaciones')"><i class="ti ti-checklist"></i> Prestaciones</button>
       <button class="btn btn-sm ${vistaActual==='pacientes'?'btn-primary':'btn-ghost'}" onclick="cambiarVistaInd('pacientes')"><i class="ti ti-users"></i> Por paciente</button>
     </div>
-    ${vistaActual!=='pacientes' ? `<input type="month" id="indMesSel" value="${mesSel}" onchange="cambiarMesInd(this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:13px">` : ''}
+    ${vistaActual!=='pacientes' ? `
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <select id="indAtajo" onchange="atajoPeriodo(this.value)" style="padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:13px">
+        <option value="">Período…</option>
+        <option value="mes">Este mes</option>
+        <option value="mes-1">Mes anterior</option>
+        <option value="trim">Últimos 3 meses</option>
+        <option value="sem">Últimos 6 meses</option>
+        <option value="anio">Año en curso</option>
+        <option value="12m">Últimos 12 meses</option>
+      </select>
+      <input type="month" id="indDesde" value="${_pDesde(mesSel)}" onchange="cambiarPeriodoInd()" title="Desde" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:13px">
+      <span style="font-size:12px;color:var(--text-muted)">a</span>
+      <input type="month" id="indHasta" value="${_pHasta(mesSel)}" onchange="cambiarPeriodoInd()" title="Hasta" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:13px">
+    </div>` : ''}
     <button class="btn btn-sm btn-success" onclick="exportarIndicadoresCompleto('${mesSel}')"><i class="ti ti-table-export"></i> Exportar TODO a Excel</button>
   </div>
+  ${vistaActual!=='pacientes' ? `<div style="margin:-8px 0 14px;font-size:12px;color:var(--text-muted)"><i class="ti ti-calendar"></i> ${etiquetaPeriodo(mesSel)}${_avisoParcial(mesSel)}</div>` : ''}
   <div id="indBody"></div>`;
 
   if(vistaActual==='mensual') renderIndMensual(mesSel);
@@ -12517,7 +12533,7 @@ function renderIndPrestaciones(mesStr){
     Object.entries(evalEst).map(([k,v])=>indFila2(k, v)).join(''),
     ['Evaluación / procedimiento','Cantidad'])}
 
-  ${indTabla('TODAS las técnicas registradas — '+mesStr+' (ordenadas por frecuencia)','ti-list-numbers',
+  ${indTabla('TODAS las técnicas registradas — '+etiquetaPeriodo(mesStr)+' (ordenadas por frecuencia)','ti-list-numbers',
     entries.map(([t,n])=>indFila2(escapeHTML(t), n, pctTxt(n,totalTecnicas))).join('') || indFila2('Sin técnicas registradas este mes','—',''),
     ['Técnica','Veces','% del total'])}`;
 }
@@ -12534,19 +12550,118 @@ function cambiarMesInd(mes){
   renderIndicadores();
 }
 
+// ── v3_163: selección de períodos ───────────────────────────────
+const _pDesde = per => (per||'').includes('..') ? per.split('..')[0] : (per || today().slice(0,7));
+const _pHasta = per => (per||'').includes('..') ? per.split('..')[1] : (per || today().slice(0,7));
+
+// Avisa cuando el período incluye el mes en curso y todavía no terminó
+function _avisoParcial(per){
+  const hoy = today();
+  const r = rangoDe(per);
+  if(r.hasta < hoy) return '';
+  const [y,m] = hoy.slice(0,7).split('-').map(Number);
+  const ultimo = new Date(y, m, 0).getDate();
+  const dia = Number(hoy.slice(8,10));
+  if(dia >= ultimo) return '';
+  return ` · <strong>período en curso</strong>, datos hasta hoy (${dia} de ${ultimo} días del mes)`;
+}
+
+function cambiarPeriodoInd(){
+  let d = document.getElementById('indDesde')?.value;
+  let h = document.getElementById('indHasta')?.value;
+  if(!d || !h) return;
+  if(d > h){ const tmp = d; d = h; h = tmp; }   // si los invirtieron, se ordenan solos
+  const el = document.getElementById('indicadoresContent');
+  el.dataset.mes = (d === h) ? d : (d + '..' + h);
+  renderIndicadores();
+}
+
+function atajoPeriodo(clave){
+  if(!clave) return;
+  const hoy = today();
+  const mesActual = hoy.slice(0,7);
+  const restarMeses = (ym, n) => {
+    let [y,m] = ym.split('-').map(Number);
+    m -= n;
+    while(m < 1){ m += 12; y -= 1; }
+    return `${y}-${String(m).padStart(2,'0')}`;
+  };
+  let desde, hasta = mesActual;
+  switch(clave){
+    case 'mes':   desde = mesActual; break;
+    case 'mes-1': desde = hasta = restarMeses(mesActual, 1); break;
+    case 'trim':  desde = restarMeses(mesActual, 2); break;
+    case 'sem':   desde = restarMeses(mesActual, 5); break;
+    case 'anio':  desde = hoy.slice(0,4) + '-01'; break;
+    case '12m':   desde = restarMeses(mesActual, 11); break;
+    default: return;
+  }
+  const el = document.getElementById('indicadoresContent');
+  el.dataset.mes = (desde === hasta) ? desde : (desde + '..' + hasta);
+  renderIndicadores();
+}
+
+// ── v3_163: períodos ────────────────────────────────────────────
+// Los indicadores se calculaban siempre sobre un mes calendario completo, y el
+// mes en curso se contaba entero: al 1 de agosto, un paciente en ARM sumaba los
+// 31 días del mes. Ahora todo pasa por un rango de fechas explícito, que además
+// nunca se extiende más allá de hoy.
+// El selector acepta un mes ('2026-08') o un rango ('2026-06..2026-08').
+function rangoDe(periodo){
+  const hoy = today();
+  periodo = periodo || hoy.slice(0,7);
+  const finDeMes = ym => {
+    const [y,m] = ym.split('-').map(Number);
+    return `${ym}-${String(new Date(y, m, 0).getDate()).padStart(2,'0')}`;
+  };
+  let desde, hasta;
+  if(periodo.includes('..')){
+    const [a,b] = periodo.split('..');
+    desde = a + '-01';
+    hasta = finDeMes(b);
+  } else {
+    desde = periodo + '-01';
+    hasta = finDeMes(periodo);
+  }
+  // Nunca contar días que todavía no ocurrieron
+  if(hasta > hoy) hasta = hoy;
+  return { desde, hasta };
+}
+const enPeriodo = (fecha, periodo) => {
+  if(!fecha) return false;
+  const r = rangoDe(periodo);
+  const f = String(fecha).slice(0,10);
+  return f >= r.desde && f <= r.hasta;
+};
+// Cantidad de días del período (para promedios diarios)
+function diasDelPeriodo(periodo){
+  const r = rangoDe(periodo);
+  return (daysBetween(r.desde, r.hasta) || 0) + 1;
+}
+// Etiqueta legible
+function etiquetaPeriodo(periodo){
+  const MESES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const nom = ym => { const [y,m] = ym.split('-').map(Number); return MESES[m-1] + ' ' + y; };
+  if(!periodo) return '';
+  if(periodo.includes('..')){
+    const [a,b] = periodo.split('..');
+    return a === b ? nom(a) : nom(a) + ' — ' + nom(b);
+  }
+  return nom(periodo);
+}
+
 // ── Helpers de cálculo ───────────────────────────────────
 let SECTORES = [];
 const SECTOR_LBL = s => SALA_LABEL[s]||s;
 
 function diasARMenMes(p, mesStr){
-  // Días del mes en que el paciente estuvo en ARM
+  // v3_163: días del período en que el paciente estuvo en ARM. El tope superior
+  // es el fin del período o el día de hoy, lo que ocurra primero: antes, con el
+  // mes en curso, un paciente todavía en ARM sumaba el mes entero por adelantado.
   if(!p.inicioARM) return 0;
-  const [y,m] = mesStr.split('-').map(Number);
-  const inicioMes = `${mesStr}-01`;
-  const lastDay = new Date(y, m, 0).getDate();
-  const finMes = `${mesStr}-${String(lastDay).padStart(2,'0')}`;
-  const desde = p.inicioARM > inicioMes ? p.inicioARM : inicioMes;
-  const hasta = (!p.finARM || p.finARM > finMes) ? finMes : p.finARM;
+  const r = rangoDe(mesStr);
+  const desde = p.inicioARM > r.desde ? p.inicioARM : r.desde;
+  const hasta = (!p.finARM || p.finARM > r.hasta) ? r.hasta : p.finARM;
   if(desde > hasta) return 0;
   return (daysBetween(desde, hasta)||0) + 1;
 }
@@ -12566,15 +12681,15 @@ function contarDiasUnicos(filtro){
 }
 
 function diasTETenMes(mesStr){
-  return contarDiasUnicos(e=>e.date.startsWith(mesStr) && e.interfaz==='TET');
+  return contarDiasUnicos(e=>enPeriodo(e.date, mesStr) && e.interfaz==='TET');
 }
 
 function diasTQTarmEnMes(mesStr){
-  return contarDiasUnicos(e=>e.date.startsWith(mesStr) && e.interfaz==='TQT');
+  return contarDiasUnicos(e=>enPeriodo(e.date, mesStr) && e.interfaz==='TQT');
 }
 
 function diasTQTespEnMes(mesStr){
-  return contarDiasUnicos(e=>e.date.startsWith(mesStr) && (e.interfaz||'').includes('TQT espontáneo'));
+  return contarDiasUnicos(e=>enPeriodo(e.date, mesStr) && (e.interfaz||'').includes('TQT espontáneo'));
 }
 
 function pacientesEnARMenMes(sala, mesStr){
@@ -12590,7 +12705,7 @@ function extubaciones(tipo, sala, mesStr){
   // Se cuentan eventos únicos por paciente+día (la herencia de estado
   // ventilatorio puede repetir el dato en varias evoluciones del mismo día)
   return contarDiasUnicos(e=>{
-    if(mesStr && !e.date.startsWith(mesStr)) return false;
+    if(mesStr && !enPeriodo(e.date, mesStr)) return false;
     if(sala){
       const p = patients.find(x=>x.id===e.patientId);
       if(!p || p.sala!==sala) return false;
@@ -12606,7 +12721,7 @@ function extubaciones(tipo, sala, mesStr){
 
 function decanulaciones(tipo, sala, mesStr){
   return contarDiasUnicos(e=>{
-    if(mesStr && !e.date.startsWith(mesStr)) return false;
+    if(mesStr && !enPeriodo(e.date, mesStr)) return false;
     if(sala){
       const p = patients.find(x=>x.id===e.patientId);
       if(!p || p.sala!==sala) return false;
@@ -12618,7 +12733,7 @@ function decanulaciones(tipo, sala, mesStr){
 function controlCuffEnMes(sala, mesStr){
   // Días únicos por paciente con al menos un control de cuff registrado
   return contarDiasUnicos(e=>{
-    if(mesStr && !e.date.startsWith(mesStr)) return false;
+    if(mesStr && !enPeriodo(e.date, mesStr)) return false;
     const p = patients.find(x=>x.id===e.patientId);
     if(sala && (!p || p.sala!==sala)) return false;
     return !!(e.cuffM || e.cuffT || e.cuffN);
@@ -12627,7 +12742,7 @@ function controlCuffEnMes(sala, mesStr){
 
 function deglucionEnMes(sala, mesStr){
   return contarDiasUnicos(e=>{
-    if(mesStr && !e.date.startsWith(mesStr)) return false;
+    if(mesStr && !enPeriodo(e.date, mesStr)) return false;
     const p = patients.find(x=>x.id===e.patientId);
     if(sala && (!p || p.sala!==sala)) return false;
     return !!(e.deglusion && e.deglusion !== 'No realizada');
@@ -12668,7 +12783,7 @@ function esTecnicaEsp(tec){ return _SET_PREST_ESP.has(_normPrest(tec)); }
 // Evoluciones del mes/sector sobre las que se cuenta
 function _evosDelMes(sala, mesStr){
   return evoluciones.filter(e =>
-    !e.tipo && e.date?.startsWith(mesStr) &&
+    !e.tipo && enPeriodo(e.date, mesStr) &&
     (!sala || patients.find(p => p.id === e.patientId)?.sala === sala)
   );
 }
@@ -12716,7 +12831,7 @@ function procedimientosTotalEnMes(sala, mesStr){
 // Las fichas neurológicas no viven en la evolución sino en el paciente
 function fichasNeuroEnMes(sala, mesStr){
   return patients.filter(p => !sala || p.sala === sala)
-    .reduce((tot, p) => tot + (p.fichasNeuro || []).filter(f => String(f.fecha||'').startsWith(mesStr)).length, 0);
+    .reduce((tot, p) => tot + (p.fichasNeuro || []).filter(f => enPeriodo(String(f.fecha||''), mesStr)).length, 0);
 }
 
 function prestacionesEspEnMes(sala, mesStr, tipoEsp){
@@ -12736,7 +12851,7 @@ function prestacionesTotalesEnMes(sala, mesStr){
 
 function evolucionesEnMes(sala, mesStr){
   return evoluciones.filter(e=>{
-    if(mesStr && !e.date?.startsWith(mesStr)) return false;
+    if(mesStr && !enPeriodo(e.date, mesStr)) return false;
     if(sala){
       const p = patients.find(x=>x.id===e.patientId);
       if(!p || p.sala!==sala) return false;
@@ -12748,7 +12863,7 @@ function evolucionesEnMes(sala, mesStr){
 function pveEnMes(sala, mesStr){
   // Días únicos por paciente con PVE registrada
   return contarDiasUnicos(e=>{
-    if(mesStr && !e.date.startsWith(mesStr)) return false;
+    if(mesStr && !enPeriodo(e.date, mesStr)) return false;
     if(sala){
       const p = patients.find(x=>x.id===e.patientId);
       if(!p || p.sala!==sala) return false;
@@ -12767,10 +12882,8 @@ const pctTxt = (n, total) => total ? (Math.round(n/total*1000)/10) + '%' : '—'
 // ¿El paciente estuvo en el servicio durante ese mes?
 // (tiene alguna evolución en el mes, o su estadía se superpone con el mes)
 function pacienteEnMes(p, mesStr){
-  if(evoluciones.some(e=>e.patientId===p.id && e.date && e.date.startsWith(mesStr))) return true;
-  const [y,m] = mesStr.split('-').map(Number);
-  const iniMes = `${mesStr}-01`;
-  const finMes = `${mesStr}-${String(new Date(y,m,0).getDate()).padStart(2,'0')}`;
+  if(evoluciones.some(e=>e.patientId===p.id && e.date && enPeriodo(e.date, mesStr))) return true;
+  const { desde: iniMes, hasta: finMes } = rangoDe(mesStr);   // v3_163
   const ingreso = p.fISector || p.fIUTI || p.fIHosp;
   if(!ingreso) return false;
   const egreso = p.fEUTI || null;
@@ -12781,7 +12894,7 @@ function pacientesDelMes(mesStr, sala){
 }
 function evosDelMes(mesStr, sala){
   return evoluciones.filter(e=>{
-    if(e.tipo || !e.date || !e.date.startsWith(mesStr)) return false;
+    if(e.tipo || !e.date || !enPeriodo(e.date, mesStr)) return false;
     if(sala){ const p=patients.find(x=>x.id===e.patientId); if(!p||p.sala!==sala) return false; }
     return true;
   });
@@ -12789,7 +12902,7 @@ function evosDelMes(mesStr, sala){
 // Eventos de egreso (alta/óbito/traslado) del mes
 function egresosDelMes(mesStr, tipo, sala){
   return evoluciones.filter(e=>{
-    if(!e.tipo || !e.date || !e.date.startsWith(mesStr)) return false;
+    if(!e.tipo || !e.date || !enPeriodo(e.date, mesStr)) return false;
     if(tipo && e.tipo!==tipo) return false;
     if(sala){ const p=patients.find(x=>x.id===e.patientId); if(!p||p.sala!==sala) return false; }
     return true;
@@ -12799,7 +12912,7 @@ function ingresosDelMes(mesStr, sala){
   return patients.filter(p=>{
     if(sala && p.sala!==sala) return false;
     const f = p.fISector || p.fIUTI;
-    return f && f.startsWith(mesStr);
+    return f && enPeriodo(f, mesStr);
   }).length;
 }
 
@@ -12878,7 +12991,7 @@ function calcEquipo(mesStr){
 // ── Días por tipo de soporte/interfaz (días únicos paciente+fecha) ──
 function diasInterfazEnMes(mesStr, sala, tipo){
   return contarDiasUnicos(e=>{
-    if(!e.date.startsWith(mesStr)) return false;
+    if(!enPeriodo(e.date, mesStr)) return false;
     if(sala){ const p=patients.find(x=>x.id===e.patientId); if(!p||p.sala!==sala) return false; }
     const esp = e.interfazEsp || '';
     const itf = e.interfaz || '';
@@ -12898,7 +13011,7 @@ function diasInterfazEnMes(mesStr, sala, tipo){
 // ── Extubaciones detalladas ──
 function extubDetalle(mesStr, sala, tipo){
   return contarDiasUnicos(e=>{
-    if(!e.date.startsWith(mesStr)) return false;
+    if(!enPeriodo(e.date, mesStr)) return false;
     if(sala){ const p=patients.find(x=>x.id===e.patientId); if(!p||p.sala!==sala) return false; }
     switch(tipo){
       case 'planificada':    return e.extubacion==='Sí — planificada';
@@ -12933,11 +13046,11 @@ function evalEstructuradasEnMes(mesStr, sala){
   const con = fn => evos.filter(fn).length;
   const enSala = e => !sala || patients.find(p=>p.id===e.patientId)?.sala===sala;
   return {
-    'PVE (prueba de ventilación espontánea)': contarDiasUnicos(e=>e.date.startsWith(mesStr)&&enSala(e)&&e.pve&&e.pve!=='No'&&e.pve!==''),
+    'PVE (prueba de ventilación espontánea)': contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&enSala(e)&&e.pve&&e.pve!=='No'&&e.pve!==''),
     'Evaluación de músculos respiratorios (Pimax/Pemax/CV)': con(e=>e.musResp || e.musPImax || e.musPEmax || e.musCV || (e.tecnicas||[]).some(t=>(t||'').includes('músculos respiratorios'))),
     'Evaluación de fuerza muscular (MRC)': con(e=>e.mrcCompleto==='Si' || e.mrcTotal || e.mrc),
-    'Control de presión de cuff (días)': contarDiasUnicos(e=>e.date.startsWith(mesStr)&&enSala(e)&&(e.cuffM||e.cuffT||e.cuffN)),
-    'Evaluación de deglución (días)': contarDiasUnicos(e=>e.date.startsWith(mesStr)&&enSala(e)&&e.deglusion&&e.deglusion!=='No realizada'),
+    'Control de presión de cuff (días)': contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&enSala(e)&&(e.cuffM||e.cuffT||e.cuffN)),
+    'Evaluación de deglución (días)': contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&enSala(e)&&e.deglusion&&e.deglusion!=='No realizada'),
     'Cambios de setting ventilatorio': con(e=>e.modSetting),
     'EAB registrados': con(e=>e.ph||e.pco2||e.po2) + evos.reduce((s,e)=>s+((Array.isArray(e.eabExtra)?e.eabExtra.length:0)),0),
   };
@@ -12982,7 +13095,7 @@ function renderIndMensual(mesStr){
   </div>
 
   <div class="card" style="margin-bottom:12px;overflow-x:auto">
-    <div class="card-header"><div class="card-header-title"><i class="ti ti-table" style="color:var(--blue-400)"></i> Indicadores detallados — ${mesStr}</div></div>
+    <div class="card-header"><div class="card-header-title"><i class="ti ti-table" style="color:var(--blue-400)"></i> Indicadores detallados — ${etiquetaPeriodo(mesStr)}</div></div>
     <div class="card-body" style="padding:0">
     <table style="width:100%;border-collapse:collapse;font-size:12px">
       <thead>
@@ -13005,8 +13118,8 @@ function renderIndMensual(mesStr){
         ${fila('Evaluación neurológica (ficha)', s=>fichasNeuroEnMes(s,mesStr))}
         <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">ARM / Ventilación mecánica</td></tr>
         ${filaARM('Días de ARMI totales', s=>patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0))}
-        ${filaARM('Días de TET', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.interfaz==='TET'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
-        ${filaARM('Días de TQT en ARM', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.interfaz==='TQT'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
+        ${filaARM('Días de TET', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.interfaz==='TET'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
+        ${filaARM('Días de TQT en ARM', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.interfaz==='TQT'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
         ${filaARM('Días de TQT sin ARM (espontáneo)', s=>diasInterfazEnMes(mesStr,s,'TQT_ESP'))}
         ${filaARM('Pacientes únicos en ARM', s=>pacientesEnARMenMes(s,mesStr))}
         <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Soporte no invasivo / Oxigenoterapia (días)</td></tr>
@@ -13015,8 +13128,8 @@ function renderIndMensual(mesStr){
         ${filaARM('Días de VAN con O₂', s=>diasInterfazEnMes(mesStr,s,'VAN_O2'))}
         ${filaARM('Días en aire ambiente', s=>diasInterfazEnMes(mesStr,s,'AA'))}
         <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Extubaciones</td></tr>
-        ${filaARM('Extubaciones exitosas', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.extubacion==='Sí — planificada'&&e.pveResult==='Exitosa'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
-        ${filaARM('Extubaciones fallidas', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.extubacion?.startsWith('Sí')&&e.pveResult?.startsWith('Fallida')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
+        ${filaARM('Extubaciones exitosas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.extubacion==='Sí — planificada'&&e.pveResult==='Exitosa'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
+        ${filaARM('Extubaciones fallidas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.extubacion?.startsWith('Sí')&&e.pveResult?.startsWith('Fallida')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
         ${filaARM('Extubaciones no programadas (total)', s=>extubDetalle(mesStr,s,'no_programada'))}
         ${filaARM('— Autoextubaciones', s=>extubDetalle(mesStr,s,'autoextubacion'))}
         ${filaARM('— Extubaciones accidentales', s=>extubDetalle(mesStr,s,'accidental'))}
@@ -13030,7 +13143,7 @@ function renderIndMensual(mesStr){
         ${filaARM('Traslados internos', s=>egresosDelMes(mesStr,'traslado',s))}
         <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">PVE / Ventilación espontánea</td></tr>
         ${filaARM('PVE realizadas', s=>pveEnMes(s,mesStr))}
-        ${filaARM('PVE exitosas', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.pveResult==='Exitosa'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
+        ${filaARM('PVE exitosas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.pveResult==='Exitosa'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
         <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Vía aérea artificial</td></tr>
         ${filaARM('Controles de cuff', s=>controlCuffEnMes(s,mesStr))}
         ${filaARM('Evaluaciones de deglución', s=>deglucionEnMes(s,mesStr))}
@@ -13129,7 +13242,7 @@ async function exportarIndicadoresCompleto(mesStr){
   const calcFila = (label, fn) => [label, ...SECTORES.map(fn), SECTORES.reduce((s,sala)=>s+(fn(sala)||0),0)];
 
   rows.push(['KINEXA — INDICADORES COMPLETOS DEL SERVICIO']);
-  rows.push(['Mes:', mesStr, 'Generado:', today(), 'Institución:', USER?.institucion_id||'']);
+  rows.push(['Período:', etiquetaPeriodo(mesStr), 'Desde:', rangoDe(mesStr).desde, 'Hasta:', rangoDe(mesStr).hasta, 'Generado:', today(), 'Institución:', USER?.institucion_id||'']);
 
   // ── 1. DEMOGRAFÍA ──
   const d = calcDemografia(mesStr);
@@ -13282,7 +13395,7 @@ async function exportarIndicadoresCompleto(mesStr){
   const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `Kinexa_indicadores_completos_${mesStr}.csv`;
+  a.download = `Kinexa_indicadores_completos_${String(mesStr).replace('..','_a_')}.csv`;
   a.click();
   addLog('export','Exportó indicadores completos: '+mesStr);
   showToast('Indicadores completos exportados ✓','success');
@@ -13294,7 +13407,7 @@ async function exportarIndicadores(vista, mesStr){
   if(vista==='mensual'){
     rows.push(['Indicador', ...SECTORES.map(SECTOR_LBL), 'TOTAL']);
     const calcFila = (label, fn) => [label, ...SECTORES.map(fn), SECTORES.reduce((s,sala)=>s+(fn(sala)||0),0)];
-    rows.push(['Mes:', mesStr]);
+    rows.push(['Período:', etiquetaPeriodo(mesStr), '(' + rangoDe(mesStr).desde + ' a ' + rangoDe(mesStr).hasta + ')']);
     rows.push([]);
     rows.push(['PRESTACIONES']);
     rows.push(calcFila('Prestaciones totales', s=>prestacionesTotalesEnMes(s,mesStr)));
@@ -13308,14 +13421,14 @@ async function exportarIndicadores(vista, mesStr){
     rows.push(calcFila('Evaluación neurológica (ficha)', s=>fichasNeuroEnMes(s,mesStr)));
     rows.push(['ARM / VENTILACIÓN']);
     rows.push(calcFila('Días de ARMI totales', s=>patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0)));
-    rows.push(calcFila('Días de TET', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.interfaz==='TET'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
-    rows.push(calcFila('Días de TQT en ARM', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.interfaz==='TQT'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
-    rows.push(calcFila('Días de TQT sin ARM', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&(e.interfaz||'').includes('TQT espontáneo')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
+    rows.push(calcFila('Días de TET', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.interfaz==='TET'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
+    rows.push(calcFila('Días de TQT en ARM', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.interfaz==='TQT'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
+    rows.push(calcFila('Días de TQT sin ARM', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&(e.interfaz||'').includes('TQT espontáneo')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
     rows.push(calcFila('Pacientes únicos en ARM', s=>pacientesEnARMenMes(s,mesStr)));
     rows.push(['EXTUBACIONES']);
-    rows.push(calcFila('Exitosas', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.extubacion==='Sí — planificada'&&e.pveResult==='Exitosa'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
-    rows.push(calcFila('Fallidas', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&e.extubacion?.startsWith('Sí')&&e.pveResult?.startsWith('Fallida')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
-    rows.push(calcFila('No programadas', s=>contarDiasUnicos(e=>e.date.startsWith(mesStr)&&(e.extubacion==='Sí — no planificada'||e.extubacion==='autoextubacion'||e.extubacion==='accidental')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
+    rows.push(calcFila('Exitosas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.extubacion==='Sí — planificada'&&e.pveResult==='Exitosa'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
+    rows.push(calcFila('Fallidas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.extubacion?.startsWith('Sí')&&e.pveResult?.startsWith('Fallida')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
+    rows.push(calcFila('No programadas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&(e.extubacion==='Sí — no planificada'||e.extubacion==='autoextubacion'||e.extubacion==='accidental')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
     rows.push(['VÍA AÉREA / CUFF']);
     rows.push(calcFila('Controles de cuff', s=>controlCuffEnMes(s,mesStr)));
     rows.push(calcFila('Evaluaciones de deglución', s=>deglucionEnMes(s,mesStr)));
