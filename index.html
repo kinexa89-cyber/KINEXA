@@ -4189,10 +4189,11 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     </div>
 
     <div id="neuroFichasBarraHist" style="display:none;align-items:center;justify-content:space-between;gap:8px;background:var(--purple-50);border:1px solid var(--purple-100);border-radius:8px;padding:8px 12px;margin-bottom:12px">
-      <span style="font-size:12px;color:var(--purple-800)"><i class="ti ti-history"></i> <span id="neuroFichasHistTexto">Este paciente ya tiene fichas neurológicas previas</span></span>
-      <div style="display:flex;gap:6px">
-        <button type="button" class="btn btn-ghost btn-sm" onclick="mostrarFichasNeuroAnteriores()"><i class="ti ti-eye"></i> Ver fichas anteriores</button>
-        <button type="button" class="btn btn-ghost btn-sm" onclick="nuevaFichaNeuroEnBlanco()" title="Empezar una evaluación nueva sin los datos de la última"><i class="ti ti-file-plus"></i> Nueva ficha en blanco</button>
+      <span style="font-size:12px;color:var(--purple-800);line-height:1.5"><i class="ti ti-history"></i> <span id="neuroFichasHistTexto">Este paciente ya tiene fichas neurológicas previas</span></span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="verUltimaFichaNeuro()" title="Abrir la última ficha guardada"><i class="ti ti-file-text"></i> Ver la última</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="mostrarFichasNeuroAnteriores()"><i class="ti ti-list"></i> Ver todas</button>
+        <button type="button" class="btn btn-ghost btn-sm" onclick="nuevaFichaNeuroEnBlanco()" title="Empezar una evaluación nueva sin los datos de la última"><i class="ti ti-file-plus"></i> Nueva en blanco</button>
       </div>
     </div>
 
@@ -4703,6 +4704,24 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
   </div>
 </div>
 
+<!-- ════ VISOR DE FICHA NEUROLÓGICA GUARDADA (v3_167) ════ -->
+<div class="modal-overlay" id="modalVisorFichaNeuro">
+  <div class="modal" style="width:820px">
+    <div class="modal-header">
+      <div>
+        <h3>Ficha neurológica</h3>
+        <div class="modal-subtitle" id="visorFichaNeuroSub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalVisorFichaNeuro')">&times;</button>
+    </div>
+    <div id="visorFichaNeuroBody" style="max-height:70vh;overflow:auto;background:#fff;padding:14px;border:1px solid var(--border);border-radius:8px;font-size:12px"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalVisorFichaNeuro')"><i class="ti ti-arrow-left"></i> Volver</button>
+      <button class="btn btn-primary" onclick="imprimirFichaNeuroDesdeVisor()"><i class="ti ti-printer"></i> Imprimir / PDF</button>
+    </div>
+  </div>
+</div>
+
 <!-- ════ MODAL EVOLUCIÓN MÍNIMOS ════ -->
 <div class="modal-overlay" id="modalEvoMin">
   <div class="modal">
@@ -5189,7 +5208,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_166';
+const APP_VERSION = 'v3_167';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -9512,7 +9531,14 @@ function openFichaNeuro(patientId){
   if(barra){
     barra.style.display = nFichas ? 'flex' : 'none';
     const txt = document.getElementById('neuroFichasHistTexto');
-    if(txt) txt.textContent = `Este paciente ya tiene ${nFichas} ficha${nFichas===1?'':'s'} neurológica${nFichas===1?'':'s'} anterior${nFichas===1?'':'es'}`;
+    if(txt && nFichas){
+      // v3_167: mostrar cuándo y quién hizo la última, como en deglución
+      const ult = (p.fichasNeuro||[])[0];
+      txt.innerHTML = `<strong>Última ficha: ${fmtDate(ult.fecha)}</strong>` +
+        (ult.kine ? ` · ${escapeHTML(ult.kine)}` : '') +
+        (TIPO_FICHA_NEURO_LABEL[ult.tipo] ? ` · ${TIPO_FICHA_NEURO_LABEL[ult.tipo]}` : '') +
+        `<br><span style="font-size:11px">${nFichas} ficha${nFichas===1?'':'s'} en total. El formulario viene precargado con la última: modificá lo que cambió.</span>`;
+    }
   }
 
   // Cargar datos de la última ficha si existen (para no reescribir lo que no cambió);
@@ -9530,7 +9556,11 @@ function openFichaNeuro(patientId){
 
 // Precarga el formulario de ficha neurológica con los datos de una ficha ya guardada.
 function precargarFichaNeuroEnFormulario(fichaExistente){
-  const M=(id,v)=>{ const el=document.getElementById(id); if(el) el.value=v||''; };
+  // v3_167: antes era `v || ''`, que convierte el 0 en vacío. Un FAC de 0
+  // (no deambula), un Barthel de 0 o un MRC de 0 son valores válidos y
+  // frecuentes en terapia: se guardaban bien pero desaparecían al reabrir
+  // la ficha, y al guardar de nuevo quedaban borrados de verdad.
+  const M=(id,v)=>{ const el=document.getElementById(id); if(el) el.value = (v===null || v===undefined || v===false) ? '' : String(v); };
   M('neuroTipo', fichaExistente.tipo); M('neuroDx', fichaExistente.dx);
   M('neuroHC', fichaExistente.hc); M('neuroAtc', fichaExistente.atc);
   M('neuroExFisica', fichaExistente.exFisica); M('neuroHemi', fichaExistente.hemi);
@@ -9538,18 +9568,20 @@ function precargarFichaNeuroEnFormulario(fichaExistente){
   // Barthel ítems
   const bP = fichaExistente.barthelItems?.prev||{}, bA = fichaExistente.barthelItems?.act||{};
   ['Alim','Baño','Aseo','Vest','Intest','Vesic','Inod','Tras','Deamb','Escal'].forEach(k=>{
-    M('nb'+k+'P', bP[k]||''); M('nb'+k+'A', bA[k]||'');
+    M('nb'+k+'P', bP[k]); M('nb'+k+'A', bA[k]);
   });
   calcBarthelNeuro();
   M('neuroFACPrev', fichaExistente.facPrev); M('neuroFACAct', fichaExistente.facAct);
   // PASS ítems
   const pass = fichaExistente.passItems||{};
-  for(let i=1;i<=12;i++){ M('nPASS'+i, pass['p'+i]||''); }
+  for(let i=1;i<=12;i++){ M('nPASS'+i, pass['p'+i]); }   // v3_167: el 0 es válido
   calcPASSNeuro();
   M('neuroTCT', fichaExistente.tct); M('neuroSaludAP', fichaExistente.saludAP);
   // MRC
-  if(fichaExistente.mrcD) fichaExistente.mrcD.forEach((v,i)=>{ const el=document.getElementById(`mrcD${i}`); if(el) el.value=v||''; });
-  if(fichaExistente.mrcI) fichaExistente.mrcI.forEach((v,i)=>{ const el=document.getElementById(`mrcI${i}`); if(el) el.value=v||''; });
+  // v3_167: un MRC de 0 (parálisis completa) es un valor válido
+  const _mv = v => (v===null || v===undefined || v==='') ? '' : String(v);
+  if(fichaExistente.mrcD) fichaExistente.mrcD.forEach((v,i)=>{ const el=document.getElementById(`mrcD${i}`); if(el) el.value=_mv(v); });
+  if(fichaExistente.mrcI) fichaExistente.mrcI.forEach((v,i)=>{ const el=document.getElementById(`mrcI${i}`); if(el) el.value=_mv(v); });
   calcMRCScore();
   M('neuroConciencia', fichaExistente.conciencia); M('neuroLenguaje', fichaExistente.lenguaje);
   M('neuroAtencion', fichaExistente.atencion); M('neuroMemoria', fichaExistente.memoria);
@@ -9621,6 +9653,14 @@ function mostrarFichasNeuroAnteriores(){
     }).join('');
   }
   openModal('modalFichasNeuroHist');
+}
+
+// v3_167: atajo para abrir la última ficha sin pasar por el listado
+function verUltimaFichaNeuro(){
+  const p = patients.find(x=>x.id===neuroEditPacId);
+  const ult = (p?.fichasNeuro||[])[0];
+  if(!ult){ showToast('Todavía no hay fichas guardadas','error'); return; }
+  imprimirFichaNeuroGuardada(ult.id);
 }
 
 // Genera e imprime/exporta el HTML de una ficha neurológica ya guardada (histórica),
@@ -9749,10 +9789,34 @@ function imprimirFichaNeuroGuardada(fichaId){
 
 </body></html>`;
 
+  // v3_167: antes esto abría una pestaña nueva del navegador. En el celular,
+  // con la app instalada como PWA, esa pestaña no tiene botón de volver ni
+  // barra de pestañas: el kine quedaba encerrado y tenía que cerrar la app.
+  // Ahora la ficha se muestra dentro de la propia app, con botón de cerrar.
+  mostrarFichaNeuroEnVisor(html, `${p.apellido}, ${p.nombre} — ${fmtDate(ficha.fecha)}`);
+}
+
+// Visor interno de la ficha neurológica
+let _fichaNeuroHTML = '';
+function mostrarFichaNeuroEnVisor(html, subtitulo){
+  _fichaNeuroHTML = html;
+  const sub = document.getElementById('visorFichaNeuroSub');
+  if(sub) sub.textContent = subtitulo || '';
+  const cuerpo = document.getElementById('visorFichaNeuroBody');
+  if(cuerpo){
+    // Se extrae solo el contenido del body para no romper los estilos de la app
+    const m = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    cuerpo.innerHTML = m ? m[1] : html;
+  }
+  openModal('modalVisorFichaNeuro');
+}
+function imprimirFichaNeuroDesdeVisor(){
+  if(!_fichaNeuroHTML){ showToast('No hay ficha para imprimir','error'); return; }
   const w = window.open('', '_blank');
-  w.document.write(html);
+  if(!w){ showToast('El navegador bloqueó la ventana de impresión','error'); return; }
+  w.document.write(_fichaNeuroHTML);
   w.document.close();
-  setTimeout(()=>w.print(), 600);
+  setTimeout(()=>{ try{ w.print(); }catch(e){} }, 600);
 }
 
 function calcMRCScore(){
@@ -10006,6 +10070,27 @@ function openEgreso(patientId){
     document.getElementById(id).className = 'egreso-option';
   });
   openModal('modalEgreso');
+}
+
+// v3_167: abre el modal de traslado con el sector y la cama ya cargados.
+// Se usa cuando alguien intenta dar de alta a un paciente que ya está internado
+// en otro sector: en vez de duplicarlo, se lo traslada.
+function abrirTrasladoDesdeAlta(patientId, sectorDestino, camaDestino){
+  openEgreso(patientId);
+  selectEgresoTipo('traslado');
+  const sel = document.getElementById('egresoSectorDestino');
+  if(sel && sectorDestino){
+    sel.value = sectorDestino;
+    poblarCamasDestino();
+    const camaSel = document.getElementById('egresoNuevaCama');
+    if(camaSel && camaDestino){
+      const opcion = [...camaSel.options].find(o => String(o.value) === String(camaDestino));
+      if(opcion) camaSel.value = camaDestino;
+    }
+  }
+  const obs = document.getElementById('egresoObs');
+  if(obs && !obs.value) obs.value = 'Traslado registrado al detectar el paciente ya cargado en otro sector.';
+  showToast('Completá el traslado en vez de cargarlo de nuevo','info');
 }
 
 function selectEgresoTipo(tipo){
@@ -10778,8 +10863,8 @@ function ventBadgeHTML(ev){
 }
 
 function renderPatientRow(p, todayStr){
-  const nEvo = evoluciones.filter(e=>e.patientId===p.id).length;
-  const tieneHoy = evoluciones.some(e=>e.patientId===p.id && e.date===todayStr);
+  const nEvo = evoluciones.filter(e=>e.patientId===p.id && !e.tipo).length;   // v3_167: sin traslados/altas
+  const tieneHoy = evoluciones.some(e=>e.patientId===p.id && e.date===todayStr && !e.tipo);   // v3_167
   const diasUTI = daysBetween(p.fIUTI, todayStr);
   const estVent = estadoVentPaciente(p);
   const tqtBadge = ventBadgeHTML(estVent);
@@ -10836,7 +10921,7 @@ function renderTabla(){
   }
   const todayStr = today();
   tbody.innerHTML = lista.map(p=>{
-    const nEvo = evoluciones.filter(e=>e.patientId===p.id).length;
+    const nEvo = evoluciones.filter(e=>e.patientId===p.id && !e.tipo).length;   // v3_167: sin traslados/altas
     const estVent = estadoVentPaciente(p);
     return `<tr>
       <td>${salaChip(p.sala)} <small style="color:var(--text-muted);font-size:10px">C.${p.cama||'?'}</small></td>
@@ -10867,8 +10952,8 @@ function filterDash(q){
   const cont = document.getElementById('dashPacientes');
   const todayStr = today();
   cont.innerHTML = lista.map(p=>{
-    const nEvo = evoluciones.filter(e=>e.patientId===p.id).length;
-    const tieneHoy = evoluciones.some(e=>e.patientId===p.id && e.date===todayStr);
+    const nEvo = evoluciones.filter(e=>e.patientId===p.id && !e.tipo).length;   // v3_167: sin traslados/altas
+    const tieneHoy = evoluciones.some(e=>e.patientId===p.id && e.date===todayStr && !e.tipo);   // v3_167
     const diasUTI = daysBetween(p.fIUTI, todayStr);
     const estVent = estadoVentPaciente(p);
     const tqtBadge = ventBadgeHTML(estVent);
@@ -10912,7 +10997,7 @@ function filterPacientes(q){
   const todayStr = today();
   const tbody = document.getElementById('tbodyPacientes');
   tbody.innerHTML = lista.map(p=>{
-    const nEvo = evoluciones.filter(e=>e.patientId===p.id).length;
+    const nEvo = evoluciones.filter(e=>e.patientId===p.id && !e.tipo).length;   // v3_167: sin traslados/altas
     const estVent = estadoVentPaciente(p);
     return `<tr>
       <td>${salaChip(p.sala)} <small style="color:var(--text-muted);font-size:10px">C.${p.cama||'?'}</small></td>
@@ -11147,6 +11232,43 @@ async function guardarPaciente(){
   // de la variable global. Basta con que uno de los dos lo sepa.
   const idEdicion = (document.getElementById('fEditPacId')?.value || '').trim()
                  || (editPacId != null ? String(editPacId) : '');
+
+  // ── v3_167: ¿este paciente ya está cargado en otro sector? ────
+  // Pasa cuando el pase de sector demora: el sector nuevo lo carga de cero y el
+  // paciente queda duplicado. Se avisa ANTES de guardar, con la opción de
+  // trasladarlo (conservando toda su historia) en vez de crear una ficha nueva.
+  if(!idEdicion){
+    const dniNuevo = String(G('fDNI')||'').replace(/\D/g,'');
+    const norm = t => String(t||'').normalize('NFC').trim().toLowerCase();
+    const yaInternado = patients.find(p => {
+      if(p.estado !== 'Activo') return false;
+      const dniP = String(p.dni||'').replace(/\D/g,'');
+      if(dniNuevo && dniP && dniNuevo === dniP) return true;                    // mismo documento
+      return !dniNuevo && norm(p.apellido)===norm(apellido) && norm(p.nombre)===norm(G('fNombre'));
+    });
+    if(yaInternado){
+      const salaTxt = (SALA_LABEL[yaInternado.sala] || yaInternado.sala || '—');
+      const nEvos = evoluciones.filter(e => e.patientId === yaInternado.id && !e.tipo).length;
+      const trasladar = confirm(
+        `⚠️ Este paciente YA ESTÁ CARGADO en el servicio.\n\n` +
+        `${yaInternado.apellido}, ${yaInternado.nombre}\n` +
+        `Sector: ${salaTxt} · Cama ${yaInternado.cama || '—'}\n` +
+        `Evoluciones cargadas: ${nEvos}\n\n` +
+        `Si lo cargás de nuevo van a quedar dos fichas del mismo paciente y la historia va a quedar partida.\n\n` +
+        `Aceptar = TRASLADARLO a ${SALA_LABEL[G('fSala')] || G('fSala')} cama ${G('fCama')} (conserva toda su historia)\n` +
+        `Cancelar = volver al formulario`
+      );
+      if(trasladar){
+        // Se reutiliza el traslado ya existente, que deja el registro correspondiente
+        closeModal('modalPaciente', true);
+        abrirTrasladoDesdeAlta(yaInternado.id, G('fSala'), G('fCama'));
+        return;
+      }
+      const elDni = document.getElementById('fDNI');
+      if(elDni){ elDni.scrollIntoView({behavior:'smooth', block:'center'}); try{ elDni.focus({preventScroll:true}); }catch(e){} }
+      return;
+    }
+  }
 
   // ── v3_143: aviso de cama ocupada ──────────────────────
   // No se bloquea el guardado (a veces hace falta el solapamiento por unas horas),
@@ -12347,7 +12469,7 @@ async function guardarEvolucion(){
 function actualizarContadorHistorial(elId, patientId){
   const el = document.getElementById(elId);
   if(!el) return;
-  const n = evoluciones.filter(e=>e.patientId===patientId).length;
+  const n = evoluciones.filter(e=>e.patientId===patientId && !e.tipo).length;   // v3_167
   el.textContent = n;
   el.style.display = n ? '' : 'none';
 }
