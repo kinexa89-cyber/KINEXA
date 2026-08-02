@@ -2533,12 +2533,12 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-row">
           <div class="form-group">
             <label>P0.1 (cmH₂O)</label>
-            <input type="number" id="eP01" inputmode="decimal" step="0.1" placeholder="Valor negativo, ej: -2.5">
+            <input type="number" id="eP01" inputmode="decimal" step="0.1" placeholder="Ej: 2.5 → se guarda -2.5">
             <div class="form-hint">Presión de oclusión 0.1 seg</div>
           </div>
           <div class="form-group">
             <label>ΔPocc (cmH₂O)</label>
-            <input type="number" id="eDeltaPocc" inputmode="decimal" placeholder="ej: 15">
+            <input type="number" id="eDeltaPocc" inputmode="decimal" placeholder="Ej: 15 → se guarda -15">
             <div class="form-hint">Delta de presión de oclusión</div>
           </div>
         </div>
@@ -2626,12 +2626,12 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-row">
           <div class="form-group">
             <label>P0.1 (cmH₂O)</label>
-            <input type="number" id="eP012" inputmode="decimal" step="0.1" placeholder="Valor negativo, ej: -2.5">
+            <input type="number" id="eP012" inputmode="decimal" step="0.1" placeholder="Ej: 2.5 → se guarda -2.5">
             <div class="form-hint">Presión de oclusión 0.1 seg</div>
           </div>
           <div class="form-group">
             <label>ΔPocc (cmH₂O)</label>
-            <input type="number" id="eDeltaPocc2" inputmode="decimal" placeholder="ej: 15">
+            <input type="number" id="eDeltaPocc2" inputmode="decimal" placeholder="Ej: 15 → se guarda -15">
             <div class="form-hint">Delta de presión de oclusión</div>
           </div>
         </div>
@@ -3445,7 +3445,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-row three">
           <div class="form-group">
             <label>PImax (cmH₂O)</label>
-            <input type="number" id="eMusPImax" inputmode="decimal" placeholder="Valor negativo, ej: -80">
+            <input type="number" id="eMusPImax" inputmode="decimal" placeholder="Ej: 80 → se guarda -80">
             <div class="form-hint">Presión inspiratoria máxima</div>
           </div>
           <div class="form-group">
@@ -5189,7 +5189,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_164';
+const APP_VERSION = 'v3_166';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -7196,6 +7196,35 @@ document.querySelectorAll('.modal-overlay').forEach(m=>{
 //  TOAST
 // ════════════════════════════════════════════════════════
 let toastTimer;
+// ── v3_166: campos que siempre son negativos ────────────────────
+// El teclado numérico de Android no siempre trae la tecla "menos" (depende del
+// teclado instalado: Gboard, Samsung, etc.), y por eso a unos les aparecía y a
+// otros no. Como estos tres valores son negativos por definición, la app le pone
+// el signo sola al salir del campo: se escribe 80 y queda -80.
+// PEmax queda afuera a propósito: esa siempre es positiva.
+const CAMPOS_SIEMPRE_NEGATIVOS = ['eP01','eP012','eDeltaPocc','eDeltaPocc2','eMusPImax'];
+
+function forzarNegativo(el){
+  if(!el) return;
+  const v = String(el.value || '').trim();
+  if(v === '' || v === '-') return;
+  const n = parseFloat(v.replace(',', '.'));
+  if(isNaN(n) || n === 0) return;
+  const neg = n > 0 ? -n : n;          // si ya venía negativo, se respeta
+  const txt = String(neg);
+  if(txt !== v){
+    el.value = txt;
+    el.dispatchEvent(new Event('input', { bubbles:true }));   // recalcular lo que dependa
+    el.dispatchEvent(new Event('change', { bubbles:true }));
+  }
+}
+// Se aplica al salir del campo, no mientras se escribe, para no molestar al tipear
+document.addEventListener('blur', e=>{
+  if(CAMPOS_SIEMPRE_NEGATIVOS.includes(e.target?.id)) forzarNegativo(e.target);
+}, true);
+// Compatibilidad: quedaba una llamada desde el reset del formulario
+function pintarTodosLosSignos(){}
+
 // ── v3_162: decimales en iPhone ─────────────────────────────────
 // El teclado numérico de iOS muestra COMA, no punto, según el idioma del
 // teléfono. En un campo <input type="number"> el navegador considera inválido
@@ -11509,6 +11538,7 @@ function openEvolucion(patientId){
     const box=document.getElementById('eCurvaFlujoBox'+pref); if(box) box.style.display='none';
     pintarCurvaFlujo(pref);
   });
+  pintarTodosLosSignos();   // v3_165
   { const c=document.getElementById('eabExtraContainer'); if(c) c.innerHTML=''; }
   document.querySelectorAll('#modalEvo .tag.active').forEach(t=>t.classList.remove('active'));
   ['msSedacion','msAnalgesia','msBNM','msVasoact'].forEach(resetMultiselect);
@@ -12045,6 +12075,7 @@ function precargarCamposEvolucion(evo){
     if(bc) bc.style.display = (m === 'VC-CMV') ? 'block' : 'none';
     pintarCurvaFlujo(pref);
   });
+  pintarTodosLosSignos();   // v3_165
 
   // Evaluación de músculos respiratorios
   if(evo.musResp){
