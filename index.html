@@ -5189,7 +5189,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_163';
+const APP_VERSION = 'v3_164';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -10520,7 +10520,16 @@ function escapeHTML(s){
   if(s===null || s===undefined) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
-function today(){ return new Date().toISOString().slice(0,10); }
+// v3_164: fecha de HOY en la hora local del dispositivo, no en UTC.
+// toISOString() convierte a UTC: en Argentina (UTC-3), desde las 21:00 devolvía
+// el día siguiente. Eso adelantaba un día la fecha por defecto de las
+// evoluciones, los contadores de días (ARM, internación, sector) y el corte de
+// los indicadores. Todo lo cargado después de las 21 quedaba fechado mañana.
+function today(){
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
 function fmtDate(d){
   if(!d) return '—';
   const [y,m,day]=d.split('-');
