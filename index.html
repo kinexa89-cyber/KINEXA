@@ -5264,7 +5264,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_169';
+const APP_VERSION = 'v3_170';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -5433,7 +5433,7 @@ function addSectorRow(nombre, camas, contId, tipo){
   row.style.cssText = 'border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px';
   row.innerHTML =
     `<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">`+
-      `<input type="text" class="reg-sec-nombre" placeholder="Sector (ej: UTI A)" value="${nombre?String(nombre).replace(/"/g,'&quot;'):''}" style="flex:1">`+
+      `<input type="text" class="reg-sec-nombre" placeholder="Sector (ej: UTI A)" value="${nombre?String(nombre).replace(/"/g,'&quot;'):''}" data-nombre-orig="${nombre?String(nombre).replace(/"/g,'&quot;'):''}" style="flex:1">`+
       // v3_129: tipo de sala — define si el pase es de adultos o pediátrico
       `<select class="reg-sec-tipo" title="Tipo de sala" style="width:118px;flex-shrink:0">`+
         `<option value="adultos"${tipo!=='pediatrico'?' selected':''}>Adultos</option>`+
@@ -5857,13 +5857,39 @@ async function guardarMiClave(){
 
 async function guardarConfigKinexa(){
   const sectores = [];
+  const renombres = [];   // v3_170: sectores a los que les cambiaron el nombre
   document.querySelectorAll('#cfgSectores .reg-sector').forEach(r=>{
-    const nombre = r.querySelector('.reg-sec-nombre').value.trim();
+    const inp = r.querySelector('.reg-sec-nombre');
+    const nombre = inp.value.trim();
+    const orig = (inp.dataset.nombreOrig || '').trim();
     const camas = [...r.querySelectorAll('.reg-cama-in')].map(i=>i.value.trim()).filter(Boolean);
     const tipo = r.querySelector('.reg-sec-tipo')?.value || 'adultos';
     if(nombre) sectores.push({ nombre, camas, tipo });
+    if(orig && nombre && orig !== nombre) renombres.push({ de: orig, a: nombre });
   });
   if(!sectores.length){ showToast('Tiene que quedar al menos un sector','error'); return; }
+
+  // ── v3_170: renombrar un sector "desaparecía" a sus pacientes ──
+  // La app identifica el sector por su NOMBRE, y cada paciente guarda el nombre
+  // del suyo. Al renombrarlo, los pacientes quedaban apuntando a un sector que
+  // ya no existía: seguían en la base pero no se mostraban en ninguna pantalla.
+  // Ahora se los actualiza junto con el sector, en la misma operación.
+  if(renombres.length){
+    const afectados = renombres.map(rn => ({
+      ...rn,
+      n: patients.filter(p => String(p.sala||'').normalize('NFC').trim() === rn.de).length
+    }));
+    const conPacientes = afectados.filter(a => a.n > 0);
+    const detalle = afectados.map(a => `• "${a.de}" → "${a.a}"  (${a.n} paciente${a.n===1?'':'s'})`).join('\n');
+    const seguir = confirm(
+      `Vas a renombrar ${renombres.length===1?'un sector':'varios sectores'}:\n\n${detalle}\n\n` +
+      (conPacientes.length
+        ? `Los pacientes de ${conPacientes.length===1?'ese sector':'esos sectores'} se van a mover automáticamente al nombre nuevo, con toda su historia.\n\n`
+        : '') +
+      `¿Confirmás el cambio?`
+    );
+    if(!seguir) return;
+  }
 
   const usuarios = []; let hayAdmin = false, ok = true;
   document.querySelectorAll('#cfgUsers .cfg-user').forEach(r=>{
@@ -5883,6 +5909,33 @@ async function guardarConfigKinexa(){
   if(btn){ btn.disabled=true; btn.innerHTML='<i class="ti ti-loader-2"></i> Guardando…'; }
   try {
     await rpc('kinexa_setup', { p_token:TOKEN, p_config:{ sectores, usuarios } });
+
+    // v3_170: mover a los pacientes al nombre nuevo del sector
+    if(renombres.length){
+      let movidos = 0;
+      renombres.forEach(rn=>{
+        patients.forEach(p=>{
+          if(String(p.sala||'').normalize('NFC').trim() === rn.de){ p.sala = rn.a; movidos++; }
+        });
+        // Las camas de los sectores también quedan referenciadas por nombre
+        patients.forEach(p=>{
+          if(p.bannerTraslado){
+            if(p.bannerTraslado.salaOrigen === rn.de) p.bannerTraslado.salaOrigen = rn.a;
+            if(p.bannerTraslado.destino === rn.de) p.bannerTraslado.destino = rn.a;
+          }
+        });
+      });
+      if(movidos){
+        savePacientes();
+        await persistAll();
+        addLog('edit', `Renombró sector${renombres.length===1?'':'es'}: ${renombres.map(r=>`${r.de} → ${r.a}`).join(', ')} (${movidos} paciente${movidos===1?'':'s'} actualizado${movidos===1?'':'s'})`);
+        showToast(`${movidos} paciente${movidos===1?'':'s'} movido${movidos===1?'':'s'} al nombre nuevo`,'success');
+      }
+      // Si el usuario estaba parado en el sector viejo, seguirlo al nuevo
+      const rnActual = renombres.find(r => r.de === currentSector);
+      if(rnActual) currentSector = rnActual.a;
+    }
+
     // Clave de Gemini de la institución (opcional)
     const geminiKey = (document.getElementById('cfgGeminiKey')?.value || '').trim();
     try {
@@ -5918,6 +5971,7 @@ async function loadFromSupabase(){
     evoluciones = normalizarEvoluciones((evos || []).filter(e => e && !e._borrada));
     marcarTodoSincronizado();   // v3_150: lo recién bajado ya está en la nube
     savePacientes(); saveEvos();
+    avisarPacientesSinSector();   // v3_170
     setSyncStatus('ok');
     renderAll();
   } catch(e){
@@ -5925,6 +5979,42 @@ async function loadFromSupabase(){
     setSyncStatus('error');
     showToast('Error al cargar desde Supabase. Modo local.','error');
   }
+}
+
+// v3_170: red de seguridad. Si algún paciente activo quedó apuntando a un
+// sector que ya no existe (por un renombre anterior a esta versión), no
+// aparecería en ninguna pantalla aunque siga en la base. Se avisa a la jefatura
+// para que pueda reasignarlo en vez de darlo por perdido.
+function pacientesSinSector(){
+  const validos = new Set(SECTORES.map(x => String(x).normalize('NFC').trim()));
+  if(!validos.size) return [];
+  return patients.filter(p =>
+    p.estado === 'Activo' && !validos.has(String(p.sala||'').normalize('NFC').trim())
+  );
+}
+function avisarPacientesSinSector(){
+  if(!currentUser || currentUser.role !== 'admin') return;
+  const huerfanos = pacientesSinSector();
+  if(!huerfanos.length) return;
+  const sectoresRaros = [...new Set(huerfanos.map(p => p.sala || '(sin sector)'))];
+  setTimeout(()=>{
+    showToast(`⚠️ ${huerfanos.length} paciente${huerfanos.length===1?'':'s'} sin sector válido (${sectoresRaros.join(', ')})`, 'error');
+    console.warn('Pacientes con sector inexistente:', huerfanos.map(p=>`${p.apellido}, ${p.nombre} → "${p.sala}"`));
+  }, 1800);
+}
+// Reasigna todos los pacientes de un sector inexistente a uno válido
+async function reasignarSector(sectorViejo, sectorNuevo){
+  if(!esJefatura()){ showToast('Acción no autorizada','error'); return; }
+  let n = 0;
+  patients.forEach(p=>{
+    if(String(p.sala||'').normalize('NFC').trim() === String(sectorViejo).trim()){ p.sala = sectorNuevo; n++; }
+  });
+  if(!n){ showToast('No se encontraron pacientes en ese sector','error'); return; }
+  savePacientes();
+  await persistAll();
+  addLog('edit', `Reasignó ${n} paciente(s) de "${sectorViejo}" a "${sectorNuevo}"`);
+  showToast(`${n} paciente${n===1?'':'s'} reasignado${n===1?'':'s'} a ${sectorNuevo}`,'success');
+  renderAll();
 }
 
 // ── v3_150: sincronización incremental ──────────────────────────
