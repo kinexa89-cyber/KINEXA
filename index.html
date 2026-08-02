@@ -5298,7 +5298,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_175';
+const APP_VERSION = 'v3_176';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -6088,7 +6088,35 @@ async function reasignarSector(sectorViejo, sectorNuevo){
 // de a una y esperando la respuesta de cada una. Con 500 evoluciones cargadas
 // eso son 500 viajes a la nube: de ahí los 30 segundos para guardar. Ahora se
 // guarda una huella de cada registro y solo se manda lo que realmente cambió.
-const _limpiarObj = obj => JSON.parse(JSON.stringify(obj, (k,v) => v === undefined ? null : v));
+// ── v3_176: registros más livianos ──────────────────────────────
+// Cada evolución tiene unos 240 campos y en una visita real se completan
+// pocos. Antes se guardaban TODOS, incluidos los vacíos, que viajaban a la
+// nube y ocupaban lugar como null. Ahora los campos sin dato directamente no
+// se guardan: al leerlos vuelven como "sin valor", que es lo mismo.
+// Se conservan el false y el 0, que sí significan algo (un MRC de 0, un
+// "mrcCompleto: false"). Reduce el tamaño a menos de la mitad.
+function _limpiarObj(obj){
+  const vacio = v => v === null || v === undefined || v === '';
+  const podar = v => {
+    if(Array.isArray(v)){
+      const a = v.map(podar).filter(x => !vacio(x));
+      return a;
+    }
+    if(v && typeof v === 'object'){
+      const o = {};
+      Object.keys(v).forEach(k => {
+        const nv = podar(v[k]);
+        if(vacio(nv)) return;
+        if(Array.isArray(nv) && !nv.length) return;
+        if(nv && typeof nv === 'object' && !Array.isArray(nv) && !Object.keys(nv).length) return;
+        o[k] = nv;
+      });
+      return o;
+    }
+    return v === undefined ? null : v;
+  };
+  return podar(obj);
+}
 let _huellas = {};   // 'evolucion:123' → huella del contenido ya subido
 
 function _huella(txt){
