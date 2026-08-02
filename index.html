@@ -2643,116 +2643,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 
     <hr class="sep">
 
-    <!-- EAB -->
-    <div class="accordion-header" onclick="toggleAccordion('accEAB')">
-      <span><i class="ti ti-droplet" style="margin-right:6px;color:var(--teal-400)"></i>Equilibrio ácido-base (EAB)</span>
-      <i class="ti ti-chevron-down accordion-arrow" id="arrEAB"></i>
-    </div>
-    <div class="accordion-body" id="accEAB">
-      <div class="form-row four" style="margin-top:8px">
-        <div class="form-group"><label>pH</label><input type="number" id="ePH" inputmode="decimal" step="0.01" placeholder="7.35–7.45"></div>
-        <div class="form-group"><label>pCO₂ (mmHg)</label><input type="number" id="ePCO2" inputmode="decimal" placeholder="35–45"></div>
-        <div class="form-group"><label>pO₂ (mmHg)</label><input type="number" id="ePO2" inputmode="decimal"></div>
-        <div class="form-group"><label>HCO₃ (mEq/L)</label><input type="number" id="eHCO3" inputmode="decimal" placeholder="22–26"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>SpO₂ (%)</label><input type="number" id="eSpO2" inputmode="numeric" max="100" oninput="calcIndicesOxigenacion()"></div>
-        <div class="form-group"><label>PAFI</label><input type="number" id="ePAFI" inputmode="decimal"><div class="form-hint">PO₂ / FiO₂</div></div>
-      </div>
-      <!-- v3_133: índices de oxigenación pediátricos -->
-      <div class="form-row" id="eIOOSIRow" style="display:none">
-        <div class="form-group">
-          <label>IO — Índice de oxigenación</label>
-          <input type="text" id="eIO" readonly style="background:var(--amber-50);color:var(--amber-800);font-weight:600">
-          <div class="form-hint" id="eIOHint">(FiO₂ × MAP × 100) / PaO₂</div>
-        </div>
-        <div class="form-group">
-          <label>OSI — Índice de saturación de oxígeno</label>
-          <input type="text" id="eOSI" readonly style="background:var(--amber-50);color:var(--amber-800);font-weight:600">
-          <div class="form-hint" id="eOSIHint">(FiO₂ × MAP × 100) / SpO₂</div>
-        </div>
-      </div>
-      <div class="form-row four">
-        <div class="form-group">
-          <label>Gradiente A-a (mmHg)</label>
-          <input type="text" id="eAAGrad" readonly style="background:var(--amber-50);color:var(--amber-800);font-weight:600">
-          <div class="form-hint">PAO₂ − PaO₂</div>
-        </div>
-        <div class="form-group">
-          <label>Relación a/A</label>
-          <input type="text" id="eAaRatio" readonly style="background:var(--amber-50);color:var(--amber-800);font-weight:600">
-          <div class="form-hint">PaO₂ / PAO₂</div>
-        </div>
-        <div class="form-group">
-          <label>Ácido láctico (mmol/L)</label>
-          <input type="number" id="eLactato" inputmode="decimal" step="0.1" placeholder="ej: 1.2">
-        </div>
-      </div>
-
-      <!-- EAB adicionales (varios en el día) -->
-      <div id="eabExtraContainer"></div>
-      <button type="button" class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="agregarEAB()">
-        <i class="ti ti-plus"></i> Agregar EAB
-      </button>
-    </div>
 
     <hr class="sep">
 
 
-    <!-- Secreciones (ARM) -->
-    <div class="accordion-header" onclick="toggleAccordion('accSec')">
-      <span><i class="ti ti-droplets" style="margin-right:6px;color:var(--blue-400)"></i>Secreciones</span>
-      <i class="ti ti-chevron-down accordion-arrow" id="arrSec"></i>
-    </div>
-    <div class="accordion-body" id="accSec">
-      <div class="form-row" style="margin-top:8px">
-        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">LOF — Lago orofaríngeo</div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Cantidad LOF</label>
-          <select id="eSecLOFcant">
-            <option value="">-</option>
-            <option>Escaso</option>
-            <option>Moderado</option>
-            <option>Abundante</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Calidad LOF</label>
-          <select id="eSecLOFcal">
-            <option value="">-</option>
-            <option>Mucoso/Saliva</option>
-            <option>Purulento</option>
-            <option>Hemático</option>
-            <option>Carbonáceo</option>
-            <option>Con restos de alimento</option>
-          </select>
-        </div>
-      </div>
-      <div class="form-row" style="margin-top:10px">
-        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">VAA — Vía aérea artificial</div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>Cantidad VAA</label>
-          <select id="eSecVAAcant">
-            <option value="">-</option>
-            <option>Escasa</option>
-            <option>Moderada</option>
-            <option>Abundante</option>
-          </select>
-        </div>
-        <div class="form-group"><label>Calidad VAA</label>
-          <select id="eSecVAAcal">
-            <option value="">-</option>
-            <option>Mucosa</option>
-            <option>Mucopurulenta</option>
-            <option>Mucohemática</option>
-            <option>Hemática</option>
-            <option>Carbonácea</option>
-            <option>Con restos de alimento</option>
-          </select>
-        </div>
-      </div>
-    </div>
 
     <hr class="sep">
 
@@ -3048,6 +2942,121 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     </div>
 
     </div><!-- fin armOnlyBlock -->
+
+    <!-- v3_171: el EAB y las Secreciones salieron de armOnlyBlock. El EAB también
+         hace falta con CAFO y VNI, y las secreciones en el TQT sin ARM.
+         Su visibilidad la maneja actualizarBloquesRespiratorios(). -->
+    <div id="eabWrap" style="display:none">
+    <!-- EAB -->
+    <div class="accordion-header" onclick="toggleAccordion('accEAB')">
+      <span><i class="ti ti-droplet" style="margin-right:6px;color:var(--teal-400)"></i>Equilibrio ácido-base (EAB)</span>
+      <i class="ti ti-chevron-down accordion-arrow" id="arrEAB"></i>
+    </div>
+    <div class="accordion-body" id="accEAB">
+      <div class="form-row four" style="margin-top:8px">
+        <div class="form-group"><label>pH</label><input type="number" id="ePH" inputmode="decimal" step="0.01" placeholder="7.35–7.45"></div>
+        <div class="form-group"><label>pCO₂ (mmHg)</label><input type="number" id="ePCO2" inputmode="decimal" placeholder="35–45"></div>
+        <div class="form-group"><label>pO₂ (mmHg)</label><input type="number" id="ePO2" inputmode="decimal"></div>
+        <div class="form-group"><label>HCO₃ (mEq/L)</label><input type="number" id="eHCO3" inputmode="decimal" placeholder="22–26"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>SpO₂ (%)</label><input type="number" id="eSpO2" inputmode="numeric" max="100" oninput="calcIndicesOxigenacion()"></div>
+        <div class="form-group"><label>PAFI</label><input type="number" id="ePAFI" inputmode="decimal"><div class="form-hint">PO₂ / FiO₂</div></div>
+      </div>
+      <!-- v3_133: índices de oxigenación pediátricos -->
+      <div class="form-row" id="eIOOSIRow" style="display:none">
+        <div class="form-group">
+          <label>IO — Índice de oxigenación</label>
+          <input type="text" id="eIO" readonly style="background:var(--amber-50);color:var(--amber-800);font-weight:600">
+          <div class="form-hint" id="eIOHint">(FiO₂ × MAP × 100) / PaO₂</div>
+        </div>
+        <div class="form-group">
+          <label>OSI — Índice de saturación de oxígeno</label>
+          <input type="text" id="eOSI" readonly style="background:var(--amber-50);color:var(--amber-800);font-weight:600">
+          <div class="form-hint" id="eOSIHint">(FiO₂ × MAP × 100) / SpO₂</div>
+        </div>
+      </div>
+      <div class="form-row four">
+        <div class="form-group">
+          <label>Gradiente A-a (mmHg)</label>
+          <input type="text" id="eAAGrad" readonly style="background:var(--amber-50);color:var(--amber-800);font-weight:600">
+          <div class="form-hint">PAO₂ − PaO₂</div>
+        </div>
+        <div class="form-group">
+          <label>Relación a/A</label>
+          <input type="text" id="eAaRatio" readonly style="background:var(--amber-50);color:var(--amber-800);font-weight:600">
+          <div class="form-hint">PaO₂ / PAO₂</div>
+        </div>
+        <div class="form-group">
+          <label>Ácido láctico (mmol/L)</label>
+          <input type="number" id="eLactato" inputmode="decimal" step="0.1" placeholder="ej: 1.2">
+        </div>
+      </div>
+
+      <!-- EAB adicionales (varios en el día) -->
+      <div id="eabExtraContainer"></div>
+      <button type="button" class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="agregarEAB()">
+        <i class="ti ti-plus"></i> Agregar EAB
+      </button>
+    </div>
+    </div>
+
+    <div id="secrecionesWrap" style="display:none">
+    <!-- Secreciones (ARM) -->
+    <div class="accordion-header" onclick="toggleAccordion('accSec')">
+      <span><i class="ti ti-droplets" style="margin-right:6px;color:var(--blue-400)"></i>Secreciones</span>
+      <i class="ti ti-chevron-down accordion-arrow" id="arrSec"></i>
+    </div>
+    <div class="accordion-body" id="accSec">
+      <div class="form-row" style="margin-top:8px">
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">LOF — Lago orofaríngeo</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Cantidad LOF</label>
+          <select id="eSecLOFcant">
+            <option value="">-</option>
+            <option>Escaso</option>
+            <option>Moderado</option>
+            <option>Abundante</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Calidad LOF</label>
+          <select id="eSecLOFcal">
+            <option value="">-</option>
+            <option>Mucoso/Saliva</option>
+            <option>Purulento</option>
+            <option>Hemático</option>
+            <option>Carbonáceo</option>
+            <option>Con restos de alimento</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" style="margin-top:10px">
+        <div style="font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">VAA — Vía aérea artificial</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Cantidad VAA</label>
+          <select id="eSecVAAcant">
+            <option value="">-</option>
+            <option>Escasa</option>
+            <option>Moderada</option>
+            <option>Abundante</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Calidad VAA</label>
+          <select id="eSecVAAcal">
+            <option value="">-</option>
+            <option>Mucosa</option>
+            <option>Mucopurulenta</option>
+            <option>Mucohemática</option>
+            <option>Hemática</option>
+            <option>Carbonácea</option>
+            <option>Con restos de alimento</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    </div>
 
     <div id="tqtBlock" style="display:none">
     <div class="accordion-header" onclick="toggleAccordion('accTQT')">
@@ -3434,7 +3443,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <span class="tag" onclick="toggleTag(this)">Tos dirigida</span>
           <span class="tag" onclick="toggleTag(this)">PPI (Presión positiva intermitente)</span>
           <span class="tag" onclick="toggleTag(this)">Ciclo activo</span>
-          <span class="tag" onclick="toggleTag(this)">Aerosolterapia</span>
+          <span class="tag" id="tagAerosol" onclick="toggleTag(this); actualizarAerosol()">Aerosolterapia</span>
           <span class="tag" id="tagMusRespTag" onclick="toggleTagMusResp(this)">Evaluación de músculos respiratorios</span>
         </div>
       </div>
@@ -3514,6 +3523,14 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         </div>
       </div>
 
+      <!-- v3_171: vía de administración de la aerosolterapia -->
+      <div id="aerosolBox" style="display:none;margin:-2px 0 10px;padding:9px 12px;background:var(--teal-50);border:1px solid var(--teal-200);border-radius:8px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--teal-700);margin-bottom:7px">Vía de administración</div>
+        <div class="tag-group">
+          <span class="tag" id="tagAeroMDI" onclick="toggleTag(this)">MDI (aerosol de dosis medida)</span>
+          <span class="tag" id="tagAeroNeb" onclick="toggleTag(this)">Nebulización</span>
+        </div>
+      </div>
       <div class="form-group" style="margin-bottom:6px"><label style="margin-bottom:6px;">Movilización</label>
         <div class="tag-group" id="tagsMovil">
           <span class="tag" onclick="toggleTag(this)">Movilización pasiva</span>
@@ -5264,7 +5281,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_170';
+const APP_VERSION = 'v3_171';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -8848,9 +8865,10 @@ function setARMStatus(enARM){
     CAMPOS_O2_NO_INVASIVO.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
     // Mostrar TQT block si la interfaz ARM ya tiene TQT seleccionado
     const iface = document.getElementById('eInterfazPrincipal').value;
-    const esTQTarm = iface === 'TQT';
-    document.getElementById('tqtBlock').style.display = esTQTarm ? 'block' : 'none';
-    if(esTQTarm) actualizarModoCanulaTQT(true);
+    // v3_171: la presión del cuff se controla igual en TET que en TQT
+    const conBalon = iface === 'TQT' || iface === 'TET';
+    document.getElementById('tqtBlock').style.display = conBalon ? 'block' : 'none';
+    if(iface === 'TQT') actualizarModoCanulaTQT(true);
   }
   if(!enARM){
     // Esconder TQT block hasta que elija interfaz con TQT
@@ -8872,6 +8890,7 @@ function setARMStatus(enARM){
     });
   }
   actualizarCuidadosVAA();
+  actualizarBloquesRespiratorios();   // v3_171
 }
 
 
@@ -9348,6 +9367,11 @@ function fechaSalidaARM(patientId){
     }
     return null; // sigue en ARM
   }
+  // v3_171: ingresó en ARM según la ficha, pero ninguna evolución lo muestra en
+  // ARM invasiva. Es el caso del paciente que se extubó antes de la primera
+  // evolución: sin esto seguía contando días de ARM para siempre.
+  const primeraEsp = evos.find(espontanea);
+  if(primeraEsp) return primeraEsp.date;
   return null;
 }
 
@@ -9374,6 +9398,29 @@ function actualizarHintVE(patientId, mostrar){
         ? `<strong>Día 0 de ventilación espontánea</strong> (salió de ARM hoy, ${fmtDate(f)}).`
         : `<strong>Día ${dias} de ventilación espontánea</strong> (sin ARM desde el ${fmtDate(f)}).`);
   el.style.display = 'block';
+}
+
+
+// ── v3_171: qué bloques respiratorios corresponden en cada situación ──
+// El EAB hace falta en ARM, pero también con CAFO y con VNI. Las secreciones
+// hacen falta en ARM y también en el TQT sin ARM (respirando espontáneamente).
+function actualizarBloquesRespiratorios(){
+  const enARM = document.getElementById('eBtnArmSi')?.classList.contains('dec-arm-si');
+  const esp = String(document.getElementById('eInterfazEsp')?.value || '');
+  const eab = document.getElementById('eabWrap');
+  if(eab) eab.style.display = (enARM || esp.startsWith('CNAF') || esp.startsWith('VNI')) ? 'block' : 'none';
+  const sec = document.getElementById('secrecionesWrap');
+  if(sec) sec.style.display = (enARM || esp.startsWith('TQT')) ? 'block' : 'none';
+}
+
+// Vía de administración de la aerosolterapia
+function actualizarAerosol(){
+  const activo = document.getElementById('tagAerosol')?.classList.contains('active');
+  const box = document.getElementById('aerosolBox');
+  if(box) box.style.display = activo ? 'block' : 'none';
+  if(!activo){
+    ['tagAeroMDI','tagAeroNeb'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
+  }
 }
 
 function setInterfazEsp(tipo){
@@ -9403,6 +9450,7 @@ function setInterfazEsp(tipo){
     document.querySelectorAll('#eSubVANO2 .dec-btn').forEach(b=>b.classList.remove('dec-sel'));
   }
   actualizarCuidadosVAA();
+  actualizarBloquesRespiratorios();   // v3_171
 }
 
 // Cuidados generales VAA: visible si ARM (TET/TQT) o TQT espontáneo (con o sin O2)
@@ -10487,7 +10535,7 @@ const EVO_LABELS = {
   cnFlujo:'Cánula nasal (L/min)', mvFio2:'Máscara Venturi FiO₂ (%)', mrFlujo:'Máscara reservorio (L/min)',
   cnafFlujo:'CNAF flujo (L/min)', cnafFio2:'CNAF FiO₂ (%)',
   vniModo:'VNI modo', vniPi:'VNI Pi', vniVt:'VNI Vt', vniFr:'VNI FR', vniPeep:'VNI PEEP', vniFio2:'VNI FiO₂ (%)', vniMascara:'VNI máscara',
-  ti:'Ti (s)', pausaInsp:'Pausa inspiratoria (s)', pausaInsp2:'Pausa inspiratoria (s) (post-mod.)', pc:'Presión control', peept:'PEEP total', rinsp:'Resistencia insp.', flujo:'Flujo (L/min)',
+  aerosolVia:'Aerosolterapia — vía', ti:'Ti (s)', pausaInsp:'Pausa inspiratoria (s)', pausaInsp2:'Pausa inspiratoria (s) (post-mod.)', pc:'Presión control', peept:'PEEP total', rinsp:'Resistencia insp.', flujo:'Flujo (L/min)',
   mp:'Poder mecánico', p01:'P0.1', deltaPocc:'ΔPocc', hco3:'HCO₃', lactato:'Lactato',
   curvaFlujo:'Curva de flujo insp.', curvaFlujo2:'Curva de flujo insp. (post-mod.)',
   fc:'FC (lpm)', tam:'TAM (mmHg)', pic:'PIC (mmHg)', etco2:'EtCO₂ (mmHg)', spo2Mon:'SpO₂ monitor (%)', frMon:'FR monitor',
@@ -11957,6 +12005,7 @@ function openEvolucion(patientId){
     pintarCurvaFlujo(pref);
   });
   pintarTodosLosSignos();   // v3_165
+  actualizarAerosol();      // v3_171
   { const c=document.getElementById('eabExtraContainer'); if(c) c.innerHTML=''; }
   document.querySelectorAll('#modalEvo .tag.active').forEach(t=>t.classList.remove('active'));
   ['msSedacion','msAnalgesia','msBNM','msVasoact'].forEach(resetMultiselect);
@@ -12037,8 +12086,12 @@ function openEvolucion(patientId){
   const enARMEvoActual = !!(ultVentEvo && !ultVentEvo.interfazEsp
     && (ultVentEvo.interfaz === 'TET' || ultVentEvo.interfaz === 'TQT')
     && !esEvoConExtubacion(ultVentEvo));
-  const huboExtubacion = !!(p.finARM || evoluciones.some(e => e.patientId === patientId && esEvoConExtubacion(e)));
-  const yaExtubado = huboExtubacion && !enARMEvoActual;
+  // v3_171: antes hacía falta que alguien registrara formalmente la extubación
+  // para dejar de contar días de ARM. Si el kine simplemente evolucionaba con
+  // "no está en ARM · aire ambiente", el contador seguía sumando ARM día N.
+  // Ahora manda la última evolución ventilatoria: si dice que el paciente no
+  // está en ARM invasiva, el conteo se corta, se haya registrado o no.
+  const yaExtubado = !enARMEvoActual && !!ultVentEvo;
   if(p.inicioARM && !yaExtubado){
     diasARM = daysBetween(p.inicioARM, todayStr);
     diasARM = diasARM !== null ? diasARM + 1 : 0;
@@ -12084,6 +12137,7 @@ function openEvolucion(patientId){
   // Asegura que los tags dependientes de ARM/TQT (incl. Aspiración del LOF / nasofaríngea)
   // queden correctamente mostrados u ocultos incluso si no se disparó ninguno de los branches previos
   actualizarCuidadosVAA();
+  actualizarBloquesRespiratorios();   // v3_171
 
   // ── PCP ──
   const pcpBox = document.getElementById('pcpBox');
@@ -12208,7 +12262,7 @@ function selectInterfaz(tipo, visual=true){
   // Mostrar/ocultar bloque de vía aérea TQT (presión de cuff + cánula/decanulación)
   const tqtBlockEl = document.getElementById('tqtBlock');
   if(tqtBlockEl){
-    tqtBlockEl.style.display = tipo === 'TQT' ? 'block' : 'none';
+    tqtBlockEl.style.display = (tipo === 'TQT' || tipo === 'TET') ? 'block' : 'none';   // v3_171
     if(tipo === 'TQT'){ actualizarModoCanulaTQT(true); abrirAcordeon('accTQT'); }
   }
 
@@ -12408,6 +12462,7 @@ function precargarCamposEvolucion(evo){
     if(el && interfazVal) el.value = interfazVal;
   });
   actualizarCuidadosVAA(); // refresca cuidados VAA + tags de aspiración según ARM/interfaz cargados
+  actualizarBloquesRespiratorios();   // v3_171
 
   Object.keys(EVO_FIELD_MAP).forEach(key=>{
     const val = evo[key];
@@ -12494,6 +12549,7 @@ function precargarCamposEvolucion(evo){
     pintarCurvaFlujo(pref);
   });
   pintarTodosLosSignos();   // v3_165
+  actualizarAerosol();      // v3_171
 
   // Evaluación de músculos respiratorios
   if(evo.musResp){
@@ -12686,6 +12742,14 @@ async function guardarEvolucion(){
     mrcTotal: (function(){ const vs = MRC_CAMPOS_EVO.map(id=>{const v=parseInt(G(id));return isNaN(v)?null:v;}).filter(v=>v!==null); return vs.length ? vs.reduce((s,v)=>s+v,0) : null; })(),
     mrcCompleto: MRC_CAMPOS_EVO.every(id=>G(id)!==''),
     tecnicas, obs:G('eObs'),
+    // v3_171: vía de administración de la aerosolterapia
+    aerosolVia: (function(){
+      if(!document.getElementById('tagAerosol')?.classList.contains('active')) return '';
+      const v = [];
+      if(document.getElementById('tagAeroMDI')?.classList.contains('active')) v.push('MDI');
+      if(document.getElementById('tagAeroNeb')?.classList.contains('active')) v.push('Nebulización');
+      return v.join(' + ');
+    })(),
     musResp: document.getElementById('tagMusRespTag')?.classList.contains('active') ? {
       pimax:G('eMusPImax'), pemax:G('eMusPEmax'),
       cv:G('eMusCV'), cvPCP:G('eMusCVpcp'),
@@ -13118,8 +13182,10 @@ function diasARMenMes(p, mesStr){
   // mes en curso, un paciente todavía en ARM sumaba el mes entero por adelantado.
   if(!p.inicioARM) return 0;
   const r = rangoDe(mesStr);
+  // v3_171: si no cargaron el fin de ARM a mano, se deduce de las evoluciones
+  const fin = p.finARM || fechaSalidaARM(p.id);
   const desde = p.inicioARM > r.desde ? p.inicioARM : r.desde;
-  const hasta = (!p.finARM || p.finARM > r.hasta) ? r.hasta : p.finARM;
+  const hasta = (!fin || fin > r.hasta) ? r.hasta : fin;
   if(desde > hasta) return 0;
   return (daysBetween(desde, hasta)||0) + 1;
 }
