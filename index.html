@@ -898,6 +898,8 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <i class="ti ti-map-pin"></i><span id="sectorBadgeLabel">—</span>
       </span>
       <button class="btn-logout" id="btnConfigKx" onclick="abrirConfigKinexa()" style="display:none" title="Configuración"><i class="ti ti-settings"></i></button>
+      <button class="btn-logout" id="btnBandejaKx" onclick="abrirBandejaSugerencias()" style="display:none;position:relative" title="Sugerencias recibidas"><i class="ti ti-inbox"></i><span id="badgeSugerencias" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--red-500);color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;line-height:15px;border-radius:8px;padding:0 3px">0</span></button>
+      <button class="btn-logout" onclick="abrirSugerencia()" title="Enviar una sugerencia o reportar un error"><i class="ti ti-message-plus"></i></button>
       <button class="btn-logout" onclick="abrirCambiarMiClave()" title="Cambiar mi clave"><i class="ti ti-lock"></i></button>
       <button class="btn-logout" onclick="doLogout()"><i class="ti ti-logout"></i></button>
     </div>
@@ -4705,6 +4707,60 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- ════ VISOR DE FICHA NEUROLÓGICA GUARDADA (v3_167) ════ -->
+<!-- ════ SUGERENCIAS / REPORTES (v3_168) ════ -->
+<div class="modal-overlay" id="modalSugerencia">
+  <div class="modal" style="width:560px">
+    <div class="modal-header">
+      <div>
+        <h3>Sugerencias y reportes</h3>
+        <div class="modal-subtitle">Contanos qué mejorarías o qué no está funcionando</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalSugerencia')">&times;</button>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Tipo</label>
+        <select id="sugTipo">
+          <option value="sugerencia">💡 Sugerencia / mejora</option>
+          <option value="error">🐞 Reportar un error</option>
+          <option value="consulta">❓ Consulta</option>
+          <option value="otro">💬 Otro comentario</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>¿Dónde ocurre?</label>
+        <input type="text" id="sugDonde" placeholder="Ej: evolución diaria, indicadores...">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Comentario</label>
+      <textarea id="sugTexto" rows="5" maxlength="2000" placeholder="Contá con detalle qué pasó o qué mejorarías. Si es un error, ayuda mucho saber qué estabas haciendo justo antes."></textarea>
+      <div class="form-hint">Se envía junto con tu nombre, tu institución y la versión de la app. No incluyas datos de pacientes.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalSugerencia')">Cancelar</button>
+      <button class="btn btn-primary" id="btnEnviarSug" onclick="enviarSugerencia()"><i class="ti ti-send"></i> Enviar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalBandejaSug">
+  <div class="modal" style="width:760px">
+    <div class="modal-header">
+      <div>
+        <h3>Bandeja de sugerencias</h3>
+        <div class="modal-subtitle" id="bandejaSugSub"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalBandejaSug')">&times;</button>
+    </div>
+    <div id="bandejaSugList" style="max-height:65vh;overflow:auto"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalBandejaSug')">Cerrar</button>
+      <button class="btn btn-ghost" onclick="exportarSugerencias()"><i class="ti ti-download"></i> Exportar CSV</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalVisorFichaNeuro">
   <div class="modal" style="width:820px">
     <div class="modal-header">
@@ -5208,7 +5264,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_167';
+const APP_VERSION = 'v3_168';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -5597,6 +5653,153 @@ function toggleVerClave(id, btn){
 // marca debe_cambiar=false y no se vuelve a pedir nunca más.
 let CAMBIO_CLAVE_FORZADO = false;
 let CLAVE_LOGIN = ''; // solo en memoria, para precargar "clave actual"
+// ════════════════════════════════════════════════════════
+//  SUGERENCIAS Y REPORTES (v3_168)
+//  Se guardan en la base como un registro de tipo 'sugerencia', igual que
+//  pacientes y evoluciones. No salen de Supabase: no hay servicio de mail
+//  de por medio. Solo la jefatura ve la bandeja.
+// ════════════════════════════════════════════════════════
+let _sugerencias = [];
+const SUG_TIPO_LABEL = { sugerencia:'💡 Sugerencia', error:'🐞 Error', consulta:'❓ Consulta', otro:'💬 Comentario' };
+
+function abrirSugerencia(){
+  ['sugTexto','sugDonde'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  const t = document.getElementById('sugTipo'); if(t) t.value = 'sugerencia';
+  openModal('modalSugerencia');
+}
+
+async function enviarSugerencia(){
+  const texto = (document.getElementById('sugTexto')?.value || '').trim();
+  if(texto.length < 10){ showToast('Contanos un poco más para poder entenderlo','error'); return; }
+  const btn = document.getElementById('btnEnviarSug');
+  if(btn){ btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader"></i> Enviando...'; }
+  const sug = {
+    id: Date.now(),
+    tipo: document.getElementById('sugTipo')?.value || 'sugerencia',
+    donde: (document.getElementById('sugDonde')?.value || '').trim(),
+    texto,
+    autor: currentUser?.name || '—',
+    autorUser: currentUser?.user || '',
+    institucion_id: currentUser?.institucion_id || null,
+    institucion: currentUser?.instNombre || '',
+    sector: currentSector || '',
+    version: APP_VERSION,
+    dispositivo: (navigator.userAgent || '').slice(0, 160),
+    fecha: new Date().toISOString(),
+    estado: 'nueva'
+  };
+  try {
+    await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'sugerencia', p_id:String(sug.id), p_data:sug });
+    closeModal('modalSugerencia', true);
+    showToast('¡Gracias! Tu comentario fue enviado','success');
+    addLog('sugerencia', `Envió ${SUG_TIPO_LABEL[sug.tipo]||'comentario'}: ${texto.slice(0,60)}${texto.length>60?'…':''}`);
+  } catch(e){
+    console.error('Error al enviar sugerencia:', e);
+    showToast('No se pudo enviar. Probá de nuevo en un rato.','error');
+  } finally {
+    if(btn){ btn.disabled = false; btn.innerHTML = '<i class="ti ti-send"></i> Enviar'; }
+  }
+}
+
+// ── Bandeja (solo jefatura) ──
+async function cargarSugerencias(){
+  if(!esJefatura()) return [];
+  try {
+    const res = await rpc('kinexa_registros', { p_token:TOKEN, p_tipo:'sugerencia' });
+    _sugerencias = (res || []).filter(x => x && !x._borrada)
+      .sort((a,b)=> String(b.fecha||'').localeCompare(String(a.fecha||'')));
+  } catch(e){ console.error('No se pudieron cargar las sugerencias:', e); _sugerencias = []; }
+  return _sugerencias;
+}
+
+function actualizarBotonBandeja(){
+  const btn = document.getElementById('btnBandejaKx');
+  if(!btn) return;
+  btn.style.display = esJefatura() ? '' : 'none';
+  const badge = document.getElementById('badgeSugerencias');
+  if(badge){
+    const nuevas = _sugerencias.filter(x => x.estado !== 'leida').length;
+    badge.style.display = nuevas ? 'block' : 'none';
+    badge.textContent = nuevas > 9 ? '9+' : String(nuevas);
+  }
+}
+
+async function abrirBandejaSugerencias(){
+  openModal('modalBandejaSug');
+  const cont = document.getElementById('bandejaSugList');
+  if(cont) cont.innerHTML = '<div class="empty"><i class="ti ti-loader"></i><p>Cargando…</p></div>';
+  await cargarSugerencias();
+  renderBandejaSugerencias();
+  actualizarBotonBandeja();
+}
+
+function renderBandejaSugerencias(){
+  const cont = document.getElementById('bandejaSugList');
+  const sub = document.getElementById('bandejaSugSub');
+  if(!cont) return;
+  if(sub) sub.textContent = `${_sugerencias.length} mensaje${_sugerencias.length===1?'':'s'}`;
+  if(!_sugerencias.length){
+    cont.innerHTML = '<div class="empty"><i class="ti ti-inbox"></i><p>Todavía no hay sugerencias ni reportes</p></div>';
+    return;
+  }
+  cont.innerHTML = _sugerencias.map(sg=>{
+    const leida = sg.estado === 'leida';
+    return `<div class="historial-card" style="margin-bottom:10px;${leida?'opacity:.62':''}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap">
+        <div>
+          <div class="historial-name">${SUG_TIPO_LABEL[sg.tipo]||'💬 Comentario'}${sg.donde?` — ${escapeHTML(sg.donde)}`:''}</div>
+          <div class="historial-meta"><i class="ti ti-user"></i> ${escapeHTML(sg.autor||'—')}${sg.institucion?` · ${escapeHTML(sg.institucion)}`:''}${sg.sector?` · ${escapeHTML(sg.sector)}`:''}</div>
+          <div class="historial-meta"><i class="ti ti-clock"></i> ${fmtDT(sg.fecha)} · Kinexa ${escapeHTML(sg.version||'—')}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-ghost btn-sm" onclick="marcarSugerencia(${sg.id}, ${leida?"'nueva'":"'leida'"})">
+            <i class="ti ti-${leida?'mail':'check'}"></i> ${leida?'Marcar sin leer':'Marcar leída'}
+          </button>
+          <button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="borrarSugerencia(${sg.id})" title="Eliminar"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+      <div class="evo-obs" style="margin-top:8px;white-space:pre-wrap">${escapeHTML(sg.texto||'')}</div>
+    </div>`;
+  }).join('');
+}
+
+async function marcarSugerencia(id, estado){
+  const sg = _sugerencias.find(x=>String(x.id)===String(id));
+  if(!sg) return;
+  sg.estado = estado;
+  try { await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'sugerencia', p_id:String(sg.id), p_data:sg }); }
+  catch(e){ showToast('No se pudo actualizar','error'); }
+  renderBandejaSugerencias();
+  actualizarBotonBandeja();
+}
+
+async function borrarSugerencia(id){
+  const sg = _sugerencias.find(x=>String(x.id)===String(id));
+  if(!sg) return;
+  if(!confirm('¿Eliminar este mensaje de la bandeja?')) return;
+  sg._borrada = { por: currentUser?.name, fecha: new Date().toISOString() };
+  try { await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'sugerencia', p_id:String(sg.id), p_data:sg }); }
+  catch(e){ showToast('No se pudo eliminar','error'); return; }
+  _sugerencias = _sugerencias.filter(x=>String(x.id)!==String(id));
+  renderBandejaSugerencias();
+  actualizarBotonBandeja();
+}
+
+function exportarSugerencias(){
+  if(!_sugerencias.length){ showToast('No hay mensajes para exportar','error'); return; }
+  const esc = v => `"${String(v??'').replace(/"/g,'""')}"`;
+  const filas = [['Fecha','Tipo','Dónde','Autor','Institución','Sector','Versión','Estado','Comentario']];
+  _sugerencias.forEach(sg=>filas.push([
+    sg.fecha||'', SUG_TIPO_LABEL[sg.tipo]||sg.tipo||'', sg.donde||'', sg.autor||'',
+    sg.institucion||'', sg.sector||'', sg.version||'', sg.estado||'', sg.texto||''
+  ]));
+  const csv = '\uFEFF' + filas.map(f=>f.map(esc).join(',')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv;charset=utf-8;'}));
+  a.download = `Kinexa_sugerencias_${today()}.csv`;
+  a.click();
+}
+
 function abrirCambiarMiClave(forzado){
   CAMBIO_CLAVE_FORZADO = !!forzado;
   ['miClaveActual','miClaveNueva','miClaveNueva2'].forEach(id=>{
@@ -6149,6 +6352,9 @@ function launchApp(){
   document.getElementById('app').style.display = 'flex';
   const btnCfg = document.getElementById('btnConfigKx');
   if(btnCfg) btnCfg.style.display = (currentUser && currentUser.role === 'admin') ? '' : 'none';
+  // v3_168: la bandeja de sugerencias es solo para la jefatura
+  actualizarBotonBandeja();
+  if(esJefatura()) cargarSugerencias().then(actualizarBotonBandeja);
   const av = document.getElementById('navAvatar');
   av.textContent = currentUser.name.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();
   document.getElementById('navName').textContent = currentUser.name;
