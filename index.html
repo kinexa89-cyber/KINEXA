@@ -5264,7 +5264,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_168';
+const APP_VERSION = 'v3_169';
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -12827,7 +12827,7 @@ function renderIndDemografia(mesStr){
   <div class="kpi-row" style="margin-bottom:16px">
     <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-users"></i></div><div class="kpi-content"><div class="label">Pacientes del mes</div><div class="value">${T}</div><div class="sub">Ingresos: ${d.ingresos}</div></div></div>
     <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-home-check"></i></div><div class="kpi-content"><div class="label">Egresos</div><div class="value">${d.egresosTot}</div><div class="sub">Altas ${d.altas} · Óbitos ${d.obitos} · Traslados ${d.traslados}</div></div></div>
-    <div class="kpi-card"><div class="kpi-icon red"><i class="ti ti-heart-off"></i></div><div class="kpi-content"><div class="label">Mortalidad</div><div class="value">${d.mortalidad}</div><div class="sub">Óbitos / egresos del mes</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon red"><i class="ti ti-heart-off"></i></div><div class="kpi-content"><div class="label">Mortalidad</div><div class="value">${d.mortalidad}</div><div class="sub">${d.mortalidadDetalle}</div></div></div>
     <div class="kpi-card"><div class="kpi-icon amber"><i class="ti ti-calendar-time"></i></div><div class="kpi-content"><div class="label">Estancia promedio</div><div class="value">${d.estanciaStats.prom??'—'}</div><div class="sub">días (mediana ${d.estanciaStats.mediana??'—'})</div></div></div>
     <div class="kpi-card"><div class="kpi-icon purple"><i class="ti ti-stethoscope"></i></div><div class="kpi-content"><div class="label">Kinesiólogos activos</div><div class="value">${eq.cantKines}</div><div class="sub">${eq.totalEvos} evoluciones</div></div></div>
   </div>
@@ -13336,10 +13336,16 @@ function calcDemografia(mesStr){
   // Egresos del mes
   const altas = egresosDelMes(mesStr,'alta'), obitos = egresosDelMes(mesStr,'obito'), traslados = egresosDelMes(mesStr,'traslado');
   const egresosTot = altas + obitos + traslados;
+  // v3_169: el traslado de sector NO es un egreso del servicio: el paciente sigue
+  // internado y sigue siendo atendido por kinesiología. Contarlo en el
+  // denominador de la mortalidad la diluye artificialmente. El denominador
+  // correcto son los egresos reales del servicio: altas + óbitos.
+  const egresosReales = altas + obitos;
   const estancias = ps.filter(p=>p.fIHosp).map(p=>(daysBetween(p.fIHosp, p.fEUTI||today())||0)+1);
   return { total, porSector, sexo, edadStats, franjas, imcStats, catIMC, antecedentes, grupos, sinGrupo,
-           causasTop, altas, obitos, traslados, egresosTot,
-           mortalidad: egresosTot ? pctTxt(obitos, egresosTot) : '—',
+           causasTop, altas, obitos, traslados, egresosTot, egresosReales,
+           mortalidad: egresosReales ? pctTxt(obitos, egresosReales) : '—',
+           mortalidadDetalle: egresosReales ? `${obitos} de ${egresosReales} egresos` : 'sin egresos registrados',
            estanciaStats: statsNum(estancias),
            ingresos: ingresosDelMes(mesStr) };
 }
@@ -13623,7 +13629,10 @@ async function exportarIndicadoresCompleto(mesStr){
   rows.push(['— Altas', d.altas]);
   rows.push(['— Óbitos', d.obitos]);
   rows.push(['— Traslados internos', d.traslados]);
-  rows.push(['Mortalidad (óbitos/egresos)', d.mortalidad]);
+  rows.push(['Mortalidad (óbitos / altas+óbitos)', d.mortalidad, d.mortalidadDetalle]);
+  rows.push(['  Altas registradas', d.altas]);
+  rows.push(['  Óbitos registrados', d.obitos]);
+  rows.push(['  Traslados de sector (no cuentan como egreso)', d.traslados]);
   rows.push(['Estancia promedio (días)', d.estanciaStats.prom??'']);
   rows.push(['Estancia mediana (días)', d.estanciaStats.mediana??'']);
   rows.push([]);
