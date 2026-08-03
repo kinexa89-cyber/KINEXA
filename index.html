@@ -3565,6 +3565,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <span class="tag" onclick="toggleTag(this)">Asistencia IOT</span>
           <span class="tag" onclick="toggleTag(this)">Asistencia TQT percutánea</span>
           <span class="tag" onclick="toggleTag(this)">Asistencia BAL</span>
+          <span class="tag" onclick="toggleTag(this)">Asistencia a fibrobroncoscopía</span>
           <span class="tag" onclick="toggleTag(this)">Asistencia decúbito prono</span>
           <span class="tag" onclick="toggleTag(this)">Asistencia decúbito supino</span>
           <span class="tag" onclick="toggleTag(this)">Cambio de cánula de TQT</span>
@@ -5298,7 +5299,16 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_177';
+const APP_VERSION = 'v3_178';
+
+// v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
+// disparador de formulario, NO una prestación. Se excluye al guardar y también
+// se filtra acá para las evoluciones viejas que ya lo tienen guardado.
+const TAGS_NO_PRESTACION = ['¿hiciste modificaciones en el setting ventilatorio?'];
+function tecList(e){
+  return (e && Array.isArray(e.tecnicas) ? e.tecnicas : [])
+    .filter(t => !TAGS_NO_PRESTACION.includes(String(t||'').trim().toLowerCase()));
+}
 let TOKEN = null, USER = null, DEMO = false;
 // DNI de la jefatura de Kinexa (admin maestro que puede entrar a todas las
 // instituciones). El acceso real lo valida la base con la clave maestra.
@@ -6843,7 +6853,7 @@ async function generarResumenIA(){
       if(e.mrc) partes.push(`MRC: ${e.mrc}.`);
       if(e.pve==='Sí'||e.pve==='Si') partes.push(`PVE realizada (${e.pveTipo||'—'}, ${e.pveMin||'—'}min): ${e.pveResult||'sin resultado registrado'}.`);
       if(e.extubacion && e.extubacion!=='No') partes.push(`Extubación: ${e.extubacion}.`);
-      if((e.tecnicas||[]).length) partes.push(`Técnicas: ${e.tecnicas.join(', ')}.`);
+      if(tecList(e).length) partes.push(`Técnicas: ${tecList(e).join(', ')}.`);
       if(e.obs) partes.push(`Obs: ${e.obs}`);
     }
     return partes.join(' ');
@@ -7000,7 +7010,7 @@ async function generarInformeAlta(patientId){
       if(e.pve==='Sí'||e.pve==='Si') partes.push(`PVE realizada (${e.pveTipo||'—'}, ${e.pveMin||'—'}min): ${e.pveResult||'sin resultado'}.`);
       if(e.extubacion && e.extubacion!=='No') partes.push(`Extubación: ${e.extubacion}.`);
       if(e.tipoCan) partes.push(`Cánula TQT: ${e.tipoCan}, DI ${e.canDI||'—'}.`);
-      if((e.tecnicas||[]).length) partes.push(`Técnicas: ${e.tecnicas.join(', ')}.`);
+      if(tecList(e).length) partes.push(`Técnicas: ${tecList(e).join(', ')}.`);
       if(e.obs) partes.push(`Obs: ${e.obs}`);
     }
     return partes.join(' ');
@@ -7254,7 +7264,7 @@ function construirTextoEvo(evo, p){
     add('Wood-Downes modificado (dificultad respiratoria, 0-8)', evo.woodDownes);
     add('NRS (dolor autorreportado)', evo.nrs); add('OPS (dolor)', evo.ops); add('FLACC (dolor)', evo.flacc);
     add('CAPD (delirium)', evo.capd); add('SOPHIA/SOS (abstinencia)', evo.sophia);
-    add('Relación paciente-ventilador', evo.ventSed);
+    add('Ventana de sedación', evo.ventSed);
     add('Dolor (autorreporte)', evo.dolorAuto); add('Escala de dolor', evo.dolorEscala);
     add('Sedación', evo.sedacion); add('Analgesia', evo.analgesia); add('BNM', evo.bnm);
     add('Vasoactivos', evo.vasoact); add('Otros fármacos', evo.otrosFarmacos);
@@ -7311,7 +7321,7 @@ function construirTextoEvo(evo, p){
       add('P pico (post)', evo.ppico2); add('P plateau (post)', evo.pplat2);
       add('Driving pressure (post)', evo.dp2); add('Compliance (post)', evo.crs2);
     }
-    add('Técnicas kinésicas realizadas', evo.tecnicas);
+    add('Técnicas kinésicas realizadas', tecList(evo));
     add('Observaciones', evo.obs);
   }
   return L.join('\n');
@@ -10702,7 +10712,7 @@ const EVO_LABELS = {
   mp:'Poder mecánico', p01:'P0.1', deltaPocc:'ΔPocc', hco3:'HCO₃', lactato:'Lactato',
   curvaFlujo:'Curva de flujo insp.', curvaFlujo2:'Curva de flujo insp. (post-mod.)',
   fc:'FC (lpm)', tam:'TAM (mmHg)', pic:'PIC (mmHg)', etco2:'EtCO₂ (mmHg)', spo2Mon:'SpO₂ monitor (%)', frMon:'FR monitor',
-  ventSed:'Relación pac.-ventilador', dolorAuto:'Dolor (autorreporte)', dolorEscala:'Escala de dolor',
+  ventSed:'Ventana de sedación', dolorAuto:'Dolor (autorreporte)', dolorEscala:'Escala de dolor',
   sedacion:'Sedación', analgesia:'Analgesia', bnm:'BNM', vasoact:'Vasoactivos', otrosFarmacos:'Otros fármacos',
   mrc:'MRC', mrcTotal:'MRC-Sum (score)', tos:'Tos', deglusion:'Deglución',
   interfazPE:'Interfaz post-extubación', nPVE:'PVEs acumuladas',
@@ -10905,7 +10915,7 @@ function evoCardHTML(e, i){
   }
   // ── Badges legados (algunas evoluciones viejas los tienen) ──
   const tolBadge = e.tolerancia ? `<span class="badge ${e.tolerancia.startsWith('Buena')?'badge-teal':e.tolerancia.startsWith('Regular')?'badge-amber':'badge-red'}" style="font-size:10px">${e.tolerancia.split(' ')[0]}</span>` : '';
-  const tags = e.tecnicas?.length ? e.tecnicas.map(t=> (t||'').toLowerCase().includes('aspirado traqueal')
+  const tags = tecList(e).length ? tecList(e).map(t=> (t||'').toLowerCase().includes('aspirado traqueal')
     ? `<span class="badge badge-asp" style="font-size:10px;margin-right:2px;margin-bottom:2px"><i class="ti ti-droplet-filled"></i> ${t}</span>`
     : `<span class="badge badge-blue" style="font-size:10px;margin-right:2px;margin-bottom:2px">${t}</span>`).join('') : '';
   const logros = e.logros?.length ? e.logros.map(l=>`<span class="badge badge-teal" style="font-size:10px;margin:1px">${l}</span>`).join('') : '';
@@ -10953,7 +10963,7 @@ function evoCardHTML(e, i){
     [e.rass,'RASS'], [e.cpot,'CPOT'], [e.camicu,'CAM-ICU'],
     [e.comfortB,'COMFORT-B'], [e.sbs,'SBS'], [e.nrs,'NRS (dolor)'], [e.ops,'OPS'],
     [e.flacc,'FLACC'], [e.capd,'CAPD'], [e.sophia,'SOPHIA / SOS'],
-    [e.ventSed,'Relación pac.-vent.'],
+    [e.ventSed,'Ventana de sedación'],
     [dolorTxt,'Dolor'], [e.sedacion,'Sedación'], [e.analgesia,'Analgesia'], [e.bnm,'BNM'],
     [e.vasoact,'Vasoactivos'], [e.otrosFarmacos,'Otros fármacos']
   ]);
@@ -12694,7 +12704,7 @@ function precargarCamposEvolucion(evo){
 
   // Técnicas / prestaciones (tags .tag activables en toda la pestaña)
   if(evo.tecnicas && evo.tecnicas.length){
-    document.querySelectorAll('#modalEvo .tag').forEach(t=>{
+    document.querySelectorAll('#modalEvo .tag:not(#tagModSetting)').forEach(t=>{
       if(evo.tecnicas.includes(t.textContent.trim())) t.classList.add('active');
     });
   }
@@ -12820,7 +12830,7 @@ async function guardarEvolucion(){
   try{
   const G = id => document.getElementById(id)?.value?.trim() || '';
   const GN = id => { const v=parseFloat(G(id)); return isNaN(v)?'':v; };
-  const tecnicas = [...document.querySelectorAll('#modalEvo .tag.active')].map(t=>t.textContent.trim());
+  const tecnicas = [...document.querySelectorAll('#modalEvo .tag.active:not(#tagModSetting)')].map(t=>t.textContent.trim());
 
   // N° de PVEs acumuladas: cuenta evoluciones previas de este paciente con PVE registrado, + esta si aplica
   const pveActual = G('ePVE');
@@ -13098,7 +13108,7 @@ function buscarHistorial(){
       // mini timeline
       const html = evos.map(e=>{
         const tolBadge = e.tolerancia ? `<span class="badge ${e.tolerancia==='Buena'?'badge-teal':e.tolerancia==='Regular'?'badge-amber':'badge-red'}" style="font-size:9px">${e.tolerancia}</span>` : '';
-        const tags = e.tecnicas?.length ? e.tecnicas.map(t=> (t||'').toLowerCase().includes('aspirado traqueal')
+        const tags = tecList(e).length ? tecList(e).map(t=> (t||'').toLowerCase().includes('aspirado traqueal')
           ? `<span class="badge badge-asp" style="font-size:9px;margin-right:2px"><i class="ti ti-droplet-filled"></i> ${t}</span>`
           : `<span class="badge badge-blue" style="font-size:9px;margin-right:2px">${t}</span>`).join('') : '';
         const items = [[e.modo,'Modo'],[e.fr,'FR'],[e.fio2,'FiO₂%'],[e.spo2,'SpO₂'],[e.pafi,'PAFI'],[e.rass,'RASS'],[e.akm1,'AKM']].filter(([v])=>v!==''&&v!=null);
@@ -13539,7 +13549,7 @@ function _evosDelMes(sala, mesStr){
 // son dos prestaciones.
 function prestacionesEspTotalEnMes(sala, mesStr){
   return _evosDelMes(sala, mesStr)
-    .reduce((tot, e) => tot + (e.tecnicas || []).filter(esTecnicaEsp).length, 0);
+    .reduce((tot, e) => tot + tecList(e).filter(esTecnicaEsp).length, 0);
 }
 
 function prestacionesGeneralesEnMes(sala, mesStr){
@@ -13584,7 +13594,7 @@ function prestacionesEspEnMes(sala, mesStr, tipoEsp){
   // Cuenta las evoluciones que tienen esa prestación específica registrada
   const objetivo = tipoEsp ? _normPrest(tipoEsp) : null;
   return _evosDelMes(sala, mesStr).filter(e =>
-    (e.tecnicas || []).some(t => objetivo ? _normPrest(t) === objetivo : esTecnicaEsp(t))
+    tecList(e).some(t => objetivo ? _normPrest(t) === objetivo : esTecnicaEsp(t))
   ).length;
 }
 
@@ -13784,7 +13794,7 @@ function extubDetalle(mesStr, sala, tipo){
 function conteoTecnicasEnMes(mesStr, sala){
   const map = {};
   evosDelMes(mesStr, sala).forEach(e=>{
-    (e.tecnicas||[]).forEach(t=>{
+    tecList(e).forEach(t=>{
       const k = (t||'').trim();
       if(!k) return;
       map[k] = (map[k]||0)+1;
@@ -13799,7 +13809,7 @@ function evalEstructuradasEnMes(mesStr, sala){
   const enSala = e => !sala || patients.find(p=>p.id===e.patientId)?.sala===sala;
   return {
     'PVE (prueba de ventilación espontánea)': contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&enSala(e)&&e.pve&&e.pve!=='No'&&e.pve!==''),
-    'Evaluación de músculos respiratorios (Pimax/Pemax/CV)': con(e=>e.musResp || e.musPImax || e.musPEmax || e.musCV || (e.tecnicas||[]).some(t=>(t||'').includes('músculos respiratorios'))),
+    'Evaluación de músculos respiratorios (Pimax/Pemax/CV)': con(e=>e.musResp || e.musPImax || e.musPEmax || e.musCV || tecList(e).some(t=>(t||'').includes('músculos respiratorios'))),
     'Evaluación de fuerza muscular (MRC)': con(e=>e.mrcCompleto==='Si' || e.mrcTotal || e.mrc),
     'Control de presión de cuff (días)': contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&enSala(e)&&(e.cuffM||e.cuffT||e.cuffN)),
     'Evaluación de deglución (días)': contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&enSala(e)&&e.deglusion&&e.deglusion!=='No realizada'),
@@ -14528,7 +14538,7 @@ function exportarDatos(){
       e.tolDesinf||'', e.tolOclusion||'', e.tolValvula||'', e.blueTest||'', e.calidadVoz||'', e.tosTQT||'', e.secTQTCant||'', e.secTQTCal||'',
       e.fac||'', e.frecuencia||'',
       joinArr(e.logros),
-      joinArr(e.tecnicas),
+      joinArr(tecList(e)),
       e.obs||'',
     ]);
   });
