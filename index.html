@@ -294,6 +294,16 @@ tr:hover td{ background:var(--blue-50); }
   font-size:11.5px; font-weight:800; color:var(--red-800); background:var(--red-50);
   border:1px solid var(--red-100); border-left:3px solid var(--red-400); border-radius:7px; padding:6px 11px; }
 .p-alerta i{ color:var(--red-600); flex-shrink:0; font-size:14px; }
+/* v3_179: aviso de egreso registrado que no llegó a guardarse */
+.p-egreso-pend{ flex-basis:100%; width:100%; box-sizing:border-box; margin-top:2px;
+  display:flex; align-items:center; gap:8px; flex-wrap:wrap;
+  font-size:11.5px; font-weight:700; color:var(--amber-800); background:var(--amber-50);
+  border:1px solid var(--amber-100); border-left:3px solid var(--amber-400); border-radius:7px; padding:6px 11px; }
+.p-egreso-pend i{ color:var(--amber-600); flex-shrink:0; font-size:14px; }
+.p-egreso-pend .btn-completar{ margin-left:auto; border:1px solid var(--amber-400); background:#fff;
+  color:var(--amber-800); font-size:11px; font-weight:700; border-radius:6px; padding:4px 10px; cursor:pointer;
+  display:inline-flex; align-items:center; gap:4px; }
+.p-egreso-pend .btn-completar:hover{ background:var(--amber-50); border-color:var(--amber-600); }
 
 /* ─── EVOLVE BUTTON ─── */
 .btn-evolve{ display:inline-flex; align-items:center; gap:4px; padding:5px 10px;
@@ -5299,7 +5309,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_178';
+const APP_VERSION = 'v3_179';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -6143,7 +6153,7 @@ function marcarTodoSincronizado(){
 }
 
 async function saveToSupabase(){
-  if(DEMO){ setSyncStatus('ok'); return; }
+  if(DEMO){ setSyncStatus('ok'); return true; }
   // Armar la lista de lo que cambió respecto de la última sincronización
   const pendientes = [];
   for(const p of patients){
@@ -6156,7 +6166,7 @@ async function saveToSupabase(){
     const json = JSON.stringify(_limpiarObj(e)), clave = 'evolucion:'+e.id, h = _huella(json);
     if(_huellas[clave] !== h) pendientes.push({ clave, h, tipo:'evolucion', id:e.id, data:JSON.parse(json) });
   }
-  if(!pendientes.length){ setSyncStatus('ok'); return; }   // no hay nada para mandar
+  if(!pendientes.length){ setSyncStatus('ok'); return true; }   // no hay nada para mandar
 
   setSyncStatus('syncing');
   try {
@@ -6170,10 +6180,12 @@ async function saveToSupabase(){
       ));
     }
     setSyncStatus('ok');
+    return true;
   } catch(e){
     console.error('Supabase error:', e);
     setSyncStatus('error');
     showToast('Error Supabase: ' + (e.message?.slice(0,60)||'ver consola'), 'error');
+    return false;   // v3_179: quien llame tiene que poder enterarse de que falló
   }
 }
 
@@ -6750,7 +6762,7 @@ async function syncNow(){
 
 async function persistAll(){
   savePacientes(); saveEvos(); saveEvalDeg();
-  await saveToSupabase();
+  return await saveToSupabase();
 }
 
 
@@ -10624,72 +10636,160 @@ function selectEgresoTipo(tipo){
   document.getElementById('egresoConfirmBtn').disabled = false;
 }
 
+// v3_179: el egreso ya no se da por hecho.
+// Antes se cambiaba el estado del paciente en el dispositivo, se cerraba el
+// modal y se refrescaba la pantalla SIN mirar si la nube había confirmado. Si
+// el guardado fallaba (señal mala, pantalla bloqueada), el kinesiólogo veía
+// desaparecer al paciente y daba el alta por hecha, pero en la base seguía
+// Activo: al día siguiente reaparecía en la sala.
+// Ahora se escribe PRIMERO en la nube y recién después se toca lo local. Si la
+// nube no confirma, el modal queda abierto con el error a la vista.
 async function confirmarEgreso(){
   const p = patients.find(x=>x.id===egresoPacId);
   if(!p || !egresoTipo) return;
   const fecha = document.getElementById('egresoFecha').value || today();
   const obs = document.getElementById('egresoObs').value.trim();
   const idx = patients.findIndex(x=>x.id===egresoPacId);
+  if(idx < 0){ showToast('No se pudo identificar al paciente','error'); return; }
+
+  // Se arma todo en borrador: nada se aplica hasta que la nube confirme.
+  let cambios = null, evo = null, logTipo = '', logMsg = '', okMsg = '', okTono = 'success';
 
   if(egresoTipo === 'traslado'){
     const destino = document.getElementById('egresoSectorDestino').value;
     const nuevaCama = document.getElementById('egresoNuevaCama').value.trim();
     if(!destino){ showToast('Seleccioná el sector destino','error'); return; }
-    const salaOrigen = p.sala;
-    const camaOrigen = p.cama;
-    patients[idx].sala = destino;
-    if(nuevaCama) patients[idx].cama = nuevaCama;
-    patients[idx].fISector = fecha;
-    patients[idx].estado = 'Activo'; // siempre activo al trasladarse
-    // Banner de bienvenida para el sector receptor
-    patients[idx].bannerTraslado = {
-      fecha, salaOrigen, camaOrigen, destino, nuevaCama,
-      kine: currentUser.name, obs,
-      vistosPor: [] // se va llenando con los usuarios que lo vieron
+    const salaOrigen = p.sala, camaOrigen = p.cama;
+    cambios = {
+      sala: destino,
+      cama: nuevaCama || p.cama,
+      fISector: fecha,
+      estado: 'Activo',
+      bannerTraslado: { fecha, salaOrigen, camaOrigen, destino, nuevaCama, kine: currentUser.name, obs, vistosPor: [] }
     };
-    const textoObs = `TRASLADO: De ${SALA_LABEL[salaOrigen]||salaOrigen} C${camaOrigen} → ${SALA_LABEL[destino]||destino}${nuevaCama?' C'+nuevaCama:''}${obs?'. '+obs:''}`;
-    const evo = {
+    evo = {
       id:Date.now(), patientId:egresoPacId, date:fecha,
       turno:currentShift(), kine:currentUser.name, tipo:'traslado',
-      obs: textoObs,
+      obs:`TRASLADO: De ${SALA_LABEL[salaOrigen]||salaOrigen} C${camaOrigen} → ${SALA_LABEL[destino]||destino}${nuevaCama?' C'+nuevaCama:''}${obs?'. '+obs:''}`,
       tecnicas:[], tolerancia:'',
     };
-    evoluciones.unshift(evo);
-    addLog('traslado',`Traslado ${p.apellido}: ${SALA_LABEL[salaOrigen]||salaOrigen} → ${SALA_LABEL[destino]||destino}`);
-    showToast(`Traslado → ${SALA_LABEL[destino]||destino}`,'success');
+    logTipo = 'traslado';
+    logMsg  = `Traslado ${p.apellido}: ${SALA_LABEL[salaOrigen]||salaOrigen} → ${SALA_LABEL[destino]||destino}`;
+    okMsg   = `Traslado → ${SALA_LABEL[destino]||destino}`;
 
   } else if(egresoTipo === 'alta'){
     const destino = document.getElementById('egresoDestinoAlta').value;
     if(!destino){ showToast('Seleccioná el destino','error'); return; }
-    patients[idx].estado = 'Alta K';
-    patients[idx].fEUTI = fecha;
-    patients[idx].fEK = fecha;
-    const evo = {
+    cambios = { estado:'Alta K', fEUTI:fecha, fEK:fecha };
+    evo = {
       id:Date.now(), patientId:egresoPacId, date:fecha,
       turno:currentShift(), kine:currentUser.name, tipo:'alta',
       obs:`ALTA: ${destino}${obs?'. '+obs:''}`,
       tecnicas:[], secCant:'', secChar:'', tolerancia:'',
     };
-    evoluciones.unshift(evo);
-    addLog('alta',`Alta ${p.apellido}: ${destino}`);
-    showToast(`Alta — ${destino}`,'success');
+    logTipo = 'alta';
+    logMsg  = `Alta ${p.apellido}: ${destino}`;
+    okMsg   = `Alta — ${destino}`;
 
   } else if(egresoTipo === 'obito'){
-    patients[idx].estado = 'Óbito';
-    patients[idx].fEUTI = fecha;
-    const evo = {
+    cambios = { estado:'Óbito', fEUTI:fecha };
+    evo = {
       id:Date.now(), patientId:egresoPacId, date:fecha,
       turno:currentShift(), kine:currentUser.name, tipo:'obito',
       obs:`ÓBITO${obs?': '+obs:''}`,
       tecnicas:[], secCant:'', secChar:'', tolerancia:'',
     };
-    evoluciones.unshift(evo);
-    addLog('obito',`Óbito: ${p.apellido}, ${p.nombre}`);
-    showToast('Óbito registrado','error');
+    logTipo = 'obito';
+    logMsg  = `Óbito: ${p.apellido}, ${p.nombre}`;
+    okMsg   = 'Óbito registrado';
+    okTono  = 'error';
+  }
+  if(!cambios || !evo) return;
+
+  const pacActualizado = { ...p, ...cambios };
+  const btn = document.getElementById('egresoConfirmBtn');
+  const btnHTML = btn ? btn.innerHTML : '';
+  if(btn){ btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i> Guardando…'; }
+
+  try {
+    if(!DEMO){
+      // Primero la evolución (deja el registro clínico), después el paciente.
+      await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'evolucion', p_id:String(evo.id), p_data:_limpiarObj(evo) });
+      await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'paciente',  p_id:String(p.id),   p_data:_limpiarObj(pacActualizado) });
+    }
+  } catch(err){
+    console.error('Egreso: no se pudo guardar en la nube', err);
+    if(btn){ btn.disabled = false; btn.innerHTML = btnHTML; }
+    setSyncStatus('error');
+    showToast('No se pudo guardar el egreso. El paciente sigue en la sala. Revisá la conexión y probá de nuevo.','error');
+    return;   // NO se toca nada local: lo que ve el kine es lo que hay en la base
   }
 
-  await persistAll();
+  // Confirmado en la nube: recién ahora se aplica en el dispositivo.
+  patients[idx] = pacActualizado;
+  evoluciones.unshift(evo);
+  _huellas['paciente:'+p.id]   = _huella(JSON.stringify(_limpiarObj(pacActualizado)));
+  _huellas['evolucion:'+evo.id] = _huella(JSON.stringify(_limpiarObj(evo)));
+  savePacientes(); saveEvos();
+  addLog(logTipo, logMsg);
+  showToast(okMsg, okTono);
+  setSyncStatus('ok');
+  if(btn){ btn.disabled = false; btn.innerHTML = btnHTML; }
   closeModal('modalEgreso', true);
+  renderAll();
+}
+
+// ── v3_179: egresos que quedaron a medio guardar ────────────────
+// Detecta la inconsistencia que dejó el problema anterior: el paciente figura
+// Activo pero tiene una evolución de alta u óbito posterior a su ingreso al
+// sector. Devuelve esa evolución, o null si está todo bien.
+function egresoSinAplicar(p){
+  if(!p || p.estado !== 'Activo') return null;
+  const desde = String(p.fISector || p.fIUTI || '');
+  const evosPac = evoluciones.filter(e => e && e.patientId === p.id);
+  const cierre = evosPac
+    .filter(e => (e.tipo === 'alta' || e.tipo === 'obito') && String(e.date||'') >= desde)
+    .sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')))[0] || null;
+  if(!cierre) return null;
+  // Si después del alta hubo un traslado, el paciente reingresó: ya no cuenta.
+  const reingreso = evosPac.some(e => e.tipo === 'traslado' && String(e.date||'') > String(cierre.date||''));
+  return reingreso ? null : cierre;
+}
+
+// Aplica el egreso que había quedado sin guardar, con confirmación.
+async function aplicarEgresoPendiente(pacId){
+  const p = patients.find(x => x.id === pacId);
+  const ev = egresoSinAplicar(p);
+  if(!p || !ev){ showToast('Ese paciente ya no tiene egresos pendientes','error'); renderAll(); return; }
+  const esObito = ev.tipo === 'obito';
+  const ok = confirm(
+    `${esObito ? 'Óbito' : 'Alta'} registrado el ${fmtDate(ev.date)} por ${ev.kine||'—'}:\n\n` +
+    `${ev.obs||'—'}\n\n` +
+    `Este egreso quedó cargado pero nunca se aplicó, por eso el paciente sigue apareciendo en la sala.\n\n` +
+    `¿Completarlo ahora y sacarlo de ${SALA_LABEL[p.sala]||p.sala}?`
+  );
+  if(!ok) return;
+
+  const actualizado = esObito
+    ? { ...p, estado:'Óbito',  fEUTI: ev.date }
+    : { ...p, estado:'Alta K', fEUTI: ev.date, fEK: ev.date };
+  try {
+    if(!DEMO){
+      await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'paciente', p_id:String(p.id), p_data:_limpiarObj(actualizado) });
+    }
+  } catch(err){
+    console.error('No se pudo completar el egreso pendiente', err);
+    setSyncStatus('error');
+    showToast('No se pudo guardar. Revisá la conexión y probá de nuevo.','error');
+    return;
+  }
+  const idx = patients.findIndex(x => x.id === pacId);
+  patients[idx] = actualizado;
+  _huellas['paciente:'+p.id] = _huella(JSON.stringify(_limpiarObj(actualizado)));
+  savePacientes();
+  addLog(esObito ? 'obito' : 'alta', `Completó el egreso pendiente de ${p.apellido}, ${p.nombre} (${fmtDate(ev.date)})`);
+  setSyncStatus('ok');
+  showToast('Egreso completado','success');
   renderAll();
 }
 
@@ -11438,6 +11538,13 @@ function renderPatientRow(p, todayStr){
   const proxChip = (!debeHoy && !tieneHoy) ? `<span class="badge badge-amber" style="font-size:9px" title="Según la frecuencia elegida, hoy no le toca atención"><i class="ti ti-clock"></i> Próx.: ${diasProx===1?'mañana':'en '+diasProx+' días'}</span>` : '';
   const rowClassBase = (estVent.cod==='ARM_TET'||estVent.cod==='ARM_TQT') ? 'row-arm' : (estVent.cod==='TQT_VE' ? 'row-decan' : 'row-libre');
   const rowClass = rowClassBase + ((!debeHoy && !tieneHoy) ? ' row-frec-off' : '');
+  // v3_179: ¿tiene un alta/óbito cargado que nunca se llegó a aplicar?
+  const egPend = egresoSinAplicar(p);
+  const egPendHTML = egPend ? `<div class="p-egreso-pend">
+      <i class="ti ti-logout"></i>
+      <span>${egPend.tipo==='obito'?'Óbito':'Alta'} registrado el ${fmtDate(egPend.date)} por ${escapeHTML(egPend.kine||'—')} — no se llegó a guardar, por eso sigue en la sala.</span>
+      <button class="btn-completar" onclick="aplicarEgresoPendiente(${p.id})"><i class="ti ti-check"></i> Completar egreso</button>
+    </div>` : '';
   return `<div class="patient-row ${rowClass}" data-id="${p.id}">
     <div style="flex:1;min-width:0">
       <div style="display:flex;align-items:center;gap:7px;flex-wrap:wrap">
@@ -11464,6 +11571,7 @@ function renderPatientRow(p, todayStr){
       <button class="btn btn-icon btn-sm" onclick="openEgreso(${p.id})" title="Egreso / Traslado" style="color:var(--amber-600)"><i class="ti ti-logout"></i></button>
     </div>
     ${p.alertaImportante && p.alertaImportante.trim() ? `<div class="p-alerta"><i class="ti ti-alert-triangle"></i><span>${escapeHTML(p.alertaImportante)}</span></div>` : ''}
+    ${egPendHTML}
   </div>`;
 }
 
