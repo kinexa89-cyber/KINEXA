@@ -514,6 +514,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 .sync-dot.syncing{ background:var(--amber-400);animation:pulse 1s infinite; }
 .sync-dot.error{ background:var(--red-400); }
 .sync-dot.local{ background:var(--gray-300); }
+/* v3_180: cuántos cambios quedan sin subir */
+.sync-pend{ display:inline-flex; align-items:center; justify-content:center; min-width:17px; height:17px;
+  padding:0 5px; margin-left:5px; border-radius:9px; background:var(--amber-400); color:#fff;
+  font-size:10px; font-weight:800; line-height:1; }
 .login-sync{ display:flex;align-items:center;gap:6px;background:var(--teal-50);border:1px solid var(--teal-100);border-radius:8px;padding:8px 12px;margin-bottom:1rem;font-size:12px;color:var(--teal-800); }
 .link-small{ font-size:11px;color:var(--blue-600);cursor:pointer;text-decoration:underline;display:block;text-align:center;margin-top:.8rem; }
 
@@ -901,6 +905,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <div class="sync-indicator" id="syncIndicator" style="cursor:pointer" onclick="syncNow()" title="Estado de sincronización">
         <div class="sync-dot local" id="syncDot"></div>
         <span id="syncLabel" class="hide-mobile">Local</span>
+        <span class="sync-pend" id="syncPend" style="display:none">0</span>
       </div>
       <div class="nav-avatar" id="navAvatar">--</div>
       <span class="nav-user-name" id="navName">--</span>
@@ -5309,7 +5314,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_179';
+const APP_VERSION = 'v3_180';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -6041,10 +6046,14 @@ async function pedirEvoluciones(){
 async function loadFromSupabase(){
   setSyncStatus('syncing');
   cargarConfigCompartida(); // v3_110: baja la API key de Gemini compartida (no bloquea la carga)
+  // v3_180: lo que quedó sin subir se manda PRIMERO. Si se bajara antes, lo de
+  // la nube pisaría en memoria cambios locales que todavía no llegaron a la base.
+  if(_outbox.length){ try { await procesarOutbox(); } catch(e){} }
   try {
     // 1) Pacientes primero: es lo liviano y lo que se necesita para empezar
     const pacs = await rpc('kinexa_registros', { p_token:TOKEN, p_tipo:'paciente' });
     patients = normalizarPacientes(pacs);                       // v3_158
+    reinyectarOutbox();   // v3_180: lo que sigue sin subir no se pierde de vista
     savePacientes();
     renderAll();                       // el equipo ya ve la sala y puede trabajar
     avisarPacientesSinSector();        // v3_170
@@ -6056,13 +6065,16 @@ async function loadFromSupabase(){
     EVOS_DESDE = parcial ? desde : null;   // v3_174: hasta dónde llega lo que tenemos
     DATOS_COMPLETOS = true;                // v3_173
     marcarTodoSincronizado();   // v3_150: lo recién bajado ya está en la nube
+    reinyectarOutbox();         // v3_180
     saveEvos();
-    setSyncStatus('ok');
+    setSyncStatus(_outbox.length ? 'error' : 'ok');
+    actualizarIndicadorPendientes();
     renderAll();
   } catch(e){
     DATOS_COMPLETOS = false;   // v3_173: quedó solo lo que había en el dispositivo
     console.error(e);
     setSyncStatus('error');
+    actualizarIndicadorPendientes();
     showToast('Sin conexión: ves los pacientes activos y los últimos 30 días','error');
   }
 }
@@ -6152,41 +6164,128 @@ function marcarTodoSincronizado(){
   for(const e of evoluciones){ if(e?.id) _huellas['evolucion:'+e.id] = _huella(JSON.stringify(_limpiarObj(e))); }
 }
 
+// ── v3_180: COLA DE PENDIENTES ──────────────────────────────────
+// Antes, si un guardado fallaba (señal mala, celular dormido), el cambio se
+// perdía en silencio: se mostraba un toast rojo y nada más. Y como la caché
+// local guarda solo pacientes activos y los últimos 30 días, muchas veces
+// tampoco quedaba en el dispositivo. Trabajo cargado que desaparecía.
+//
+// Ahora todo cambio pasa primero por una cola guardada EN EL DISPOSITIVO, que
+// sobrevive a cerrar la app. Se reintenta sola: al volver la señal, al volver
+// a la app, cada 45 segundos y al iniciar sesión. Un registro sale de la cola
+// únicamente cuando la base confirmó que lo recibió.
+const OUTBOX_KEY = 'kinexa_outbox';
+const OUTBOX_MAX = 400;          // tope para no llenar el almacenamiento
+let _outbox = [];
+let _procesandoOutbox = false;
+
+function cargarOutbox(){
+  try { const v = JSON.parse(localStorage.getItem(OUTBOX_KEY)); _outbox = Array.isArray(v) ? v : []; }
+  catch(e){ _outbox = []; }
+}
+function guardarOutbox(){
+  try { localStorage.setItem(OUTBOX_KEY, JSON.stringify(_outbox)); }
+  catch(e){ console.warn('No se pudo guardar la cola de pendientes', e); }
+}
+function encolar(reg){
+  const item = { clave:reg.clave, tipo:reg.tipo, id:reg.id, data:reg.data, h:reg.h, ts:Date.now(), intentos:0 };
+  const i = _outbox.findIndex(x => x.clave === reg.clave);
+  if(i >= 0) _outbox[i] = item; else _outbox.push(item);   // siempre gana la versión más nueva
+  if(_outbox.length > OUTBOX_MAX) _outbox = _outbox.slice(-OUTBOX_MAX);
+  guardarOutbox();
+}
+function hayPendientes(){ return _outbox.length; }
+cargarOutbox();   // lo que quedó de la sesión anterior
+
+// Intenta vaciar la cola. Devuelve true si quedó vacía.
+async function procesarOutbox(){
+  if(DEMO || !TOKEN) return false;
+  if(_procesandoOutbox) return false;
+  if(!_outbox.length){ setSyncStatus('ok'); return true; }
+  _procesandoOutbox = true;
+  setSyncStatus('syncing');
+  try {
+    while(_outbox.length){
+      const lote = _outbox.slice(0, 6);   // de a 6 en paralelo
+      const res = await Promise.allSettled(lote.map(r =>
+        rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:r.tipo, p_id:String(r.id), p_data:r.data })
+      ));
+      let huboFalla = false;
+      res.forEach((r, k) => {
+        const item = lote[k];
+        if(r.status === 'fulfilled'){
+          _huellas[item.clave] = item.h;
+          _outbox = _outbox.filter(x => x !== item);
+        } else {
+          item.intentos = (item.intentos || 0) + 1;
+          huboFalla = true;
+          if(item.intentos <= 1) console.error('Pendiente sin subir:', item.clave, r.reason);
+        }
+      });
+      guardarOutbox();
+      if(huboFalla) break;   // no tiene sentido seguir golpeando si no hay conexión
+    }
+  } finally {
+    _procesandoOutbox = false;
+  }
+  const vacia = _outbox.length === 0;
+  setSyncStatus(vacia ? 'ok' : 'error');
+  actualizarIndicadorPendientes();
+  return vacia;
+}
+
+// Vuelve a poner en memoria lo que todavía no subió, para que el kinesiólogo
+// siga viendo su trabajo aunque la descarga desde la nube lo haya pisado.
+function reinyectarOutbox(){
+  if(!_outbox.length) return;
+  _outbox.forEach(it => {
+    if(!it || !it.data) return;
+    if(it.tipo === 'paciente'){
+      const i = patients.findIndex(x => String(x.id) === String(it.id));
+      const rec = { ...it.data, id:_numId(it.id) };
+      if(i >= 0) patients[i] = rec; else patients.unshift(rec);
+    } else if(it.tipo === 'evolucion'){
+      if(it.data._borrada) return;   // una evolución eliminada no se resucita
+      const rec = { ...it.data, id:_numId(it.id), patientId:_numId(it.data.patientId) };
+      const i = evoluciones.findIndex(x => String(x.id) === String(it.id));
+      if(i >= 0) evoluciones[i] = rec; else evoluciones.unshift(rec);
+    }
+  });
+}
+
+function actualizarIndicadorPendientes(){
+  const el = document.getElementById('syncPend');
+  if(!el) return;
+  const n = _outbox.length;
+  el.textContent = n > 99 ? '99+' : String(n);
+  el.style.display = n ? 'inline-flex' : 'none';
+  const ind = document.getElementById('syncIndicator');
+  if(ind) ind.title = n
+    ? `${n} cambio${n===1?'':'s'} sin subir. Se reintenta solo; tocá para reintentar ahora.`
+    : 'Todo sincronizado. Tocá para actualizar desde la nube.';
+}
+
 async function saveToSupabase(){
   if(DEMO){ setSyncStatus('ok'); return true; }
-  // Armar la lista de lo que cambió respecto de la última sincronización
-  const pendientes = [];
+  // Todo lo que cambió respecto de la última sincronización va a la cola
   for(const p of patients){
     if(!p?.id) continue;
     const json = JSON.stringify(_limpiarObj(p)), clave = 'paciente:'+p.id, h = _huella(json);
-    if(_huellas[clave] !== h) pendientes.push({ clave, h, tipo:'paciente', id:p.id, data:JSON.parse(json) });
+    if(_huellas[clave] !== h) encolar({ clave, h, tipo:'paciente', id:p.id, data:JSON.parse(json) });
   }
   for(const e of evoluciones){
     if(!e?.id || !e.patientId) continue;
     const json = JSON.stringify(_limpiarObj(e)), clave = 'evolucion:'+e.id, h = _huella(json);
-    if(_huellas[clave] !== h) pendientes.push({ clave, h, tipo:'evolucion', id:e.id, data:JSON.parse(json) });
+    if(_huellas[clave] !== h) encolar({ clave, h, tipo:'evolucion', id:e.id, data:JSON.parse(json) });
   }
-  if(!pendientes.length){ setSyncStatus('ok'); return true; }   // no hay nada para mandar
+  actualizarIndicadorPendientes();
+  if(!_outbox.length){ setSyncStatus('ok'); return true; }
 
-  setSyncStatus('syncing');
-  try {
-    // De a 6 en paralelo: si alguna vez hay muchos cambios juntos (por ejemplo
-    // al restaurar un backup) no se hace la cola de a uno.
-    for(let i=0; i<pendientes.length; i+=6){
-      const lote = pendientes.slice(i, i+6);
-      await Promise.all(lote.map(r =>
-        rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:r.tipo, p_id:String(r.id), p_data:r.data })
-          .then(()=>{ _huellas[r.clave] = r.h; })
-      ));
-    }
-    setSyncStatus('ok');
-    return true;
-  } catch(e){
-    console.error('Supabase error:', e);
-    setSyncStatus('error');
-    showToast('Error Supabase: ' + (e.message?.slice(0,60)||'ver consola'), 'error');
-    return false;   // v3_179: quien llame tiene que poder enterarse de que falló
+  const ok = await procesarOutbox();
+  if(!ok){
+    showToast(`Sin conexión: ${_outbox.length} cambio${_outbox.length===1?'':'s'} quedaron guardados en el celular y se van a subir solos.`, 'error');
   }
+  return ok;
 }
 
 // ════════════════════════════════════════════════════════
@@ -6565,9 +6664,27 @@ let _ultRenov = 0;
   }, true);
 });
 
+// ── v3_180: reintentos automáticos de la cola de pendientes ──────
+// Vuelve la señal, el kinesiólogo vuelve a la app, o pasan 45 segundos.
+window.addEventListener('online', () => { if(_outbox.length && TOKEN) procesarOutbox(); });
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible' && _outbox.length && TOKEN) procesarOutbox();
+});
+setInterval(() => {
+  if(_outbox.length && TOKEN && navigator.onLine !== false) procesarOutbox();
+}, 45000);
+// Aviso si se intenta cerrar la app con trabajo sin subir
+window.addEventListener('beforeunload', (ev) => {
+  if(!_outbox.length) return;
+  ev.preventDefault();
+  ev.returnValue = 'Hay cambios que todavía no se subieron. Si cerrás ahora se van a subir la próxima vez que abras la app.';
+  return ev.returnValue;
+});
+
 // Al cargar: poblar instituciones e intentar restaurar sesión
 cargarInstitucionesKinexa();
 tryRestoreSession();
+actualizarIndicadorPendientes();
 function startSession(user){
   currentUser = user;
   ocultarPantallasAuth();
@@ -6663,8 +6780,10 @@ function setSyncStatus(s){
   const label = document.getElementById('syncLabel');
   if(!dot) return;
   dot.className = 'sync-dot ' + s;
-  const labels = { local:'Local', ok:'Drive ✓', syncing:'Sincronizando…', error:'Error Drive' };
-  if(label) label.textContent = labels[s]||s;
+  // v3_180: si quedaron cambios en la cola, el cartel lo dice sin vueltas
+  const pend = (typeof _outbox !== 'undefined' && _outbox.length) ? _outbox.length : 0;
+  const labels = { local:'Local', ok:'Sincronizado ✓', syncing:'Sincronizando…', error:'Sin subir' };
+  if(label) label.textContent = pend ? `${pend} sin subir` : (labels[s]||s);
 }
 
 function initGoogleDrive(){
@@ -6756,8 +6875,17 @@ async function saveToDrive(){
 }
 
 async function syncNow(){
+  // v3_180: primero se sube lo que quedó pendiente, para no pisarlo con lo de la nube
+  if(_outbox.length){
+    const ok = await procesarOutbox();
+    if(!ok){
+      showToast(`Todavía no se pudo subir. Quedan ${_outbox.length} cambio${_outbox.length===1?'':'s'} guardados en el celular.`,'error');
+      return;
+    }
+    showToast('Cambios pendientes subidos ✓','success');
+  }
   await loadFromSupabase();
-  showToast('Datos actualizados desde Supabase ✓','success');
+  showToast('Datos actualizados desde la nube ✓','success');
 }
 
 async function persistAll(){
