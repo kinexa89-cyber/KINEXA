@@ -460,6 +460,9 @@ tr:hover td{ background:var(--blue-50); }
 .ant-chip{ display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--border);
   border-radius:8px;font-size:12.5px;font-weight:500;cursor:pointer;background:var(--surface);transition:.15s; }
 .ant-chip:hover{ background:var(--blue-50); }
+/* v3_184: separador de grupos dentro de la grilla de antecedentes */
+.ant-subtitulo{ grid-column:1/-1; margin:6px 0 -2px; font-size:10.5px; font-weight:800;
+  text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); }
 .ant-chip input{ width:15px;height:15px;cursor:pointer;flex-shrink:0;accent-color:var(--blue-600); }
 .ant-chip.is-checked{ border-color:var(--blue-200);background:var(--blue-50);color:var(--blue-800); }
 
@@ -1718,6 +1721,15 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <label class="ant-chip"><input type="checkbox" id="fAntP_neuromuscular" value="neuromuscular">Enfermedad neuromuscular</label>
         <label class="ant-chip"><input type="checkbox" id="fAntP_autoinmune" value="autoinmune">Enfermedad autoinmune</label>
         <label class="ant-chip"><input type="checkbox" id="fAntP_oncologico" value="oncologico">Oncológico</label>
+        <!-- v3_184: respiratorios -->
+        <div class="ant-subtitulo">Respiratorios</div>
+        <label class="ant-chip"><input type="checkbox" id="fAntP_asma" value="asma">Asma</label>
+        <label class="ant-chip"><input type="checkbox" id="fAntP_bor" value="bor">BOR</label>
+        <label class="ant-chip"><input type="checkbox" id="fAntP_neumonia" value="neumonia">Neumonía</label>
+        <label class="ant-chip"><input type="checkbox" id="fAntP_neumonia_derr" value="neumonia_derr">Neumonía con derrame</label>
+        <label class="ant-chip"><input type="checkbox" id="fAntP_fq" value="fq">Fibrosis quística</label>
+        <div class="ant-subtitulo">Otros</div>
+        <label class="ant-chip"><input type="checkbox" id="fAntP_arm_previa" value="arm_previa">ARM previamente</label>
         <label class="ant-chip"><input type="checkbox" id="fAntP_otras" value="otras">Otras</label>
       </div>
       <div class="form-row" style="margin-top:10px">
@@ -5345,7 +5357,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_183';
+const APP_VERSION = 'v3_184';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -7932,15 +7944,102 @@ const TIPO_KINE_TEXTO = {
   pre_qx:'Pre-quirúrgico', post_qx:'Post-quirúrgico',
   amputado:'Amputado', quemado:'Quemado', trauma:'Trauma',
   cardiologico:'Cardiológico', oncologico:'Oncológico', crm:'POP CRM',
-  post_uti:'Post UTI', otro:'Otro'
+  post_uti:'Post UTI', otro:'Otro',
+  // v3_184: grupos propios de las salas pediátricas
+  shock:'Shock', cardiovascular:'Cardiovascular', toxicologico:'Toxicológico',
+  quemadura_va:'Quemadura de VA', api:'API', fmo:'Falla multiorgánica',
+  miscelaneas:'Misceláneas'
 };
 const TIPO_KINE_ICONO = {
   respiratorio:'ti-lungs', neurologico:'ti-brain',
   pre_qx:'ti-scalpel', post_qx:'ti-scalpel',
   amputado:'ti-prosthesis', quemado:'ti-flame', trauma:'ti-bone',
   cardiologico:'ti-heartbeat', oncologico:'ti-ribbon-health', crm:'ti-heartbeat',
-  post_uti:'ti-building-hospital', otro:'ti-clipboard'
+  post_uti:'ti-building-hospital', otro:'ti-clipboard',
+  // v3_184
+  shock:'ti-activity-heartbeat', cardiovascular:'ti-heartbeat', toxicologico:'ti-flask',
+  quemadura_va:'ti-flame', api:'ti-droplet', fmo:'ti-alert-octagon',
+  miscelaneas:'ti-dots'
 };
+
+// ── v3_184: las salas pediátricas tienen su propio menú de grupos ───
+// Los adultos quedan exactamente como estaban. Donde el concepto es el mismo se
+// reusa la clave (trauma, post_qx, respiratorio…), así siguen apareciendo los
+// sub-bloques de la ficha que ya existían para esos grupos.
+const GRUPOS_ADULTO = [
+  ['respiratorio','Respiratorio'], ['neurologico','Neurológico'],
+  ['pre_qx','Pre-quirúrgico'], ['post_qx','Post-quirúrgico'],
+  ['amputado','Amputado'], ['quemado','Quemado'], ['trauma','Trauma'],
+  ['cardiologico','Cardiológico'], ['oncologico','Oncológico'], ['otro','Otro'],
+];
+const GRUPOS_PED = [
+  ['shock','Shock'],
+  ['respiratorio','Respiratorio'],
+  ['neurologico','Neurológico'],
+  ['cardiovascular','Cardiovascular'],
+  ['trauma','Traumatológico'],
+  ['toxicologico','Toxicológico'],
+  ['post_qx','POP (postoperatorio)'],
+  ['quemadura_va','Quemadura de VA'],
+  ['api','API (ahogamiento por inmersión)'],
+  ['fmo','Falla multiorgánica'],
+  ['oncologico','Oncológico'],
+  ['miscelaneas','Misceláneas'],
+];
+
+// ── v3_184: motivos de inicio de ARM según el tipo de sala ──────────
+const MOTIVOS_VM_ADULTO = [
+  ['Deterioro del estado de conciencia','Deterioro del estado de conciencia'],
+  ['IRA','IRA (insuficiencia respiratoria aguda)'],
+  ['Shock','Shock'],
+  ['POP','POP (postoperatorio)'],
+  ['Protección de VAS','Protección de VAS (vía aérea superior)'],
+  ['Obstrucción de VAS','Obstrucción de VAS (vía aérea superior)'],
+  ['Otro','Otro'],
+];
+const MOTIVOS_VM_PED = [
+  ['IRA','IRA (insuficiencia respiratoria aguda)'],
+  ['PCR','PCR (paro cardiorrespiratorio)'],
+  ['Deterioro neurológico','Deterioro neurológico'],
+  ['Quemadura VA','Quemadura de vía aérea'],
+  ['Shock','Shock'],
+  ['API','API (ahogamiento por inmersión)'],
+  ['Otro','Otro'],
+];
+
+// Rellena un <select> con la lista que corresponda, conservando el valor que
+// ya tuviera. Si ese valor no está en la lista nueva (por ejemplo un paciente
+// pediátrico cargado antes con un grupo de adultos) se agrega igual, para no
+// borrar en silencio un dato que alguien cargó.
+// Si el valor guardado ya no figura entre las opciones (paciente pediátrico
+// cargado antes con listas de adultos, por ejemplo), se agrega al vuelo en vez
+// de perderlo en silencio al abrir la ficha o editar la evolución.
+function fijarSelectConFallback(selId, valor){
+  const sel = document.getElementById(selId);
+  if(!sel) return;
+  const v = valor || '';
+  if(v && ![...sel.options].some(o => o.value === v)){
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = (TIPO_KINE_TEXTO[v] || v) + ' (cargado antes)';
+    sel.appendChild(opt);
+  }
+  sel.value = v;
+}
+
+function poblarSelectPorSala(selId, lista, placeholder){
+  const sel = document.getElementById(selId);
+  if(!sel) return;
+  const actual = sel.value;
+  let html = `<option value="">${placeholder}</option>` +
+    lista.map(([v,t]) => `<option value="${escapeHTML(v)}">${escapeHTML(t)}</option>`).join('');
+  if(actual && !lista.some(([v]) => v === actual)){
+    const txt = TIPO_KINE_TEXTO[actual] || actual;
+    html += `<option value="${escapeHTML(actual)}">${escapeHTML(txt)} (cargado antes)</option>`;
+  }
+  sel.innerHTML = html;
+  sel.value = actual;
+}
 // Texto plano (para títulos, informes, exportaciones y <option>)
 const TIPO_KINE_LABEL = TIPO_KINE_TEXTO;
 // Con ícono, para donde se puede usar HTML
@@ -8868,6 +8967,14 @@ const ANTECEDENTES_PED_LIST = [
   {key:'neuromuscular',  label:'Enfermedad neuromuscular'},
   {key:'autoinmune',     label:'Enfermedad autoinmune'},
   {key:'oncologico',     label:'Oncológico'},
+  // v3_184: antecedentes respiratorios pediátricos
+  {key:'asma',           label:'Asma'},
+  {key:'bor',            label:'BOR'},
+  {key:'neumonia',       label:'Neumonía'},
+  {key:'neumonia_derr',  label:'Neumonía con derrame'},
+  {key:'fq',             label:'Fibrosis quística'},
+  // v3_184
+  {key:'arm_previa',     label:'ARM previamente'},
   {key:'otras',          label:'Otras'},
 ];
 
@@ -8879,6 +8986,9 @@ function onSalaChange(sala){
 // Cambia la ficha entre modo adultos y pediátrico según la sala elegida
 function aplicarModoFichaPorSala(sala){
   const ped = esSalaPediatrica(sala);
+  // v3_184: grupo de diagnóstico y motivo de ARM cambian según el tipo de sala
+  poblarSelectPorSala('fTipoKine', ped ? GRUPOS_PED : GRUPOS_ADULTO, 'Seleccioná el grupo...');
+  poblarSelectPorSala('fCausaVM',  ped ? MOTIVOS_VM_PED : MOTIVOS_VM_ADULTO, 'Seleccioná el motivo...');
   const mostrar = (id, ver) => { const el=document.getElementById(id); if(el) el.style.display = ver ? '' : 'none'; };
   mostrar('fBloquePed', ped);
   mostrar('fPercentilosWrap', ped);
@@ -9575,6 +9685,8 @@ function aplicarModoEvoPorSala(patientId){
     const meses = (Date.now() - new Date(p.fechaNac).getTime()) / (1000*60*60*24*30.4375);
     if(!isNaN(meses) && meses >= 0 && meses <= 6) EVO_PED_MENOR6M = true;
   }
+  // v3_184: motivo de inicio de ARM propio de pediatría
+  poblarSelectPorSala('eMotivoVM', ped ? MOTIVOS_VM_PED : MOTIVOS_VM_ADULTO, 'Seleccioná el motivo...');
   const mostrar = (id, ver) => { const el = document.getElementById(id); if(el) el.style.display = ver ? '' : 'none'; };
   mostrar('ePedEscalas',     ped);
   mostrar('eDifRespPed',     ped);   // v3_142: Tal y Wood-Downes (dentro del bloque sin ARM)
@@ -11978,7 +12090,11 @@ function openEditPaciente(id){
   M('fFIHosp',p.fIHosp); M('fFIUTI',p.fIUTI);
   M('fDiag',p.diagnostico);
   M('fAlertaImportante',p.alertaImportante);
-  M('fTipoKine',p.tipoKine); M('fEstFx',p.estFx);
+  // v3_184: primero se arma el menú que corresponde a la sala; si no, al cargar
+  // un paciente pediátrico el grupo no existiría todavía entre las opciones y
+  // se perdería en silencio.
+  aplicarModoFichaPorSala(p.sala);
+  M('fTipoKine',p.tipoKine); fijarSelectConFallback('fTipoKine', p.tipoKine); M('fEstFx',p.estFx);
   document.getElementById('fFrecAtencion').value = String(frecPaciente(p)); // v3_140
   // Campos específicos por grupo
   resetGrupoFields();
@@ -12062,7 +12178,8 @@ function openEditPaciente(id){
   // v3_143: la sección ARM/Ventilación quedó oculta (solo se pregunta si ingresa
   // en ARM y desde cuándo). Los campos siguen existiendo para conservar los datos.
   { const sA=document.getElementById('fSeccionARM'); if(sA) sA.style.display='none'; }
-  M('fCausaVM',p.causaVM); M('fCausaVMOtro',p.causaVMOtro); M('fFIOT',p.fIOT);
+  M('fCausaVM',p.causaVM); fijarSelectConFallback('fCausaVM', p.causaVM);   // v3_184
+  M('fCausaVMOtro',p.causaVMOtro); M('fFIOT',p.fIOT);
   onARMingresoChange(p.grupoRespARM||''); onMotivoVMChange('f'); M('fInicioARM',p.inicioARM); M('fVMNI',p.vmni);
   M('fProno',p.prono); M('fTQT',p.tqt); M('fFinARM',p.finARM); M('fReintubado',p.reintubado);
   openModal('modalPaciente');
@@ -13000,7 +13117,7 @@ function precargarCamposEvolucion(evo){
     const bn=document.getElementById('btnEsc'+nom); if(bn) bn.classList.add('active');
   });
   // v3_127: motivo de ARM
-  { const sel=document.getElementById('eMotivoVM'); if(sel) sel.value = evo.motivoVM || '';
+  { fijarSelectConFallback('eMotivoVM', evo.motivoVM);   // v3_184
     const otro=document.getElementById('eMotivoVMOtro'); if(otro) otro.value = evo.motivoVMOtro || '';
     const b=document.getElementById('eMotivoVMBlock'); if(b) b.style.display = evo.motivoVM ? 'block' : 'none';
     onMotivoVMChange('e'); }
