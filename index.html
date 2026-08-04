@@ -529,6 +529,9 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 .ocr-status{ margin-top:8px;font-size:12px;color:var(--teal-800);display:none; }
 .ocr-status.show{ display:block; }
 .ocr-spinner{ display:inline-block;width:12px;height:12px;border:2px solid var(--teal-400);border-top-color:transparent;border-radius:50%;animation:spin .7s linear infinite;margin-right:5px;vertical-align:middle; }
+/* v3_181: mientras se guarda, el botón TIENE que verse ocupado */
+.btn:disabled, .btn[disabled]{ opacity:.55; cursor:not-allowed; pointer-events:none; filter:grayscale(.35); }
+.btn:disabled .ocr-spinner, .btn[disabled] .ocr-spinner{ border-color:currentColor; border-top-color:transparent; }
 @keyframes spin{ to{transform:rotate(360deg)} }
 .ocr-chip{ display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;font-size:11px;background:var(--teal-50);border:1px solid var(--teal-100);color:var(--teal-800);margin:2px; }
 .btn-ocr{ display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:var(--font);background:linear-gradient(135deg,var(--teal-600),var(--blue-600));color:#fff; }
@@ -5104,7 +5107,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <button class="btn btn-ghost" id="btnAbrirFichaNeuro" onclick="openFichaNeuroFromEvo()" style="display:none">
         <i class="ti ti-brain"></i>Ficha neurológica
       </button>
-      <button class="btn btn-success" onclick="guardarEvoMin()"><i class="ti ti-device-floppy"></i>Guardar evolución</button>
+      <button class="btn btn-success" id="btnGuardarEvoMin" onclick="guardarEvoMin()"><i class="ti ti-device-floppy"></i>Guardar evolución</button>
     </div>
   </div>
 </div>
@@ -5314,7 +5317,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_180';
+const APP_VERSION = 'v3_181';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -10039,9 +10042,16 @@ function openEvolucionMin(patientId){
   openModal('modalEvoMin');
 }
 
+let _guardandoEvoMin = false;   // v3_181: este no tenía guard, por eso se duplicaba en Mínimos
 async function guardarEvoMin(){
+  if(_guardandoEvoMin) return;
   const date = document.getElementById('emDate').value;
   if(!date){ showToast('Ingresá la fecha','error'); return; }
+  _guardandoEvoMin = true;
+  const btnMin = document.getElementById('btnGuardarEvoMin');
+  const btnMinHTML = btnMin ? btnMin.innerHTML : '';
+  if(btnMin){ btnMin.disabled = true; btnMin.innerHTML = '<span class="ocr-spinner"></span>Guardando…'; }
+  try{
   const G = id => document.getElementById(id)?.value?.trim() || '';
   const GN = id => { const v=parseFloat(G(id)); return isNaN(v)?'':v; };
   const logros = [...document.querySelectorAll('#emLogrosContainer .tag.active')].map(t=>t.textContent.trim());
@@ -10064,6 +10074,15 @@ async function guardarEvoMin(){
     tecnicas:[],
   };
 
+  // v3_181: si ya hay una idéntica cargada, no se duplica
+  const prev = evoDuplicada(evo, null);
+  if(prev){
+    avisarDuplicada(prev);
+    closeModal('modalEvoMin', true);
+    renderAll();
+    return;
+  }
+
   // Actualizar frecuencia del paciente
   const idx = patients.findIndex(x=>x.id===currentEvoMinPacId);
   if(idx>=0 && evo.frecuencia) patients[idx].frecuencia = evo.frecuencia;
@@ -10074,8 +10093,15 @@ async function guardarEvoMin(){
   addLog('evolve',`Evo Min: ${p?.apellido} (${fmtDate(date)})`);
   showToast('Evolución guardada','success');
   actualizarContadorHistorial('evoMinHistCount', currentEvoMinPacId);
+  marcarModalLimpio('modalEvoMin');
+  closeModal('modalEvoMin', true);   // v3_181
   renderAll();
   ofrecerEvolucionIA(evo, currentEvoMinPacId); // opción de redactar la evolución con IA
+  } finally {
+    _guardandoEvoMin = false;
+    const b = document.getElementById('btnGuardarEvoMin');
+    if(b){ b.disabled = false; b.innerHTML = btnMinHTML || '<i class="ti ti-device-floppy"></i>Guardar evolución'; }
+  }
 }
 
 function openFichaNeuroFromEvo(){
@@ -13055,6 +13081,50 @@ function editarEvolucion(evoId){
   showToast('Editando evolución del ' + fmtDate(evo.date), 'info');
 }
 
+// ── v3_181: que no se dupliquen las evoluciones ──────────────────
+// Tres capas, porque el problema tenía tres causas distintas:
+//  1) el botón se deshabilitaba pero no se veía distinto → parecía colgado y
+//     lo tocaban de nuevo. Ahora muestra spinner y "Guardando…".
+//  2) guardarEvoMin() (Cuidados Mínimos) no tenía ningún guard.
+//  3) al terminar, el modal quedaba abierto con medio formulario cargado, así
+//     que un segundo toque creaba una evolución nueva de verdad. Ahora cierra,
+//     y además se compara el contenido contra lo ya cargado.
+
+// Orden canónico de claves: lo que vuelve de la base (jsonb) tiene las claves
+// ordenadas alfabéticamente, lo recién armado en el navegador no. Sin esto,
+// la misma evolución daría huellas distintas según de dónde salga.
+function _canonEvo(v){
+  if(Array.isArray(v)) return v.map(_canonEvo);
+  if(v && typeof v === 'object'){
+    const o = {};
+    Object.keys(v).sort().forEach(k => { o[k] = _canonEvo(v[k]); });
+    return o;
+  }
+  return v;
+}
+function _huellaEvo(evo){
+  const c = { ...evo };
+  // Lo que no hace al contenido clínico no entra en la comparación
+  delete c.id; delete c.hora; delete c.editedAt; delete c.editedBy; delete c._borrada;
+  return JSON.stringify(_canonEvo(_limpiarObj(c)));
+}
+// Devuelve la evolución ya cargada que es idéntica a esta, o null.
+function evoDuplicada(evo, ignorarId){
+  const candidatas = evoluciones.filter(e =>
+    e && !e._borrada &&
+    e.patientId === evo.patientId &&
+    e.date === evo.date &&
+    String(e.id) !== String(ignorarId ?? '')
+  );
+  if(!candidatas.length) return null;
+  const h = _huellaEvo(evo);
+  return candidatas.find(e => _huellaEvo(e) === h) || null;
+}
+function avisarDuplicada(prev){
+  const cuando = prev.hora ? ` a las ${prev.hora}` : '';
+  showToast(`Esa evolución ya estaba cargada${cuando}. No se duplicó.`, 'info');
+}
+
 let _guardandoEvo = false; // guard anti doble-click (Supabase puede tardar)
 async function guardarEvolucion(){
   if(_guardandoEvo) return;
@@ -13062,7 +13132,8 @@ async function guardarEvolucion(){
   if(!date){ showToast('Ingresá la fecha','error'); return; }
   _guardandoEvo = true;
   const btnEvo = document.getElementById('btnGuardarEvo');
-  if(btnEvo) btnEvo.disabled = true;
+  const btnEvoHTML = btnEvo ? btnEvo.innerHTML : '';
+  if(btnEvo){ btnEvo.disabled = true; btnEvo.innerHTML = '<span class="ocr-spinner"></span>Guardando…'; }
   try{
   const G = id => document.getElementById(id)?.value?.trim() || '';
   const GN = id => { const v=parseFloat(G(id)); return isNaN(v)?'':v; };
@@ -13238,6 +13309,14 @@ async function guardarEvolucion(){
     const idx = evoluciones.findIndex(x=>x.id===editandoId);
     evoluciones[idx] = evo;
   } else {
+    // v3_181: si ya hay una evolución idéntica del mismo paciente y fecha, no se duplica
+    const prev = evoDuplicada(evo, null);
+    if(prev){
+      avisarDuplicada(prev);
+      closeModal('modalEvo', true);
+      renderAll();
+      return;
+    }
     evoluciones.unshift(evo);
   }
   await persistAll();
@@ -13268,12 +13347,13 @@ async function guardarEvolucion(){
   document.querySelectorAll('#modalEvo .tag.active').forEach(t=>t.classList.remove('active'));
   actualizarContadorHistorial('evoHistCount', currentEvoPacId);
   marcarModalLimpio('modalEvo'); marcarModalLimpio('modalEvoMin');  // v3_146
+  closeModal('modalEvo', true);   // v3_181: cerrado, no queda nada para tocar dos veces
   renderAll();
   ofrecerEvolucionIA(evo, currentEvoPacId); // opción de redactar la evolución con IA
   } finally {
     _guardandoEvo = false;
     const btnEvoFin = document.getElementById('btnGuardarEvo');
-    if(btnEvoFin) btnEvoFin.disabled = false;
+    if(btnEvoFin){ btnEvoFin.disabled = false; btnEvoFin.innerHTML = btnEvoHTML || '<i class="ti ti-device-floppy"></i>Guardar evolución'; }
   }
 }
 
