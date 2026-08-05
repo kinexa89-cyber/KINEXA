@@ -754,6 +754,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     </div>
     <button class="btn btn-primary btn-block" style="margin-top:1.2rem" onclick="mostrarLoginKx()"><i class="ti ti-login"></i>Ingresar</button>
     <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="mostrarRegistro()"><i class="ti ti-building-hospital"></i>Registrar mi institución</button>
+    <button class="btn btn-ghost btn-block" style="margin-top:10px;color:var(--purple-400)" onclick="entrarDemo()"><i class="ti ti-eye"></i>Ver una demostración</button>
     <div style="text-align:center;margin-top:1.4rem;padding-top:.9rem;border-top:1px solid var(--border)">
       <p style="font-size:10.5px;color:var(--text-light)">Desarrollado por <strong style="color:var(--text-muted)">Lic. Rodríguez Daniel</strong></p>
       <p style="font-size:10px;color:var(--text-light);margin-top:3px">Kinexa <span class="appVersionTag"></span></p>
@@ -5357,7 +5358,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_184';
+const APP_VERSION = 'v3_185';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -6391,12 +6392,14 @@ function _fechaCorteCache(){
 }
 
 function savePacientes(){
+  if(DEMO) return;   // v3_185: la demo no pisa los datos reales del dispositivo
   // Los pacientes egresados quedan en la nube; en el dispositivo solo los activos
   const activos = patients.filter(p => p && p.estado === 'Activo');
   LS.set('hbee_patients', activos);
 }
-function saveEvalDeg(){ LS.set('hbee_eval_deg', evalDeglusion); }
+function saveEvalDeg(){ if(DEMO) return; LS.set('hbee_eval_deg', evalDeglusion); }
 function saveEvos(){
+  if(DEMO) return;   // v3_185
   const corte = _fechaCorteCache();
   const idsActivos = new Set(patients.filter(p => p && p.estado === 'Activo').map(p => String(p.id)));
   const recientes = evoluciones.filter(e =>
@@ -6404,7 +6407,7 @@ function saveEvos(){
   );
   LS.set('hbee_evos', recientes);
 }
-function saveLogs(){ LS.set('hbee_logs', logs); }
+function saveLogs(){ if(DEMO) return; LS.set('hbee_logs', logs); }
 
 // ════════════════════════════════════════════════════════
 //  SETUP & DRIVE CONFIG
@@ -6803,6 +6806,7 @@ function launchApp(){
   loadFromSupabase();
 }
 function doLogout(){
+  if(DEMO){ location.reload(); return; }   // v3_185: la demo no deja rastro
   try { addLog('logout',`Salió: ${currentUser?.name||''}`); } catch(e){}
   try { rpc('kinexa_logout', { p_token: TOKEN }); } catch(e){}
   limpiarSesionKx();
@@ -6812,6 +6816,283 @@ function doLogout(){
   document.getElementById('loginUser').value = '';
   document.getElementById('loginPass').value = '';
   mostrarInicio();
+}
+
+
+// ════════════════════════════════════════════════════════
+//  v3_185 — MODO DEMOSTRACIÓN
+// ════════════════════════════════════════════════════════
+// Pacientes y evoluciones ficticios para mostrar la app sin exponer datos
+// reales: capturas, presentaciones, o dejar que alguien la pruebe.
+// Nada de lo que se haga acá se guarda: ni en la nube (DEMO corta el envío)
+// ni en el dispositivo (las funciones de guardado local salen antes).
+// Al cerrar sesión se recarga la página y no queda rastro.
+
+const DEMO_SECTORES = [
+  { nombre:'UTI A',              tipo:'adultos',    camas:[1,2,3,4,5,6,7,8] },
+  { nombre:'Cuidados Mínimos B', tipo:'adultos',    camas:['110A','112B','114A','116B','118A'] },
+  { nombre:'UCIP',               tipo:'pediatrico', camas:[1,2,3,4,5,6] },
+];
+
+const DEMO_KINES = ['Lucía Ferrari', 'Martín Ocampo', 'Carla Benítez', 'Diego Salgado'];
+
+// Fecha de hace N días, en formato YYYY-MM-DD
+function _dHace(n){
+  const d = new Date();
+  d.setDate(d.getDate() - n);
+  return d.toISOString().slice(0, 10);
+}
+const _dRnd = arr => arr[Math.floor(Math.random() * arr.length)];
+
+// Ficha base de cada paciente de la demostración.
+// diasInternado indica hace cuántos días ingresó, para que los contadores de
+// días de sector y de ARM den números coherentes.
+const DEMO_PACIENTES = [
+  { apellido:'Gómez', nombre:'Ramiro', dni:'28114552', edad:58, genero:'Masculino',
+    peso:82, talla:174, sala:'UTI A', cama:'2', tipoKine:'respiratorio',
+    diagnostico:'Neumonía grave de la comunidad', diasInternado:9, diasARM:9,
+    perfil:'arm_tet', motivoVM:'IRA', antecedentes:['hta','tbq','dbt'],
+    alertaImportante:'Vía aérea dificultosa: Cormack III.' },
+
+  { apellido:'Ferreyra', nombre:'Beatriz', dni:'12447903', edad:71, genero:'Femenino',
+    peso:64, talla:158, sala:'UTI A', cama:'4', tipoKine:'respiratorio',
+    diagnostico:'EPOC reagudizado — ARM prolongada', diasInternado:24, diasARM:24,
+    perfil:'arm_tqt', motivoVM:'IRA', antecedentes:['epoc','tbq','icc'] },
+
+  { apellido:'Ledesma', nombre:'Hugo', dni:'16992034', edad:64, genero:'Masculino',
+    peso:78, talla:170, sala:'UTI A', cama:'6', tipoKine:'neurologico',
+    diagnostico:'ACV isquémico de arteria cerebral media izquierda', diasInternado:31, diasARM:18,
+    perfil:'tqt_ve', motivoVM:'Deterioro del estado de conciencia', antecedentes:['hta','fa','acv'] },
+
+  { apellido:'Sosa', nombre:'Marcela', dni:'30215778', edad:45, genero:'Femenino',
+    peso:70, talla:165, sala:'UTI A', cama:'7', tipoKine:'post_qx',
+    diagnostico:'Postoperatorio de cirugía abdominal complicada', diasInternado:5, diasARM:2,
+    perfil:'van_post_extubacion', motivoVM:'POP', antecedentes:['dbt'] },
+
+  { apellido:'Quiroga', nombre:'Alberto', dni:'10883417', edad:78, genero:'Masculino',
+    peso:74, talla:172, sala:'Cuidados Mínimos B', cama:'112B', tipoKine:'post_qx',
+    diagnostico:'Postoperatorio de fractura de cadera derecha', diasInternado:11, diasARM:0,
+    perfil:'minimos', antecedentes:['hta','irc'] },
+
+  { apellido:'Barrios', nombre:'Nélida', dni:'06771290', edad:83, genero:'Femenino',
+    peso:58, talla:152, sala:'Cuidados Mínimos B', cama:'116B', tipoKine:'respiratorio',
+    diagnostico:'Insuficiencia cardíaca descompensada', diasInternado:6, diasARM:0,
+    perfil:'minimos', antecedentes:['icc','hta','fa'] },
+
+  { apellido:'Acosta', nombre:'Bautista', dni:'58330147', genero:'Masculino',
+    peso:14, talla:96, sala:'UCIP', cama:'3', tipoKine:'respiratorio',
+    diagnostico:'Bronquiolitis con dificultad respiratoria', diasInternado:4, diasARM:0,
+    perfil:'ped_van', esPediatrico:true, mesesEdad:38, antecedentes:['asma','bor'] },
+
+  { apellido:'Vera', nombre:'Delfina', dni:'59014422', genero:'Femenino',
+    peso:7.4, talla:68, sala:'UCIP', cama:'1', tipoKine:'respiratorio',
+    diagnostico:'Insuficiencia respiratoria aguda por neumonía', diasInternado:7, diasARM:7,
+    perfil:'ped_arm', motivoVM:'IRA', esPediatrico:true, mesesEdad:9, semGest:'34',
+    antecedentes:['prematurez', 'neumonia', 'arm_previa'] },
+];
+
+// Construye la ficha de paciente a partir del perfil de arriba
+function _demoFicha(base, id){
+  const ing = _dHace(base.diasInternado);
+  const p = {
+    id,
+    apellido: base.apellido, nombre: base.nombre, dni: base.dni,
+    edad: base.edad || null, genero: base.genero,
+    peso: base.peso, talla: base.talla,
+    imc: base.peso && base.talla ? +(base.peso / Math.pow(base.talla / 100, 2)).toFixed(1) : null,
+    sala: base.sala, cama: base.cama,
+    estado: 'Activo',
+    tipoKine: base.tipoKine,
+    diagnostico: base.diagnostico,
+    fIHosp: _dHace(base.diasInternado + 2),
+    fIUTI: ing, fISector: ing,
+    antecedentes: base.antecedentes || [],
+    frecuencia: '1',
+    alertaImportante: base.alertaImportante || '',
+    causaVM: base.motivoVM || '',
+  };
+  if(base.diasARM) p.inicioARM = _dHace(base.diasARM);
+  if(base.perfil === 'arm_tqt' || base.perfil === 'tqt_ve'){
+    p.tqt = 'Sí';
+    p.finARM = base.perfil === 'tqt_ve' ? _dHace(4) : '';
+  }
+  if(base.perfil === 'van_post_extubacion') p.finARM = _dHace(1);
+  if(base.esPediatrico){
+    p.esPediatrico = true;
+    const fn = new Date();
+    fn.setMonth(fn.getMonth() - base.mesesEdad);
+    p.fechaNac = fn.toISOString().slice(0, 10);
+    if(base.semGest) p.semGest = base.semGest;
+  }
+  return p;
+}
+
+// Una evolución para un día dado, según el perfil clínico del paciente
+function _demoEvo(base, p, dia, idSeed){
+  const fecha = _dHace(dia);
+  const e = {
+    id: idSeed,
+    patientId: p.id,
+    date: fecha,
+    hora: _dRnd(['08:40','09:15','10:05','11:20']),
+    turno: 'Mañana',
+    kine: _dRnd(DEMO_KINES),
+    utiDia: base.diasInternado - dia + 1,
+    tecnicas: [],
+    tolerancia: _dRnd(['Buena','Buena','Regular']),
+  };
+  const armDia = base.diasARM ? base.diasARM - dia + 1 : 0;
+  if(armDia > 0) e.armDia = armDia;
+
+  const P = base.perfil;
+
+  if(P === 'arm_tet' || P === 'ped_arm'){
+    const ped = P === 'ped_arm';
+    e.interfaz = 'TET';
+    e.modo = dia > 3 ? 'VC-CMV' : 'PC-CMV';
+    e.vt = ped ? 48 : 470;
+    e.fr = ped ? 28 : 16;
+    e.peep = dia > 4 ? 8 : 6;
+    e.fio2 = Math.max(30, 55 - (base.diasInternado - dia) * 2);
+    e.ppico = ped ? 22 : 24;
+    e.pplat = ped ? 18 : 19;
+    e.armDiametro = ped ? '4' : '8';
+    e.posicion = dia > 5 ? 'prono' : 'supino';
+    e.rass = dia > 4 ? '-4 Sedación profunda' : '-2 Sedación leve';
+    e.cpot = '0 Sin dolor';
+    e.sedacion = 'Midazolam';
+    e.analgesia = 'Fentanilo';
+    e.secCant = _dRnd(['Escasa','Moderada']);
+    e.secChar = _dRnd(['Mucoso','Mucopurulento']);
+    e.cuffM = 26; e.cuffT = 25;
+    e.tecnicas = ['Aspiración de secreciones', 'Higiene bronquial', 'Movilización pasiva'];
+    if(dia === base.diasInternado) e.motivoVM = base.motivoVM;
+    if(ped){ e.map = 12; e.balon = 'Con balón'; e.comfortB = 14; e.flacc = 2; }
+    if(!ped && dia <= 2 && dia >= 1){ e.pve = 'Si'; e.pveTipo = 'Tubo en T'; e.pveResult = dia === 1 ? 'Exitosa' : 'Fallida'; }
+
+  } else if(P === 'arm_tqt'){
+    e.interfaz = 'TQT';
+    e.modo = 'PSV';
+    e.vt = 420; e.peep = 5; e.fio2 = 30; e.armDiametro = '8';
+    e.rass = '0 Alerta y tranquilo';
+    e.cpot = '0 Sin dolor';
+    e.posicion = 'supino';
+    e.secCant = 'Moderada'; e.secChar = 'Mucoso';
+    e.cuffM = 24; e.cuffT = 25; e.cuffN = 24;
+    e.tecnicas = ['Aspiración de secreciones', 'Sedestación al borde de la cama', 'Fortalecimiento'];
+    if(dia % 3 === 0){ e.pve = 'Si'; e.pveTipo = 'Tubo en T'; e.pveTmin = 120; e.pveResult = dia <= 6 ? 'Exitosa' : 'Fallida'; }
+    if(dia === base.diasInternado) e.motivoVM = base.motivoVM;
+
+  } else if(P === 'tqt_ve'){
+    e.interfazEsp = dia > 2 ? 'TQT_O2' : 'TQT_AA';
+    e.tipoCan = 'Fenestrada';
+    e.canDI = '7'; e.canDE = '10';
+    e.rass = '0 Alerta y tranquilo';
+    e.conciencia = 'Vigil y lúcido/a — colaborador/a';
+    e.fac = dia > 5 ? '1' : '2';
+    e.secTrqCant = 'Escasa'; e.secTrqCal = 'Mucoso';
+    e.deglusion = 'Realizada';
+    e.tecnicas = ['Aspiración de secreciones', 'Tos dirigida', 'Sedestación al borde de la cama', 'Bipedestación'];
+    if(dia <= 6 && dia > 0){ e.decOclusion = 'Sí'; e.decValvula = 'Sí'; e.decBlueTest = 'Negativo'; }
+    if(dia === 0) e.decDecanulado = 'Si';
+
+  } else if(P === 'van_post_extubacion'){
+    if(dia >= 2){
+      e.interfaz = 'TET'; e.modo = 'PSV'; e.vt = 450; e.peep = 5; e.fio2 = 35;
+      e.armDia = 1; e.armDiametro = '7.5';
+      e.rass = '-1 Somnoliento';
+      e.tecnicas = ['Aspiración de secreciones', 'Movilización pasiva'];
+      if(dia === 2){ e.pve = 'Si'; e.pveTipo = 'PSV'; e.pveTmin = 30; e.pveResult = 'Exitosa'; e.extubacion = 'Sí — programada'; }
+      if(dia === base.diasInternado) e.motivoVM = base.motivoVM;
+    } else {
+      e.interfazEsp = 'VAN_O2';
+      e.conciencia = 'Vigil y lúcido/a — colaborador/a';
+      e.fac = '2';
+      e.tos = 'Eficaz';
+      e.deglusion = 'Realizada';
+      e.tecnicas = ['Tos dirigida', 'Ejercicios respiratorios', 'Sedestación al borde de la cama'];
+    }
+
+  } else if(P === 'minimos'){
+    e.tipo_evo = 'minimos';
+    e.interfazO2 = dia > 3 ? 'Cánula nasal' : 'Aire ambiente';
+    if(dia > 3) e.flujoO2 = '2';
+    e.spo2 = 94 + (dia % 3);
+    e.fr = 20;
+    e.conciencia = 'Vigil y lúcido/a — colaborador/a';
+    e.orientacion = 'Orientado/a';
+    e.auscultacion = 'MV conservado';
+    e.tos = 'Eficaz';
+    e.fac = String(Math.min(5, 1 + Math.floor((base.diasInternado - dia) / 2)));
+    e.eva = '2';
+    e.frecuencia = '1';
+    e.logros = dia <= 4 ? ['Bipedestación','Marcha asistida'] : ['Sedestación al borde de la cama'];
+    e.tecnicas = ['Fortalecimiento', 'Ejercicios respiratorios'];
+    if(base.tipoKine === 'post_qx'){ e.diaPOP = base.diasInternado - dia + 1; e.carga = dia <= 5 ? 'Parcial' : 'Sin autorización'; e.herida = 'Sin particularidades'; }
+
+  } else if(P === 'ped_van'){
+    e.interfazEsp = dia > 1 ? 'CNAF' : 'VAN_O2';
+    e.spo2 = 94;
+    e.fr = 46 - dia * 2;
+    e.tal = Math.max(3, 9 - (base.diasInternado - dia) * 2);
+    e.conciencia = 'Vigil y lúcido/a — colaborador/a';
+    e.secCant = 'Abundante'; e.secChar = 'Mucoso';
+    e.nrs = 2; e.capd = 6;
+    e.tecnicas = ['Aspiración de secreciones', 'Higiene bronquial', 'Ejercicios respiratorios'];
+  }
+
+  e.obs = _demoObs(P, dia);
+  return e;
+}
+
+function _demoObs(perfil, dia){
+  const textos = {
+    arm_tet: ['Tolera decúbito prono, mejora la oxigenación.', 'Secreciones que requieren aspiración frecuente.', 'Sin cambios en la mecánica ventilatoria.'],
+    arm_tqt: ['Buena tolerancia a la presión de soporte.', 'Se progresa el tiempo de ventilación espontánea.', 'Colabora con las movilizaciones.'],
+    tqt_ve: ['Tolera oclusión de cánula, voz audible.', 'Deglución sin signos de aspiración.', 'Progresa en bipedestación con asistencia mínima.'],
+    van_post_extubacion: ['Extubación bien tolerada, buena mecánica.', 'Sin signos de dificultad respiratoria.', 'Tos eficaz, moviliza secreciones.'],
+    minimos: ['Buen manejo del dolor, sedesta independiente.', 'Progresa en marcha con andador.', 'Continúa plan de fortalecimiento.'],
+    ped_van: ['Mejora del score de Tal respecto de ayer.', 'Buena tolerancia a la CNAF.', 'Kinesioterapia respiratoria bien tolerada.'],
+    ped_arm: ['Parámetros ventilatorios estables.', 'Sedoanalgesia adecuada, Comfort-B en rango.', 'Sin eventos durante la sesión.'],
+  };
+  const arr = textos[perfil] || ['Sin particularidades.'];
+  return arr[dia % arr.length];
+}
+
+// Arma todo el juego de datos
+function construirDemo(){
+  const pacs = [], evos = [];
+  let idEvo = Date.now() - 900000;
+  DEMO_PACIENTES.forEach((base, i) => {
+    const p = _demoFicha(base, 9000 + i);
+    pacs.push(p);
+    const dias = Math.min(base.diasInternado, 14);
+    for(let d = dias; d >= 0; d--){
+      if(d > 7 && d % 2 === 0) continue;            // más ralo hacia atrás
+      evos.push(_demoEvo(base, p, d, idEvo++));
+    }
+  });
+  evos.sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  return { pacs, evos };
+}
+
+function entrarDemo(){
+  DEMO = true;
+  TOKEN = null;
+  _outbox = [];
+  USER = { name:'Lucía Ferrari', user:'demo', role:'admin', instNombre:'Hospital Demostración' };
+  currentUser = USER;
+  const { pacs, evos } = construirDemo();
+  patients = pacs;
+  evoluciones = evos;
+  logs = [];
+  evalDeglusion = {};
+  aplicarSectoresKinexa(DEMO_SECTORES);
+  DATOS_COMPLETOS = true;
+  marcarTodoSincronizado();
+  setSyncStatus('local');
+  startSession(USER);
+  showToast('Modo demostración: son pacientes ficticios y nada se guarda','info');
 }
 
 // ════════════════════════════════════════════════════════
@@ -6826,6 +7107,8 @@ function setSyncStatus(s){
   // v3_180: si quedaron cambios en la cola, el cartel lo dice sin vueltas
   const pend = (typeof _outbox !== 'undefined' && _outbox.length) ? _outbox.length : 0;
   const labels = { local:'Local', ok:'Sincronizado ✓', syncing:'Sincronizando…', error:'Sin subir' };
+  // v3_185: en la demo el estado no debe decir que se guardó algo
+  if(typeof DEMO !== 'undefined' && DEMO){ if(label) label.textContent = 'Demostración'; return; }
   if(label) label.textContent = pend ? `${pend} sin subir` : (labels[s]||s);
 }
 
