@@ -300,6 +300,11 @@ tr:hover td{ background:var(--blue-50); }
   font-size:11.5px; font-weight:700; color:var(--amber-800); background:var(--amber-50);
   border:1px solid var(--amber-100); border-left:3px solid var(--amber-400); border-radius:7px; padding:6px 11px; }
 .p-egreso-pend i{ color:var(--amber-600); flex-shrink:0; font-size:14px; }
+/* v3_188: sello de "editada por" en las evoluciones */
+.evo-editada{ display:inline-flex; align-items:center; gap:3px; margin-left:7px; padding:1px 7px;
+  border-radius:9px; background:var(--amber-50); color:var(--amber-800);
+  font-size:10px; font-weight:700; white-space:nowrap; cursor:help; }
+.evo-editada i{ font-size:11px; color:var(--amber-600); }
 .p-egreso-pend .btn-completar{ margin-left:auto; border:1px solid var(--amber-400); background:#fff;
   color:var(--amber-800); font-size:11px; font-weight:700; border-radius:6px; padding:4px 10px; cursor:pointer;
   display:inline-flex; align-items:center; gap:4px; }
@@ -953,7 +958,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <h2 id="dashGreeting">Buenos días</h2>
           <p id="dashDate">--</p>
         </div>
-        <button class="btn btn-success btn-sm" onclick="openNuevoPaciente()"><i class="ti ti-plus"></i>Nuevo paciente</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn btn-sm" id="btnPase" onclick="abrirPase()" style="background:var(--purple-50);color:var(--blue-800);border:1px solid var(--purple-400)"><i class="ti ti-file-text-ai"></i>Pase del día</button>
+          <button class="btn btn-success btn-sm" onclick="openNuevoPaciente()"><i class="ti ti-plus"></i>Nuevo paciente</button>
+        </div>
       </div>
       <div class="stats-grid">
         <div class="stat-card stat-blue"><div class="stat-label">Pacientes activos</div><div class="stat-value" id="statActivos">0</div><div class="stat-sub" id="statActivosSub">En UTI / Emergencia</div></div>
@@ -5214,6 +5222,46 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- ════ MODAL EGRESO / TRASLADO ════ -->
+<!-- ── PASE KINÉSICO DEL SECTOR (v3_188) ── -->
+<div class="modal-overlay" id="modalPase">
+  <div class="modal" style="max-width:520px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title"><i class="ti ti-file-text-ai"></i> Pase kinésico del día</div>
+        <div class="modal-sub" id="paseSector">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalPase')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text);margin:0 0 4px">Se arma un PDF cama por cama con los datos del paciente y un resumen de lo ocurrido en las últimas 24 horas.</p>
+      <p style="font-size:12px;color:var(--text-muted);margin:0 0 14px" id="paseResumenPrev">—</p>
+
+      <div style="background:var(--amber-50);border:1px solid var(--amber-100);border-left:3px solid var(--amber-400);border-radius:8px;padding:9px 12px;font-size:11.5px;color:var(--amber-800);margin-bottom:14px">
+        <i class="ti ti-lock"></i> Contiene datos de salud identificables. Compartilo solo con el equipo tratante.
+      </div>
+
+      <div id="paseProgreso" style="display:none;margin-bottom:14px">
+        <div style="height:7px;background:var(--gray-100);border-radius:4px;overflow:hidden">
+          <div id="paseBarra" style="height:100%;width:0%;background:var(--purple-400);transition:width .3s"></div>
+        </div>
+        <div id="paseTexto" style="font-size:12px;color:var(--text-muted);margin-top:7px">Preparando…</div>
+      </div>
+
+      <div id="paseAcciones" style="display:none;flex-direction:column;gap:9px">
+        <div style="font-size:12px;color:var(--teal-700);font-weight:700"><i class="ti ti-check"></i> Pase listo — <span id="paseInfo"></span></div>
+        <div style="display:flex;gap:9px;flex-wrap:wrap">
+          <button class="btn btn-success" onclick="compartirPase()" style="flex:1"><i class="ti ti-share"></i>Enviar</button>
+          <button class="btn btn-ghost" onclick="descargarPase()" style="flex:1"><i class="ti ti-download"></i>Descargar</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalPase')">Cerrar</button>
+      <button class="btn btn-primary" id="btnGenerarPase" onclick="lanzarPase()"><i class="ti ti-sparkles"></i>Generar pase</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalEgreso">
   <div class="modal modal-sm">
     <div class="modal-header">
@@ -5280,6 +5328,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       </div>
     </div>
 
+    <!-- (modal de egreso) -->
     <!-- Opciones de óbito (v3_182) -->
     <div id="egresoObito" style="display:none">
       <div class="form-section">
@@ -5358,7 +5407,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_187';
+const APP_VERSION = 'v3_188';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -7126,6 +7175,345 @@ function entrarDemo(){
   setSyncStatus('local');
   startSession(USER);
   showToast('Modo demostración: son pacientes ficticios y nada se guarda','info');
+}
+
+
+// ════════════════════════════════════════════════════════
+//  v3_188 — PASE KINÉSICO DEL SECTOR (PDF)
+// ════════════════════════════════════════════════════════
+// Genera el pase del día para todo un sector y lo entrega en PDF, listo para
+// descargar o mandar por WhatsApp / mail.
+//
+// Criterio importante: los datos duros (cama, nombre, edad, diagnóstico, días,
+// estado ventilatorio, antecedentes) salen DIRECTO de la base. La IA se usa
+// solo para redactar el resumen de las evoluciones. Si le pidiera a la IA que
+// arme el pase entero, tarde o temprano inventa una PEEP o cruza dos camas, y
+// en un pase eso es grave.
+
+const PASE_VENTANA_HS = 24;
+let _paseDatos = null;      // resultado de la última generación
+let _paseCancelar = false;
+
+// Momento de una evolución (fecha + hora), para filtrar por las últimas 24 hs
+function _tsEvo(e){
+  if(!e?.date) return 0;
+  const [a, m, d] = String(e.date).split('-').map(Number);
+  let hh = 12, mm = 0;
+  if(e.hora && /^\d{1,2}:\d{2}$/.test(e.hora)){
+    const p = e.hora.split(':'); hh = +p[0]; mm = +p[1];
+  }
+  return new Date(a, (m || 1) - 1, d || 1, hh, mm).getTime();
+}
+
+function evosUltimas24h(pacId, desdeMs){
+  return evoluciones
+    .filter(e => e.patientId === pacId && !e._borrada && !e.tipo && _tsEvo(e) >= desdeMs)
+    .sort((a, b) => _tsEvo(a) - _tsEvo(b));
+}
+
+// Estado ventilatorio en texto largo, con el detalle que importa en un pase
+function ventTextoPase(p){
+  const ev = estadoVentPaciente(p);
+  const ult = ultimaEvoVentilatoria(p.id);
+  let txt = ev.title || ev.label;
+  if(ult){
+    const extra = [];
+    if(ev.cod === 'ARM_TET' || ev.cod === 'ARM_TQT'){
+      if(ult.modo) extra.push(ult.modo);
+      if(ult.peep !== '' && ult.peep != null) extra.push('PEEP ' + ult.peep);
+      if(ult.fio2 !== '' && ult.fio2 != null) extra.push('FiO₂ ' + ult.fio2 + '%');
+      if(ult.armDiametro) extra.push('Ø ' + ult.armDiametro);
+    } else if(ev.cod === 'TQT_VE'){
+      if(ult.tipoCan) extra.push('cánula ' + ult.tipoCan);
+      if(ult.canDI) extra.push('DI ' + ult.canDI);
+    } else {
+      if(ult.interfazO2) extra.push(ult.interfazO2);
+      if(ult.flujoO2) extra.push(ult.flujoO2 + ' L/min');
+      if(ult.cnafFlujo) extra.push('CNAF ' + ult.cnafFlujo + ' L/min');
+      if(ult.vniModo) extra.push('VNI ' + ult.vniModo);
+      if(ult.spo2) extra.push('SpO₂ ' + ult.spo2 + '%');
+    }
+    if(extra.length) txt += ' — ' + extra.join(', ');
+  }
+  return { etiqueta: ev.label, detalle: txt };
+}
+
+// Vuelca una evolución a texto plano para que la IA la resuma
+function evoATexto(e){
+  const partes = [];
+  const cuando = `${fmtDate(e.date)}${e.hora ? ' ' + e.hora : ''}${e.turno ? ' (' + e.turno + ')' : ''} — ${e.kine || '—'}`;
+  partes.push(cuando);
+  Object.keys(e).forEach(k => {
+    if(['id','patientId','date','hora','turno','kine','kineUser','tipo','tipo_evo','ediciones','editedAt','editedBy','_borrada'].includes(k)) return;
+    const v = e[k];
+    if(v === '' || v === null || v === undefined) return;
+    if(Array.isArray(v)){ if(v.length) partes.push(`${EVO_LABELS[k] || k}: ${v.join(', ')}`); return; }
+    if(typeof v === 'object'){
+      const sub = Object.entries(v).filter(([, x]) => x !== '' && x != null).map(([a, b]) => `${a} ${b}`).join(', ');
+      if(sub) partes.push(`${EVO_LABELS[k] || k}: ${sub}`);
+      return;
+    }
+    partes.push(`${EVO_LABELS[k] || k}: ${v}`);
+  });
+  return partes.join('. ');
+}
+
+async function resumenIAPaciente(p, evos){
+  if(!evos.length) return null;
+  const prompt =
+`Sos kinesiólogo/a de terapia intensiva y estás redactando el pase de guardia para el equipo que entra.
+
+Resumí en UN SOLO PÁRRAFO de 3 a 5 oraciones lo ocurrido con este paciente en las últimas ${PASE_VENTANA_HS} horas.
+
+Reglas:
+- Español rioplatense, registro clínico, impersonal ("se realizó", "tolera", "presenta").
+- Usá SOLO los datos que te paso. No agregues nada que no esté.
+- Priorizá: cambios en el soporte ventilatorio, pruebas realizadas (PVE, oclusión, deglución), secreciones, tolerancia a la movilización y lo que quede pendiente para el próximo turno.
+- No repitas el nombre del paciente ni la cama.
+- No uses viñetas ni títulos. Solo el párrafo.
+
+EVOLUCIONES:
+${evos.map((e, i) => `[${i + 1}] ${evoATexto(e)}`).join('\n\n')}`;
+  try {
+    const t = await llamarGemini(prompt);
+    return String(t || '').trim().replace(/\s*\n\s*/g, ' ');
+  } catch(err){
+    console.error('Resumen IA falló para', p.apellido, err);
+    return '__ERROR__';
+  }
+}
+
+// ── Armado del pase ─────────────────────────────────────────────
+async function generarPaseSector(){
+  const sector = currentSector;
+  if(!sector){ showToast('Elegí un sector para generar el pase','error'); return; }
+  const hoyStr = today();
+  const desdeMs = Date.now() - PASE_VENTANA_HS * 3600 * 1000;
+
+  const activos = patients
+    .filter(p => p.estado === 'Activo' && p.sala === sector)
+    .sort((a, b) => String(a.cama || '').localeCompare(String(b.cama || ''), 'es', { numeric: true }));
+
+  if(!activos.length){ showToast('No hay pacientes activos en este sector','error'); return; }
+
+  // Egresos de las últimas 24 hs, que en un pase se mencionan
+  const egresos = evoluciones
+    .filter(e => ['alta','traslado','obito'].includes(e.tipo) && !e._borrada && _tsEvo(e) >= desdeMs)
+    .map(e => ({ evo: e, pac: patients.find(x => x.id === e.patientId) }))
+    .filter(x => x.pac && x.pac.sala === sector);
+
+  _paseCancelar = false;
+  const cont = document.getElementById('paseProgreso');
+  const barra = document.getElementById('paseBarra');
+  const txt = document.getElementById('paseTexto');
+  const acciones = document.getElementById('paseAcciones');
+  if(cont) cont.style.display = 'block';
+  if(acciones) acciones.style.display = 'none';
+
+  const filas = activos.map(p => {
+    const evos = evosUltimas24h(p.id, desdeMs);
+    return { p, evos, resumen: null };
+  });
+
+  const conEvo = filas.filter(f => f.evos.length);
+  let hechos = 0;
+  const avanzar = () => {
+    hechos++;
+    if(barra) barra.style.width = Math.round(hechos / Math.max(1, conEvo.length) * 100) + '%';
+    if(txt) txt.textContent = `Resumiendo evoluciones… ${hechos} de ${conEvo.length}`;
+  };
+
+  // De a 4 en paralelo: una llamada por paciente, para que la IA no cruce datos
+  for(let i = 0; i < conEvo.length; i += 4){
+    if(_paseCancelar){ if(cont) cont.style.display = 'none'; return; }
+    const lote = conEvo.slice(i, i + 4);
+    await Promise.all(lote.map(async f => {
+      f.resumen = await resumenIAPaciente(f.p, f.evos);
+      avanzar();
+    }));
+  }
+
+  _paseDatos = { sector, hoyStr, filas, egresos, generado: new Date() };
+  if(txt) txt.textContent = 'Armando el PDF…';
+  try {
+    await construirPDFPase(_paseDatos);
+    if(cont) cont.style.display = 'none';
+    if(acciones) acciones.style.display = 'flex';
+    addLog('export', `Pase kinésico generado — ${SALA_LABEL[sector] || sector} (${activos.length} pacientes)`);
+  } catch(err){
+    console.error(err);
+    if(cont) cont.style.display = 'none';
+    showToast('No se pudo armar el PDF: ' + (err.message || 'error'), 'error');
+  }
+}
+
+// ── PDF ─────────────────────────────────────────────────────────
+let _paseBlob = null, _paseNombre = '';
+
+function cargarJsPDF(){
+  if(window.jspdf?.jsPDF) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = () => res();
+    s.onerror = () => rej(new Error('No se pudo cargar el generador de PDF. Revisá la conexión.'));
+    document.head.appendChild(s);
+  });
+}
+
+async function construirPDFPase(datos){
+  await cargarJsPDF();
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' });
+
+  const M = 14, W = 210, ANCHO = W - M * 2;
+  let y = 0, pagina = 1;
+  const VIOLETA = [124, 58, 237], GRIS = [110, 110, 120], NEGRO = [25, 25, 30];
+
+  const inst = currentUser?.instNombre || 'Institución';
+  const sectorLbl = SALA_LABEL[datos.sector] || datos.sector;
+  const f = datos.generado;
+  const sello = `${String(f.getDate()).padStart(2,'0')}/${String(f.getMonth()+1).padStart(2,'0')}/${f.getFullYear()} ${String(f.getHours()).padStart(2,'0')}:${String(f.getMinutes()).padStart(2,'0')}`;
+
+  const pie = () => {
+    doc.setFontSize(7).setTextColor(...GRIS).setFont(undefined, 'normal');
+    doc.text('Documento con datos de salud. Uso exclusivo del equipo tratante — no difundir.', M, 288);
+    doc.text('Kinexa · pág. ' + pagina, W - M, 288, { align: 'right' });
+  };
+
+  const encabezado = () => {
+    doc.setFillColor(...VIOLETA).rect(0, 0, W, 26, 'F');
+    doc.setTextColor(255, 255, 255).setFontSize(14).setFont(undefined, 'bold');
+    doc.text('Pase kinésico', M, 12);
+    doc.setFontSize(9).setFont(undefined, 'normal');
+    doc.text(`${inst} · ${sectorLbl}`, M, 18.5);
+    doc.setFontSize(8);
+    doc.text(`Generado ${sello}`, W - M, 12, { align: 'right' });
+    doc.text(`Últimas ${PASE_VENTANA_HS} h · ${datos.filas.length} pacientes`, W - M, 18.5, { align: 'right' });
+    y = 36;
+    pie();
+  };
+
+  const nuevaPagina = () => { doc.addPage(); pagina++; encabezado(); };
+  const espacio = alto => { if(y + alto > 280){ nuevaPagina(); } };
+
+  const parrafo = (texto, tam, estilo, color, sangria = 0) => {
+    doc.setFontSize(tam).setFont(undefined, estilo).setTextColor(...color);
+    const lineas = doc.splitTextToSize(texto, ANCHO - sangria);
+    lineas.forEach(ln => {
+      espacio(tam * 0.42 + 1);
+      doc.text(ln, M + sangria, y);
+      y += tam * 0.42 + 1.1;
+    });
+  };
+
+  encabezado();
+
+  datos.filas.forEach((fila, idx) => {
+    const p = fila.p;
+    espacio(34);
+
+    // Franja de encabezado del paciente
+    const vent = ventTextoPase(p);
+    doc.setFillColor(243, 240, 252).roundedRect(M, y - 4.5, ANCHO, 8.5, 1.5, 1.5, 'F');
+    doc.setFontSize(10.5).setFont(undefined, 'bold').setTextColor(...VIOLETA);
+    doc.text(`Cama ${p.cama || '—'}`, M + 2.5, y + 1.2);
+    doc.setTextColor(...NEGRO);
+    const nombre = `${p.apellido}, ${p.nombre} (${edadTextoPaciente(p)})`;
+    doc.text(nombre, M + 22, y + 1.2);
+    doc.setFontSize(8).setFont(undefined, 'bold').setTextColor(...VIOLETA);
+    doc.text(vent.etiqueta, W - M - 2.5, y + 1.2, { align: 'right' });
+    y += 9;
+
+    const dHosp = daysBetween(p.fIHosp || p.fIUTI, datos.hoyStr);
+    const dSector = daysBetween(p.fISector || p.fIUTI, datos.hoyStr);
+    const dato = (rot, val) => { if(val) parrafo(`${rot}: ${val}`, 8.5, 'normal', NEGRO, 3); };
+
+    dato('Diagnóstico', p.diagnostico);
+    parrafo(`Internación: día ${dHosp || '—'} · En el sector: día ${dSector || '—'}`, 8.5, 'normal', NEGRO, 3);
+    dato('Antecedentes', antecedentesTexto(p) || 'sin antecedentes cargados');
+    dato('Ventilación', vent.detalle);
+    if(p.alertaImportante) parrafo(`⚠ ${p.alertaImportante}`, 8.5, 'bold', [180, 30, 40], 3);
+
+    y += 1.5;
+    if(!fila.evos.length){
+      parrafo('Sin evolución registrada en las últimas 24 horas.', 8.5, 'italic', GRIS, 3);
+    } else if(fila.resumen === '__ERROR__'){
+      parrafo(`No se pudo generar el resumen automático. Hay ${fila.evos.length} evolución/es cargada/s en el período; consultalas en la app.`, 8.5, 'italic', GRIS, 3);
+    } else {
+      parrafo(fila.resumen || '', 8.5, 'normal', NEGRO, 3);
+      const kines = [...new Set(fila.evos.map(e => e.kine).filter(Boolean))].join(', ');
+      parrafo(`${fila.evos.length} evolución/es · ${kines}`, 7.5, 'italic', GRIS, 3);
+    }
+
+    y += 4;
+    if(idx < datos.filas.length - 1){
+      doc.setDrawColor(225, 222, 235).setLineWidth(0.2).line(M, y - 2, W - M, y - 2);
+    }
+  });
+
+  if(datos.egresos.length){
+    espacio(20);
+    y += 3;
+    parrafo('Movimientos de las últimas 24 horas', 10, 'bold', VIOLETA);
+    y += 1;
+    datos.egresos.forEach(({ evo, pac }) => {
+      const tipo = evo.tipo === 'obito' ? 'Óbito' : evo.tipo === 'alta' ? 'Alta' : 'Traslado';
+      parrafo(`${tipo} — ${pac.apellido}, ${pac.nombre} (cama ${pac.cama || '—'}): ${evo.obs || ''}`, 8.5, 'normal', NEGRO, 3);
+    });
+  }
+
+  _paseNombre = `Pase ${sectorLbl} ${datos.hoyStr}.pdf`.replace(/[\\/:*?"<>|]/g, '-');
+  _paseBlob = doc.output('blob');
+
+  const info = document.getElementById('paseInfo');
+  if(info) info.textContent = `${datos.filas.length} pacientes · ${pagina} página${pagina > 1 ? 's' : ''}`;
+}
+
+function descargarPase(){
+  if(!_paseBlob) return;
+  const url = URL.createObjectURL(_paseBlob);
+  const a = document.createElement('a');
+  a.href = url; a.download = _paseNombre;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function compartirPase(){
+  if(!_paseBlob) return;
+  const archivo = new File([_paseBlob], _paseNombre, { type: 'application/pdf' });
+  if(navigator.canShare?.({ files: [archivo] })){
+    try {
+      await navigator.share({ files: [archivo], title: 'Pase kinésico' });
+      return;
+    } catch(e){
+      if(e?.name === 'AbortError') return;   // el usuario cerró el menú
+      console.error(e);
+    }
+  }
+  showToast('Este dispositivo no permite compartir directo. Se descarga y lo adjuntás a mano.', 'info');
+  descargarPase();
+}
+
+async function lanzarPase(){
+  const b = document.getElementById('btnGenerarPase');
+  const html = b ? b.innerHTML : '';
+  if(b){ b.disabled = true; b.innerHTML = '<span class="ocr-spinner"></span>Generando…'; }
+  try { await generarPaseSector(); }
+  finally { if(b){ b.disabled = false; b.innerHTML = html; } }
+}
+
+function abrirPase(){
+  if(!currentSector){ showToast('Elegí un sector para generar el pase','error'); return; }
+  _paseBlob = null;
+  const n = patients.filter(p => p.estado === 'Activo' && p.sala === currentSector).length;
+  document.getElementById('paseSector').textContent = SALA_LABEL[currentSector] || currentSector;
+  document.getElementById('paseResumenPrev').textContent =
+    `${n} paciente${n === 1 ? '' : 's'} activo${n === 1 ? '' : 's'} · evoluciones de las últimas ${PASE_VENTANA_HS} horas`;
+  document.getElementById('paseProgreso').style.display = 'none';
+  document.getElementById('paseAcciones').style.display = 'none';
+  document.getElementById('paseBarra').style.width = '0%';
+  openModal('modalPase');
 }
 
 // ════════════════════════════════════════════════════════
@@ -11490,7 +11878,7 @@ const EVO_LABELS = {
 // Campos que NO se listan en "Otros datos" porque ya se muestran en secciones
 // dedicadas de la tarjeta, o son internos/de control.
 const EVO_SKIP_CAMPOS = new Set([
-  'id','patientId','date','hora','turno','kine','kineUser','tipo','tipo_evo','editedAt','editedBy',
+  'id','patientId','date','hora','turno','kine','kineUser','tipo','tipo_evo','editedAt','editedBy','ediciones',
   'armDia','tecnicas','logros','obs','frecuencia','tolerancia','noAtencion','conciencia','orientacion',
   // mecánica (ya en sección Mecánica ventilatoria)
   'modo','curvaFlujo','curvaFlujo2','vt','vtkg','fr','frReal','peep','fio2','ppico','pplat','dp','crs','pausaInsp','pausaInsp2',
@@ -11792,7 +12180,7 @@ function evoCardHTML(e, i){
           ${badgeDiaARM(e)}
           ${e.frecuencia?`<span class="badge badge-purple" style="font-size:10px">${e.frecuencia==='manana'?'Mañana':e.frecuencia==='cada3'?'Cada 3d':e.frecuencia==='cada5'?'Cada 5d':'Sin criterio'}</span>`:''}
         </div>
-        <span class="evo-kine"><i class="ti ti-user" style="font-size:11px"></i> ${e.kine||'—'}${puedeEditarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" onclick="editarEvolucion(${e.id})" title="Editar (disponible hasta 24 hs después de la carga)"><i class="ti ti-pencil"></i></button>` : ''}${puedeEliminarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarEvolucion(${e.id})" title="${currentUser?.role === 'admin' ? 'Eliminar evolución' : 'Eliminar (disponible hasta 24 hs después de la carga)'}"><i class="ti ti-trash"></i></button>` : ''}</span>
+        <span class="evo-kine"><i class="ti ti-user" style="font-size:11px"></i> ${e.kine||'—'}${edicionesTextoHTML(e)}${puedeEditarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" onclick="editarEvolucion(${e.id})" title="Editar (disponible hasta 24 hs después de la carga)"><i class="ti ti-pencil"></i></button>` : ''}${puedeEliminarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarEvolucion(${e.id})" title="${currentUser?.role === 'admin' ? 'Eliminar evolución' : 'Eliminar (disponible hasta 24 hs después de la carga)'}"><i class="ti ti-trash"></i></button>` : ''}</span>
       </div>
       ${e.noAtencion && e.noAtencion!=='Sí se realizó atención' ? `<div style="font-size:12px;color:var(--amber-600);font-weight:600;margin-bottom:4px">⚠ ${e.noAtencion}</div>` : ''}
       ${e.conciencia ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">${e.conciencia}${e.orientacion?'. '+e.orientacion:''}</div>` : ''}
@@ -13270,19 +13658,61 @@ function currentShift(){
 
 // ════════════════════════════════════════════════════════
 //  EDICIÓN DE EVOLUCIONES
-//  Regla: solo el kinesiólogo que la cargó puede editarla,
-//  y únicamente dentro de las 24 hs posteriores a la carga.
+//  v3_188: al mismo paciente lo ven varios kinesiólogos en el día, así que
+//  cualquiera del equipo puede corregir una evolución dentro de las 24 hs.
+//  La jefatura no tiene límite de tiempo. El autor original NUNCA se pisa y
+//  cada edición queda registrada con nombre y hora.
 // ════════════════════════════════════════════════════════
 const VENTANA_EDICION_EVO_MS = 24 * 60 * 60 * 1000;
 
 function puedeEditarEvolucion(evo){
   if(!evo || !currentUser) return false;
   if(evo.tipo === 'traslado' || evo.tipo === 'alta' || evo.tipo === 'obito') return false;
-  const esAutor = evo.kineUser
-    ? evo.kineUser === currentUser.user
-    : (evo.kine || '') === currentUser.name;
-  if(!esAutor) return false;
+  if(currentUser.role === 'admin') return true;         // jefatura: sin ventana
   return (Date.now() - evo.id) <= VENTANA_EDICION_EVO_MS;
+}
+
+// ── Historial de ediciones ──────────────────────────────────────
+// Antes se guardaban editedBy/editedAt, que solo conservaban al ÚLTIMO editor
+// y no se mostraban en ningún lado. Ahora se guarda la lista completa, con los
+// campos que cambiaron en cada retoque.
+function _difEvo(antes, despues){
+  const saltar = new Set(['id','patientId','kine','kineUser','editedAt','editedBy','ediciones','hora']);
+  const claves = new Set([...Object.keys(antes||{}), ...Object.keys(despues||{})]);
+  const cambios = [];
+  claves.forEach(k => {
+    if(saltar.has(k)) return;
+    const a = antes?.[k], b = despues?.[k];
+    const va = Array.isArray(a) ? a.join('|') : (a ?? '');
+    const vb = Array.isArray(b) ? b.join('|') : (b ?? '');
+    if(String(va) === String(vb)) return;
+    if(va === '' && (vb === '' || vb === null || vb === undefined)) return;
+    cambios.push(EVO_LABELS[k] || k);
+  });
+  return cambios;
+}
+
+// Devuelve la lista de ediciones de una evolución, incluyendo el formato viejo
+function edicionesDe(evo){
+  if(Array.isArray(evo?.ediciones) && evo.ediciones.length) return evo.ediciones;
+  if(evo?.editedBy || evo?.editedAt) return [{ quien: evo.editedBy || '—', cuando: evo.editedAt || null, campos: [] }];
+  return [];
+}
+
+function edicionesTextoHTML(evo){
+  const eds = edicionesDe(evo);
+  if(!eds.length) return '';
+  const linea = ed => {
+    const f = ed.cuando ? new Date(ed.cuando) : null;
+    const cuando = f ? `${String(f.getDate()).padStart(2,'0')}/${String(f.getMonth()+1).padStart(2,'0')} ${String(f.getHours()).padStart(2,'0')}:${String(f.getMinutes()).padStart(2,'0')}` : '';
+    const campos = (ed.campos && ed.campos.length) ? ` — ${escapeHTML(ed.campos.slice(0,6).join(', '))}${ed.campos.length>6?'…':''}` : '';
+    return `Editada por ${escapeHTML(ed.quien||'—')}${cuando?' el '+cuando:''}${campos}`;
+  };
+  const detalle = eds.map(linea).join('\n');
+  const ultima = eds[eds.length-1];
+  const f = ultima.cuando ? new Date(ultima.cuando) : null;
+  const cuando = f ? `${String(f.getDate()).padStart(2,'0')}/${String(f.getMonth()+1).padStart(2,'0')}` : '';
+  return `<span class="evo-editada" title="${escapeHTML(detalle)}"><i class="ti ti-pencil"></i> Editada por ${escapeHTML(ultima.quien||'—')}${cuando?' el '+cuando:''}${eds.length>1?` (${eds.length} ediciones)`:''}</span>`;
 }
 
 // ── v3_148: eliminación de evoluciones ──────────────────────────
@@ -13566,7 +13996,7 @@ function editarEvolucion(evoId){
   const evo = evoluciones.find(e=>e.id===evoId);
   if(!evo) return;
   if(!puedeEditarEvolucion(evo)){
-    showToast('Esta evolución ya no se puede editar (solo el autor, dentro de las 24 hs de la carga)','error');
+    showToast('Esta evolución ya no se puede editar: pasaron más de 24 hs desde que se cargó','error');
     return;
   }
   closeModal('modalHistRapido');
@@ -13610,7 +14040,7 @@ function _canonEvo(v){
 function _huellaEvo(evo){
   const c = { ...evo };
   // Lo que no hace al contenido clínico no entra en la comparación
-  delete c.id; delete c.hora; delete c.editedAt; delete c.editedBy; delete c._borrada;
+  delete c.id; delete c.hora; delete c.editedAt; delete c.editedBy; delete c.ediciones; delete c._borrada;
   return JSON.stringify(_canonEvo(_limpiarObj(c)));
 }
 // Devuelve la evolución ya cargada que es idéntica a esta, o null.
@@ -13807,10 +14237,17 @@ async function guardarEvolucion(){
       return;
     }
     evo.id = original.id;
-    evo.kine = original.kine;
+    evo.kine = original.kine;              // el autor original no se pisa nunca
     evo.kineUser = original.kineUser;
-    evo.editedAt = Date.now();
-    evo.editedBy = currentUser?.name;
+    // v3_188: se acumula el historial en vez de quedarse solo con el último
+    const campos = _difEvo(original, evo);
+    evo.ediciones = [ ...edicionesDe(original), {
+      quien: currentUser?.name || '—',
+      quienUser: currentUser?.user || '',
+      cuando: Date.now(),
+      campos
+    }];
+    delete evo.editedAt; delete evo.editedBy;   // formato viejo, ya migrado
     const idx = evoluciones.findIndex(x=>x.id===editandoId);
     evoluciones[idx] = evo;
   } else {
@@ -13938,7 +14375,7 @@ function buscarHistorial(){
             <span style="font-size:12px;font-weight:700;color:var(--blue-800)">${fmtDate(e.date)}</span>
             <span class="badge badge-gray" style="font-size:9px">${e.turno}</span>
             ${tolBadge}
-            <span style="font-size:10px;color:var(--text-muted);margin-left:auto">${e.kine}${puedeEditarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" onclick="editarEvolucion(${e.id})" title="Editar (disponible hasta 24 hs después de la carga)"><i class="ti ti-pencil"></i></button>` : ''}${puedeEliminarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarEvolucion(${e.id})" title="${currentUser?.role === 'admin' ? 'Eliminar evolución' : 'Eliminar (disponible hasta 24 hs después de la carga)'}"><i class="ti ti-trash"></i></button>` : ''}</span>
+            <span style="font-size:10px;color:var(--text-muted);margin-left:auto">${e.kine}${edicionesTextoHTML(e)}${puedeEditarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" onclick="editarEvolucion(${e.id})" title="Editar (disponible hasta 24 hs después de la carga)"><i class="ti ti-pencil"></i></button>` : ''}${puedeEliminarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarEvolucion(${e.id})" title="${currentUser?.role === 'admin' ? 'Eliminar evolución' : 'Eliminar (disponible hasta 24 hs después de la carga)'}"><i class="ti ti-trash"></i></button>` : ''}</span>
           </div>
           ${items.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:5px">${items.map(([v,k])=>`<span style="font-size:11px;background:#fff;border:1px solid var(--border);padding:2px 7px;border-radius:5px"><b>${k}:</b> ${v}</span>`).join('')}</div>` : ''}
           ${tags ? `<div style="margin-bottom:4px">${tags}</div>` : ''}
