@@ -5358,7 +5358,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_186';
+const APP_VERSION = 'v3_187';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -6842,9 +6842,12 @@ const DEMO_KINES = ['Lucía Ferrari', 'Martín Ocampo', 'Carla Benítez', 'Diego
 
 // Fecha de hace N días, en formato YYYY-MM-DD
 function _dHace(n){
+  // v3_187: fecha LOCAL, igual que today(). Con toISOString() se usaba UTC y a
+  // la noche en Argentina las evoluciones quedaban fechadas al día siguiente.
   const d = new Date();
   d.setDate(d.getDate() - n);
-  return d.toISOString().slice(0, 10);
+  const p = x => String(x).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 const _dRnd = arr => arr[Math.floor(Math.random() * arr.length)];
 
@@ -6925,7 +6928,8 @@ function _demoFicha(base, id){
     p.esPediatrico = true;
     const fn = new Date();
     fn.setMonth(fn.getMonth() - base.mesesEdad);
-    p.fechaNac = fn.toISOString().slice(0, 10);
+    const q = x => String(x).padStart(2, '0');
+    p.fechaNac = `${fn.getFullYear()}-${q(fn.getMonth() + 1)}-${q(fn.getDate())}`;
     if(base.semGest) p.semGest = base.semGest;
   }
   return p;
@@ -6969,7 +6973,14 @@ function _demoEvo(base, p, dia, idSeed){
     e.secCant = _dRnd(['Escasa','Moderada']);
     e.secChar = _dRnd(['Mucoso','Mucopurulento']);
     e.cuffM = 26; e.cuffT = 25;
+    e.ph = 7.36; e.pco2 = 44; e.po2 = 78; e.hco3 = 24; e.pafi = Math.round(78 / (e.fio2 / 100));
     e.tecnicas = ['Aspiración de secreciones', 'Higiene bronquial', 'Movilización pasiva'];
+    // Prestaciones específicas y cambios de setting, salteados
+    if(dia === base.diasInternado) e.tecnicas.push('Asistencia IOT');
+    if(dia === 6) e.tecnicas.push('Asistencia decúbito prono', 'Toma de aspirado traqueal');
+    if(dia === 5) e.tecnicas.push('Asistencia decúbito supino');
+    if(dia === 3) e.tecnicas.push('Traslado a TAC');
+    if(dia === 4 || dia === 2) e.modSetting = 'Sí';
     if(dia === base.diasInternado) e.motivoVM = base.motivoVM;
     if(ped){ e.map = 12; e.balon = 'Con balón'; e.comfortB = 14; e.flacc = 2; }
     if(!ped && dia <= 2 && dia >= 1){ e.pve = 'Si'; e.pveTipo = 'Tubo en T'; e.pveResult = dia === 1 ? 'Exitosa' : 'Fallida'; }
@@ -6983,7 +6994,17 @@ function _demoEvo(base, p, dia, idSeed){
     e.posicion = 'supino';
     e.secCant = 'Moderada'; e.secChar = 'Mucoso';
     e.cuffM = 24; e.cuffT = 25; e.cuffN = 24;
+    e.ph = 7.40; e.pco2 = 48; e.po2 = 82;
     e.tecnicas = ['Aspiración de secreciones', 'Sedestación al borde de la cama', 'Fortalecimiento'];
+    if(dia === 7) e.tecnicas.push('Asistencia TQT percutánea');
+    if(dia === 4) e.tecnicas.push('Cambio de cánula de TQT');
+    if(dia === 2) e.tecnicas.push('Toma de minibal');
+    if(dia === 5) e.tecnicas.push('Asistencia a fibrobroncoscopía');
+    // Fuerza muscular y músculos respiratorios en la paciente de ARM prolongada
+    if(dia === 3){ e.mrcTotal = 42; e.mrcCompleto = 'Si'; }
+    if(dia === 1){ e.musPImax = -38; e.musPEmax = 42; e.musCV = 1100;
+                   e.tecnicas.push('Evaluación de músculos respiratorios'); }
+    if(dia === 6) e.modSetting = 'Sí';
     if(dia % 3 === 0){ e.pve = 'Si'; e.pveTipo = 'Tubo en T'; e.pveTmin = 120; e.pveResult = dia <= 6 ? 'Exitosa' : 'Fallida'; }
     if(dia === base.diasInternado) e.motivoVM = base.motivoVM;
 
@@ -6997,6 +7018,10 @@ function _demoEvo(base, p, dia, idSeed){
     e.secTrqCant = 'Escasa'; e.secTrqCal = 'Mucoso';
     e.deglusion = 'Realizada';
     e.tecnicas = ['Aspiración de secreciones', 'Tos dirigida', 'Sedestación al borde de la cama', 'Bipedestación'];
+    if(dia % 2 === 0) e.tecnicas.push('Evaluación de deglución');
+    if(dia === 3) e.tecnicas.push('Rehabilitación de la deglución');
+    if(dia === 5) e.tecnicas.push('Traslado a otro sector');
+    if(dia === 2){ e.mrcTotal = 48; e.mrcCompleto = 'Si'; }
     if(dia <= 6 && dia > 0){ e.decOclusion = 'Sí'; e.decValvula = 'Sí'; e.decBlueTest = 'Negativo'; }
     if(dia === 0) e.decDecanulado = 'Si';
 
@@ -7007,6 +7032,8 @@ function _demoEvo(base, p, dia, idSeed){
       e.rass = '-1 Somnoliento';
       e.tecnicas = ['Aspiración de secreciones', 'Movilización pasiva'];
       if(dia === 2){ e.pve = 'Si'; e.pveTipo = 'PSV'; e.pveTmin = 30; e.pveResult = 'Exitosa'; e.extubacion = 'Sí — programada'; }
+      if(dia === 4) e.tecnicas.push('Traslado a QX', 'Asistencia IOT');
+      e.ph = 7.38; e.pco2 = 41; e.po2 = 88;
       if(dia === base.diasInternado) e.motivoVM = base.motivoVM;
     } else {
       e.interfazEsp = 'VAN_O2';
@@ -7043,6 +7070,8 @@ function _demoEvo(base, p, dia, idSeed){
     e.secCant = 'Abundante'; e.secChar = 'Mucoso';
     e.nrs = 2; e.capd = 6;
     e.tecnicas = ['Aspiración de secreciones', 'Higiene bronquial', 'Ejercicios respiratorios'];
+    if(dia === 2) e.tecnicas.push('Toma de virológico');
+    if(dia === 1) e.tecnicas.push('Esputo');
   }
 
   e.obs = _demoObs(P, dia);
@@ -14237,7 +14266,10 @@ function diasTQTarmEnMes(mesStr){
 }
 
 function diasTQTespEnMes(mesStr){
-  return contarDiasUnicos(e=>enPeriodo(e.date, mesStr) && (e.interfaz||'').includes('TQT espontáneo'));
+  return contarDiasUnicos(e=>enPeriodo(e.date, mesStr) && (
+    e.interfazEsp === 'TQT_O2' || e.interfazEsp === 'TQT_AA' ||   // v3_187
+    (e.interfaz||'').includes('TQT espontáneo')                    // formato viejo
+  ));
 }
 
 function pacientesEnARMenMes(sala, mesStr){
