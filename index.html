@@ -305,6 +305,15 @@ tr:hover td{ background:var(--blue-50); }
   border-radius:9px; background:var(--amber-50); color:var(--amber-800);
   font-size:10px; font-weight:700; white-space:nowrap; cursor:help; }
 .evo-editada i{ font-size:11px; color:var(--amber-600); }
+/* v3_189: papelera */
+.pap-item{ display:flex; align-items:center; gap:11px; padding:11px 14px; border-bottom:1px solid var(--border); }
+.pap-item:last-child{ border-bottom:none; }
+.pap-ico{ width:34px; height:34px; border-radius:9px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.pap-ico.pap-pac{ background:var(--red-50); color:var(--red-600); }
+.pap-ico.pap-evo{ background:var(--amber-50); color:var(--amber-600); }
+.pap-tit{ font-size:13.5px; font-weight:700; color:var(--blue-900); }
+.pap-sub{ font-size:11.5px; color:var(--text); margin-top:1px; }
+.pap-meta{ font-size:10.5px; color:var(--text-muted); margin-top:3px; }
 .p-egreso-pend .btn-completar{ margin-left:auto; border:1px solid var(--amber-400); background:#fff;
   color:var(--amber-800); font-size:11px; font-weight:700; border-radius:6px; padding:4px 10px; cursor:pointer;
   display:inline-flex; align-items:center; gap:4px; }
@@ -1054,6 +1063,18 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <button class="btn btn-sm" style="background:var(--red-50);color:var(--red-800);border:1px solid var(--red-100);" onclick="if(confirm('¿Borrar todo el registro de actividad?')){clearLogs()}"><i class="ti ti-trash"></i>Limpiar</button>
         </div>
         <div id="logsList" style="padding:4px 0;max-height:600px;overflow-y:auto;"></div>
+      </div>
+
+      <!-- v3_189: PAPELERA -->
+      <div class="card" id="cardPapelera" style="display:none">
+        <div class="card-header">
+          <div class="card-header-title"><i class="ti ti-trash" style="color:var(--amber-600)"></i>Papelera</div>
+          <button class="btn btn-sm" id="btnPurgarPapelera" onclick="purgarPapelera()" style="display:none;background:var(--red-50);color:var(--red-800);border:1px solid var(--red-100)"><i class="ti ti-flame"></i>Vaciar vencidos</button>
+        </div>
+        <div style="padding:10px 14px 4px;font-size:12px;color:var(--text-muted)">
+          Lo eliminado se guarda 30 días y después se puede borrar definitivamente. Solo la jefatura ve esta sección.
+        </div>
+        <div id="papeleraList" style="padding:4px 0;max-height:520px;overflow-y:auto"></div>
       </div>
     </div>
 
@@ -5407,7 +5428,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_188';
+const APP_VERSION = 'v3_190';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -6158,6 +6179,7 @@ async function loadFromSupabase(){
     // 2) Evoluciones después, sin bloquear la pantalla
     const { datos: evos, parcial, desde } = await pedirEvoluciones();
     // v3_148: las evoluciones eliminadas quedan marcadas en la base y se descartan acá
+    papeleraEvos = normalizarEvoluciones((evos || []).filter(e => e && e._borrada));   // v3_189
     evoluciones = normalizarEvoluciones((evos || []).filter(e => e && !e._borrada));
     EVOS_DESDE = parcial ? desde : null;   // v3_174: hasta dónde llega lo que tenemos
     DATOS_COMPLETOS = true;                // v3_173
@@ -6395,9 +6417,187 @@ async function saveToSupabase(){
 // paciente: avisa que su propia cama está ocupada y al guardar lo duplica en vez
 // de modificarlo. Se normalizan a número en cuanto entran, una sola vez.
 const _numId = v => { const n = Number(v); return (v !== null && v !== '' && Number.isFinite(n)) ? n : v; };
+// ── v3_189: PAPELERA ────────────────────────────────────────────
+// Lo eliminado no se borra: queda marcado con _borrada (quién y cuándo) y se
+// aparta de la memoria de trabajo. Antes las evoluciones eliminadas se
+// descartaban al cargar y los pacientes se borraban de verdad de la base, así
+// que un error de dedo era irreversible.
+const PAPELERA_DIAS = 30;
+let papeleraPacientes = [], papeleraEvos = [];
+
 function normalizarPacientes(lista){
-  return (lista || []).filter(Boolean).map(p => ({ ...p, id: _numId(p.id) }));
+  const todos = (lista || []).filter(Boolean).map(p => ({ ...p, id: _numId(p.id) }));
+  papeleraPacientes = todos.filter(p => p._borrada);
+  return todos.filter(p => !p._borrada);
 }
+// Días que le quedan a un elemento antes de poder purgarse
+function _diasEnPapelera(item){
+  const f = item?._borrada?.fecha ? new Date(item._borrada.fecha).getTime() : 0;
+  // Sin fecha de borrado no se puede saber la antigüedad: se trata como recién
+  // eliminado para que la purga automática NUNCA lo destruya por las dudas.
+  if(!f) return 0;
+  return Math.floor((Date.now() - f) / 86400000);
+}
+function _venciPapelera(item){ return _diasEnPapelera(item) >= PAPELERA_DIAS; }
+
+function papeleraItems(){
+  const items = [];
+  papeleraPacientes.forEach(p => items.push({ tipo:'paciente', reg:p }));
+  papeleraEvos.forEach(e => items.push({ tipo:'evolucion', reg:e }));
+  return items.sort((a,b) =>
+    String(b.reg?._borrada?.fecha||'').localeCompare(String(a.reg?._borrada?.fecha||'')));
+}
+
+function renderPapelera(){
+  const card = document.getElementById('cardPapelera');
+  if(!card) return;
+  const esAdmin = currentUser?.role === 'admin';
+  card.style.display = esAdmin ? '' : 'none';
+  if(!esAdmin) return;
+
+  const items = papeleraItems();
+  const cont = document.getElementById('papeleraList');
+  const btnPurgar = document.getElementById('btnPurgarPapelera');
+  const vencidos = items.filter(i => _venciPapelera(i.reg)).length;
+  if(btnPurgar) btnPurgar.style.display = vencidos ? '' : 'none';
+
+  if(!items.length){
+    cont.innerHTML = '<div style="padding:22px;text-align:center;color:var(--text-muted);font-size:13px">La papelera está vacía.</div>';
+    return;
+  }
+
+  cont.innerHTML = items.map(({ tipo, reg }) => {
+    const dias = _diasEnPapelera(reg);
+    const restan = PAPELERA_DIAS - dias;
+    const vencido = restan <= 0;
+    const quien = reg._borrada?.por || '—';
+    const cuando = reg._borrada?.fecha ? fmtDate(String(reg._borrada.fecha).slice(0,10)) : '—';
+
+    let titulo, sub;
+    if(tipo === 'paciente'){
+      const n = evoluciones.filter(e => e.patientId === reg.id).length
+              + papeleraEvos.filter(e => e.patientId === reg.id).length;
+      titulo = `${reg.apellido||''}, ${reg.nombre||''}`;
+      sub = `Paciente · ${SALA_LABEL[reg.sala]||reg.sala||'—'} C${reg.cama||'—'} · ${n} evolución/es`;
+    } else {
+      const pac = patients.find(x => x.id === reg.patientId) || papeleraPacientes.find(x => x.id === reg.patientId);
+      titulo = pac ? `${pac.apellido}, ${pac.nombre}` : 'Paciente no encontrado';
+      sub = `Evolución del ${fmtDate(reg.date)}${reg.hora ? ' · '+reg.hora : ''} · cargada por ${reg.kine||'—'}`;
+    }
+
+    return `<div class="pap-item">
+      <div class="pap-ico ${tipo==='paciente'?'pap-pac':'pap-evo'}"><i class="ti ${tipo==='paciente'?'ti-user-off':'ti-file-off'}"></i></div>
+      <div style="flex:1;min-width:0">
+        <div class="pap-tit">${escapeHTML(titulo)}</div>
+        <div class="pap-sub">${escapeHTML(sub)}</div>
+        <div class="pap-meta">Eliminado por ${escapeHTML(quien)} el ${cuando} · ${vencido ? '<b style="color:var(--red-700)">vencido</b>' : `quedan ${restan} día${restan===1?'':'s'}`}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn btn-sm btn-success" onclick="restaurarDePapelera('${tipo}','${reg.id}')"><i class="ti ti-arrow-back-up"></i>Restaurar</button>
+        <button class="btn btn-icon btn-sm" title="Eliminar definitivamente" onclick="borrarDefinitivo('${tipo}','${reg.id}')" style="color:var(--red-600)"><i class="ti ti-trash-x"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function restaurarDePapelera(tipo, id){
+  const lista = tipo === 'paciente' ? papeleraPacientes : papeleraEvos;
+  const reg = lista.find(x => String(x.id) === String(id));
+  if(!reg){ showToast('No se encontró el elemento','error'); return; }
+
+  const limpio = { ...reg };
+  delete limpio._borrada;
+
+  // Un paciente no puede volver a una cama que ahora está ocupada
+  if(tipo === 'paciente'){
+    const ocupada = patients.find(x => x.estado === 'Activo' && x.sala === limpio.sala && String(x.cama) === String(limpio.cama));
+    if(ocupada && limpio.estado === 'Activo'){
+      if(!confirm(`La cama ${limpio.cama} de ${SALA_LABEL[limpio.sala]||limpio.sala} ahora la ocupa ${ocupada.apellido}, ${ocupada.nombre}.\n\nSe restaura igual, pero vas a tener dos pacientes en la misma cama hasta que corrijas uno.\n\n¿Continuar?`)) return;
+    }
+  }
+
+  try {
+    await rpc('kinexa_registro_guardar', {
+      p_token: TOKEN,
+      p_tipo: tipo === 'paciente' ? 'paciente' : 'evolucion',
+      p_id: String(reg.id),
+      p_data: _limpiarObj(limpio)
+    });
+  } catch(err){
+    console.error('No se pudo restaurar', err);
+    showToast('No se pudo restaurar: ' + (err.message||'').slice(0,60), 'error');
+    return;
+  }
+
+  if(tipo === 'paciente'){
+    papeleraPacientes = papeleraPacientes.filter(x => String(x.id) !== String(id));
+    patients.push(limpio);
+    _huellas['paciente:'+reg.id] = _huella(JSON.stringify(_limpiarObj(limpio)));
+    addLog('restore', `Restauró al paciente ${limpio.apellido}, ${limpio.nombre}`);
+  } else {
+    papeleraEvos = papeleraEvos.filter(x => String(x.id) !== String(id));
+    evoluciones.unshift(limpio);
+    _huellas['evolucion:'+reg.id] = _huella(JSON.stringify(_limpiarObj(limpio)));
+    addLog('restore', `Restauró una evolución del ${fmtDate(limpio.date)}`);
+  }
+  savePacientes(); saveEvos();
+  showToast('Restaurado ✓','success');
+  renderAll();
+}
+
+async function borrarDefinitivo(tipo, id){
+  const lista = tipo === 'paciente' ? papeleraPacientes : papeleraEvos;
+  const reg = lista.find(x => String(x.id) === String(id));
+  if(!reg) return;
+  const que = tipo === 'paciente'
+    ? `${reg.apellido}, ${reg.nombre} y todas sus evoluciones`
+    : `la evolución del ${fmtDate(reg.date)}`;
+  if(!confirm(`Vas a borrar ${que} de forma DEFINITIVA.\n\nEsto no se puede deshacer. ¿Seguro?`)) return;
+  try {
+    if(tipo === 'paciente'){
+      await rpc('kinexa_paciente_borrar', { p_token: TOKEN, p_paciente_id: String(reg.id) });
+      papeleraPacientes = papeleraPacientes.filter(x => String(x.id) !== String(id));
+      papeleraEvos = papeleraEvos.filter(e => String(e.patientId) !== String(id));
+    } else {
+      await rpc('kinexa_registro_borrar', { p_token: TOKEN, p_tipo:'evolucion', p_id: String(reg.id) });
+      papeleraEvos = papeleraEvos.filter(x => String(x.id) !== String(id));
+    }
+  } catch(err){
+    console.error('No se pudo borrar definitivamente', err);
+    const falta = /kinexa_registro_borrar|does not exist|PGRST202|404/i.test(err.message||'');
+    showToast(falta
+      ? 'Falta crear la función kinexa_registro_borrar en Supabase. La evolución sigue en la papelera.'
+      : 'No se pudo borrar: ' + (err.message||'').slice(0,70), 'error');
+    return;
+  }
+  addLog('delete', `Borró definitivamente: ${que}`);
+  showToast('Borrado definitivo');
+  renderPapelera();
+}
+
+async function purgarPapelera(){
+  const vencidos = papeleraItems().filter(i => _venciPapelera(i.reg));
+  if(!vencidos.length) return;
+  if(!confirm(`Hay ${vencidos.length} elemento(s) con más de ${PAPELERA_DIAS} días en la papelera.\n\nSe van a borrar de forma DEFINITIVA. ¿Seguro?`)) return;
+  let ok = 0, fallos = 0;
+  for(const { tipo, reg } of vencidos){
+    try {
+      if(tipo === 'paciente'){
+        await rpc('kinexa_paciente_borrar', { p_token: TOKEN, p_paciente_id: String(reg.id) });
+        papeleraPacientes = papeleraPacientes.filter(x => String(x.id) !== String(reg.id));
+        papeleraEvos = papeleraEvos.filter(e => String(e.patientId) !== String(reg.id));
+      } else {
+        await rpc('kinexa_registro_borrar', { p_token: TOKEN, p_tipo:'evolucion', p_id: String(reg.id) });
+        papeleraEvos = papeleraEvos.filter(x => String(x.id) !== String(reg.id));
+      }
+      ok++;
+    } catch(err){ console.error(err); fallos++; }
+  }
+  addLog('delete', `Vació la papelera: ${ok} elemento(s)`);
+  showToast(fallos ? `${ok} borrados, ${fallos} fallaron` : `${ok} elemento(s) borrados`, fallos ? 'error' : 'success');
+  renderPapelera();
+}
+
 function normalizarEvoluciones(lista){
   return (lista || []).filter(Boolean).map(e => ({ ...e, id: _numId(e.id), patientId: _numId(e.patientId) }));
 }
@@ -11791,8 +11991,10 @@ function egresoSinAplicar(p){
     .filter(e => (e.tipo === 'alta' || e.tipo === 'obito') && String(e.date||'') >= desde)
     .sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')))[0] || null;
   if(!cierre) return null;
-  // Si después del alta hubo un traslado, el paciente reingresó: ya no cuenta.
-  const reingreso = evosPac.some(e => e.tipo === 'traslado' && String(e.date||'') > String(cierre.date||''));
+  // Si después del alta hubo un traslado o una reactivación, el paciente volvió.
+  const reingreso = evosPac.some(e =>
+    (e.tipo === 'traslado' || e.tipo === 'reactivacion') &&
+    String(e.date||'') >= String(cierre.date||''));
   return reingreso ? null : cierre;
 }
 
@@ -12215,6 +12417,10 @@ async function completarHistorialPaciente(patientId){
   if(_historialCompleto.has(String(patientId))) return;
   try {
     const res = await rpc('kinexa_evos_paciente', { p_token:TOKEN, p_patient_id:String(patientId) });
+    (res || []).filter(e => e && e._borrada).forEach(e => {          // v3_189
+      const n = normalizarEvoluciones([e])[0];
+      if(!papeleraEvos.some(x => String(x.id) === String(n.id))) papeleraEvos.push(n);
+    });
     const traidas = normalizarEvoluciones((res || []).filter(e => e && !e._borrada));
     const conocidas = new Set(evoluciones.map(e => String(e.id)));
     const nuevas = traidas.filter(e => !conocidas.has(String(e.id)));
@@ -12278,6 +12484,7 @@ function addLog(type, msg){
 let ULTIMO_ERROR_ACTIVIDAD = '';
 async function cargarActividadEquipo(){
   ULTIMO_ERROR_ACTIVIDAD = '';
+  try { renderPapelera(); } catch(e){ console.error(e); }   // v3_189
   const el = document.getElementById('logsList');
   if(el) el.innerHTML = '<div class="empty"><i class="ti ti-loader-2"></i><p>Cargando actividad del equipo…</p></div>';
   try {
@@ -12722,11 +12929,82 @@ function filterPacientes(q){
         <div style="display:flex;gap:5px">
           <button class="btn-evolve" onclick="openEvolucion(${p.id})"><i class="ti ti-stethoscope"></i> <span class="evo-count">${nEvo}</span></button>
           <button class="btn btn-icon btn-sm" onclick="openEditPaciente(${p.id})"><i class="ti ti-pencil"></i></button>
+          ${currentUser?.role==='admin' && p.estado!=='Activo' ? `<button class="btn btn-icon btn-sm" title="Reactivar paciente" style="color:var(--teal-600)" onclick="reactivarPaciente(${p.id})"><i class="ti ti-arrow-back-up"></i></button>` : ''}
           ${currentUser?.role==='admin' ? `<button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarPaciente(${p.id})"><i class="ti ti-trash"></i></button>` : ''}
         </div>
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted)">Sin resultados</td></tr>';
+}
+
+// ── v3_190: deshacer un egreso cargado por error ────────────────
+// Pasa: un alta se toca sin querer y el paciente desaparece de la sala aunque
+// siga internado. Antes no había forma de volverlo a Activo desde la app.
+// La reactivación queda asentada como una entrada más en la historia, no se
+// borra el alta: el registro clínico tiene que mostrar lo que pasó de verdad.
+async function reactivarPaciente(id){
+  if(currentUser?.role !== 'admin'){
+    showToast('Solo la jefatura puede reactivar un paciente','error');
+    return;
+  }
+  const p = patients.find(x => x.id === id);
+  if(!p){ showToast('No se encontró el paciente','error'); return; }
+  if(p.estado === 'Activo'){ showToast('Este paciente ya está activo','info'); return; }
+
+  // El último egreso registrado, para explicar qué se está deshaciendo
+  const egreso = evoluciones
+    .filter(e => e.patientId === id && ['alta','obito'].includes(e.tipo))
+    .sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')))[0];
+
+  const ocupada = patients.find(x => x.estado === 'Activo' && x.sala === p.sala && String(x.cama) === String(p.cama));
+  const avisoCama = ocupada
+    ? `\n\nATENCIÓN: la cama ${p.cama} de ${SALA_LABEL[p.sala]||p.sala} ahora la ocupa ${ocupada.apellido}, ${ocupada.nombre}. Vas a tener que corregir la cama de alguno de los dos.`
+    : '';
+
+  const ok = confirm(
+    `Reactivar a ${p.apellido}, ${p.nombre}\n\n` +
+    `Estado actual: ${p.estado}\n` +
+    (egreso ? `Egreso registrado: ${fmtDate(egreso.date)} por ${egreso.kine||'—'}\n${egreso.obs||''}\n` : '') +
+    `\nVuelve a ${SALA_LABEL[p.sala]||p.sala}, cama ${p.cama||'—'}, como Activo.` +
+    `\nEl egreso NO se borra: queda en la historia junto con esta reactivación.` +
+    avisoCama +
+    `\n\n¿Continuar?`
+  );
+  if(!ok) return;
+
+  const motivo = (prompt('¿Por qué se reactiva? (queda asentado en la historia)', 'Alta registrada por error') || '').trim();
+
+  const hoy = today();
+  const actualizado = { ...p, estado:'Activo', fEUTI:'', fEK:'', causaObito:'', donanteObito:'', fISector: p.fISector || hoy };
+  const nota = {
+    id: Date.now(), patientId: id, date: hoy,
+    turno: currentShift(), kine: currentUser.name, kineUser: currentUser.user,
+    tipo: 'reactivacion',
+    obs: `REACTIVACIÓN: se deshace el egreso${egreso ? ' del '+fmtDate(egreso.date) : ''}${motivo ? '. '+motivo : ''}`,
+    tecnicas: [], tolerancia: ''
+  };
+
+  try {
+    if(!DEMO){
+      await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'evolucion', p_id:String(nota.id), p_data:_limpiarObj(nota) });
+      await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'paciente',  p_id:String(id),      p_data:_limpiarObj(actualizado) });
+    }
+  } catch(err){
+    console.error('No se pudo reactivar', err);
+    setSyncStatus('error');
+    showToast('No se pudo guardar. El paciente sigue como estaba. Revisá la conexión.','error');
+    return;
+  }
+
+  const idx = patients.findIndex(x => x.id === id);
+  patients[idx] = actualizado;
+  evoluciones.unshift(nota);
+  _huellas['paciente:'+id]      = _huella(JSON.stringify(_limpiarObj(actualizado)));
+  _huellas['evolucion:'+nota.id] = _huella(JSON.stringify(_limpiarObj(nota)));
+  savePacientes(); saveEvos();
+  addLog('restore', `Reactivó a ${p.apellido}, ${p.nombre}${motivo ? ' — '+motivo : ''}`);
+  showToast('Paciente reactivado ✓','success');
+  renderAll();
 }
 
 // ════════════════════════════════════════════════════════
@@ -13131,22 +13409,34 @@ async function eliminarPaciente(id){
     return;
   }
   const p = patients.find(x=>x.id===id);
-  if(!confirm(`¿Eliminar a ${p?.apellido}, ${p?.nombre}? Se borrarán también sus evoluciones.`)) return;
-  const nid = Number(id);
+  if(!p){ showToast('No se encontró el paciente','error'); return; }
+  const nEvo = evoluciones.filter(e => e.patientId === id).length;
+  if(!confirm(
+    `¿Eliminar a ${p.apellido}, ${p.nombre}?\n\n` +
+    `Se guardan también sus ${nEvo} evolución/es.\n\n` +
+    `Va a la Papelera y se puede recuperar durante ${PAPELERA_DIAS} días.`
+  )) return;
+
+  // v3_189: borrado lógico. Antes se destruía de verdad en la base, paciente y
+  // evoluciones, sin vuelta atrás. Ahora queda marcado y recuperable.
+  const tumba = JSON.parse(JSON.stringify({ ...p, _borrada: {
+    por: currentUser.name || currentUser.user,
+    porUser: currentUser.user,
+    fecha: new Date().toISOString()
+  }}, (k,v) => v === undefined ? null : v));
   try {
-    // v3_115: borrar de verdad en la base de Kinexa (paciente + sus evoluciones).
-    // Antes apuntaba al proyecto viejo, así que el paciente reaparecía al recargar.
-    await rpc('kinexa_paciente_borrar', { p_token: TOKEN, p_paciente_id: String(nid) });
+    await rpc('kinexa_registro_guardar', { p_token: TOKEN, p_tipo:'paciente', p_id: String(id), p_data: tumba });
   } catch(err){
     console.error('Error al eliminar en Kinexa:', err);
     showToast('Error al eliminar en la nube: ' + (err.message||'').slice(0,60), 'error');
     return; // no tocar lo local si falló la nube, para no desincronizar
   }
   patients = patients.filter(x=>x.id!==id);
-  evoluciones = evoluciones.filter(x=>x.patientId!==id);
+  papeleraPacientes.push(tumba);
+  _huellas['paciente:'+id] = _huella(JSON.stringify(_limpiarObj(tumba)));
   savePacientes(); saveEvos();
-  addLog('delete',`Eliminó: ${p?.apellido}, ${p?.nombre}`);
-  showToast('Paciente eliminado');
+  addLog('delete',`Eliminó: ${p.apellido}, ${p.nombre} (recuperable ${PAPELERA_DIAS} días)`);
+  showToast('Paciente enviado a la Papelera');
   renderAll();
 }
 
@@ -13773,6 +14063,7 @@ async function eliminarEvolucion(evoId){
   }
 
   evoluciones = evoluciones.filter(e => e.id !== evoId);
+  papeleraEvos.push(tumba);   // v3_189
   saveEvos();
   addLog('delete', `Eliminó evolución de ${p ? p.apellido+', '+p.nombre : '—'} (${cuando}) cargada por ${quien}`);
   showToast('Evolución eliminada');
