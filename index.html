@@ -2,7 +2,10 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<!-- v3_195: sin maximum-scale. Esa restricción impedía agrandar la pantalla con
+     los dedos en la mayoría de los Android, y dejaba a los kinesiólogos que
+     no ven de cerca sin poder leer la app. Ahora se puede ampliar hasta 5x. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
 <title>Pase de Kinesiología · HBEE</title>
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
@@ -5482,7 +5485,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_194';
+const APP_VERSION = 'v3_195';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
