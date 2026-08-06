@@ -1016,7 +1016,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     <div class="section" id="section-pacientes">
       <div class="page-header">
         <div><h2>Todos los pacientes</h2><p>Historial completo de ingresos</p></div>
-        <button class="btn btn-success btn-sm" onclick="openNuevoPaciente()"><i class="ti ti-plus"></i>Nuevo</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+          <button class="btn btn-sm" id="btnFusionHeader" style="display:none;background:var(--purple-50);color:var(--blue-800);border:1px solid var(--purple-400)" onclick="abrirFusion(null)"><i class="ti ti-arrow-merge"></i>Fusionar fichas</button>
+          <button class="btn btn-success btn-sm" onclick="openNuevoPaciente()"><i class="ti ti-plus"></i>Nuevo</button>
+        </div>
       </div>
       <div class="card">
         <div class="table-toolbar">
@@ -5277,10 +5280,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:5px">Ficha que se conserva</div>
       <div style="display:flex;align-items:center;gap:9px;background:var(--purple-50);border:1px solid var(--purple-400);border-radius:9px;padding:10px 12px;font-weight:700;font-size:13.5px;color:var(--blue-900)">
         <div id="fusionPrincipal" style="flex:1;min-width:0">—</div>
-        <button class="btn btn-ghost btn-sm" onclick="invertirFusion()" title="Intercambiar cuál se conserva"><i class="ti ti-switch-vertical"></i></button>
+        <button class="btn btn-ghost btn-sm" id="btnInvertirFusion" onclick="invertirFusion()" title="Intercambiar cuál se conserva"><i class="ti ti-switch-vertical"></i></button>
       </div>
 
-      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:14px 0 5px">Ficha que se absorbe</div>
+      <div id="fusionRotulo" style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:14px 0 5px">Ficha que se absorbe</div>
       <input type="text" id="fusionBusca" placeholder="Buscar por apellido o DNI..." oninput="buscarFusion(this.value)"
              style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);box-sizing:border-box">
       <div id="fusionLista" style="margin-top:8px;max-height:230px;overflow-y:auto;border:1px solid var(--border);border-radius:9px"></div>
@@ -5479,7 +5482,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_193';
+const APP_VERSION = 'v3_194';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -7174,6 +7177,9 @@ function launchApp(){
     const el = document.getElementById(id);
     if(el) el.style.display = esRodriguez ? '' : 'none';
   });
+  // v3_194: fusionar fichas es para toda la jefatura de cada institución
+  { const bf = document.getElementById('btnFusionHeader');
+    if(bf) bf.style.display = (currentUser?.role === 'admin') ? '' : 'none'; }
   addLog('login',`Ingresó: ${currentUser.name}${currentSector?' ('+currentSector+')':''}`);
   updateDashHeader();
   setSyncStatus('syncing');
@@ -13069,18 +13075,37 @@ let _fusionB = null;   // ficha que se absorbe
 
 function abrirFusion(idA){
   if(currentUser?.role !== 'admin'){ showToast('Solo la jefatura puede fusionar fichas','error'); return; }
-  _fusionA = patients.find(x => x.id === idA) || null;
+  // v3_194: se puede entrar sin ficha elegida (desde el botón del encabezado)
+  _fusionA = (idA == null) ? null : (patients.find(x => x.id === idA) || null);
   _fusionB = null;
-  if(!_fusionA) return;
   document.getElementById('fusionBusca').value = '';
-  // Se ofrecen primero los candidatos que la app detecta como la misma persona
-  const sug = posiblesDuplicados(_fusionA, _fusionA.id);
-  renderFusion(sug.map(c => c.p));
+  buscarFusion('');
   openModal('modalFusion');
+}
+
+// Sugiere de entrada los pares que la app detecta como la misma persona
+function _paresSospechosos(){
+  const vistos = new Set(), pares = [];
+  patients.forEach(a => {
+    posiblesDuplicados(a, a.id).forEach(c => {
+      const clave = [a.id, c.p.id].sort().join('-');
+      if(vistos.has(clave)) return;
+      vistos.add(clave);
+      pares.push({ a, b: c.p, motivo: c.motivo, nivel: c.nivel });
+    });
+  });
+  return pares.slice(0, 10);
 }
 
 function buscarFusion(q){
   const t = _normTxt(q);
+  if(!_fusionA){
+    const lista = t
+      ? patients.filter(p => _normTxt(`${p.apellido} ${p.nombre} ${p.dni}`).includes(t)).slice(0, 12)
+      : [];
+    renderFusion(lista, _paresSospechosos());
+    return;
+  }
   const lista = !t
     ? posiblesDuplicados(_fusionA, _fusionA.id).map(c => c.p)
     : patients.filter(p => p.id !== _fusionA.id && _normTxt(`${p.apellido} ${p.nombre} ${p.dni}`).includes(t));
@@ -13096,9 +13121,40 @@ function _fichaResumen(p){
     + ` · ${escapeHTML(p.estado||'—')} · ${n} evolución/es</div>`;
 }
 
-function renderFusion(lista){
+function renderFusion(lista, pares){
   const cont = document.getElementById('fusionLista');
-  document.getElementById('fusionPrincipal').innerHTML = _fichaResumen(_fusionA);
+  const cabecera = document.getElementById('fusionPrincipal');
+  const rotulo = document.getElementById('fusionRotulo');
+  const btnInv = document.getElementById('btnInvertirFusion');
+
+  // Paso 1: todavía no se eligió la ficha principal
+  if(!_fusionA){
+    cabecera.innerHTML = '<span style="color:var(--text-muted);font-weight:500;font-size:12.5px">Elegí abajo la primera ficha</span>';
+    if(btnInv) btnInv.style.display = 'none';
+    if(rotulo) rotulo.textContent = 'Buscá el paciente, o elegí un par sugerido';
+    if(pares && pares.length && !lista.length){
+      cont.innerHTML = `<div style="padding:8px 12px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);background:var(--gray-50)">Posibles fichas repetidas</div>`
+        + pares.map(x => `<div class="fus-op" onclick="elegirPar(${x.a.id},${x.b.id})">
+             <div style="flex:1;min-width:0;font-size:12.5px">
+               <div style="font-weight:700;color:var(--blue-900)">${escapeHTML(x.a.apellido)}, ${escapeHTML(x.a.nombre)} <span style="color:var(--text-muted);font-weight:500">+</span> ${escapeHTML(x.b.apellido)}, ${escapeHTML(x.b.nombre)}</div>
+               <div style="font-size:11px;color:var(--text-muted)">${escapeHTML(x.motivo)}</div>
+             </div><i class="ti ti-chevron-right" style="color:var(--purple-400)"></i></div>`).join('');
+    } else if(!lista.length){
+      cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12.5px">No se detectaron fichas repetidas. Buscá por apellido o DNI.</div>';
+    } else {
+      cont.innerHTML = lista.map(p => `<div class="fus-op" onclick="elegirPrincipal(${p.id})">
+        <div style="flex:1;min-width:0;font-weight:700;font-size:13px;color:var(--blue-900)">${_fichaResumen(p)}</div>
+        <i class="ti ti-chevron-right" style="color:var(--purple-400)"></i></div>`).join('');
+    }
+    document.getElementById('btnFusionar').disabled = true;
+    document.getElementById('fusionPreview').innerHTML = '';
+    return;
+  }
+
+  // Paso 2: ya hay principal, se elige la que se absorbe
+  if(btnInv) btnInv.style.display = '';
+  if(rotulo) rotulo.textContent = 'Ficha que se absorbe';
+  cabecera.innerHTML = _fichaResumen(_fusionA);
   if(!lista.length){
     cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12.5px">Sin coincidencias. Buscá por apellido o DNI.</div>';
   } else {
@@ -13118,6 +13174,20 @@ function renderFusion(lista){
 function elegirFusion(id){
   _fusionB = patients.find(x => x.id === id) || null;
   buscarFusion(document.getElementById('fusionBusca').value);
+}
+
+function elegirPrincipal(id){
+  _fusionA = patients.find(x => x.id === id) || null;
+  _fusionB = null;
+  document.getElementById('fusionBusca').value = '';
+  buscarFusion('');
+}
+
+function elegirPar(idA, idB){
+  _fusionA = patients.find(x => x.id === idA) || null;
+  _fusionB = patients.find(x => x.id === idB) || null;
+  document.getElementById('fusionBusca').value = '';
+  renderFusion(_fusionB ? [_fusionB] : []);
 }
 
 function invertirFusion(){
