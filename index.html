@@ -325,6 +325,27 @@ tr:hover td{ background:var(--blue-50); }
   border-left:3px solid var(--amber-400); border-radius:9px; padding:11px 13px;
   font-size:12px; color:var(--amber-800); line-height:1.55; }
 .fus-prev i{ color:var(--amber-600); }
+/* v3_196: alcance del pase */
+.pase-alcance{ display:flex; flex-direction:column; gap:7px; margin-bottom:14px; }
+.pase-op{ display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border);
+  border-radius:9px; cursor:pointer; background:var(--gray-50); transition:.15s; }
+.pase-op:hover{ background:#fff; border-color:var(--purple-400); }
+.pase-op input{ width:17px; height:17px; accent-color:var(--purple-400); margin:0; flex-shrink:0; cursor:pointer; }
+.pase-op span{ display:flex; flex-direction:column; line-height:1.3; }
+.pase-op b{ font-size:13px; color:var(--text); font-weight:600; }
+.pase-op small{ font-size:11px; color:var(--text-muted); }
+/* v3_197: términos y condiciones */
+.tc-screen{ position:fixed; inset:0; z-index:9999; background:linear-gradient(150deg,#3B0764,#7C3AED 55%,#A78BFA);
+  display:flex; align-items:center; justify-content:center; padding:16px; }
+.tc-caja{ background:#fff; border-radius:16px; width:100%; max-width:620px; max-height:92vh;
+  display:flex; flex-direction:column; overflow:hidden; box-shadow:0 20px 60px rgba(0,0,0,.3); }
+.tc-cab{ padding:16px 20px 12px; border-bottom:1px solid var(--border); }
+.tc-cuerpo{ padding:6px 20px; overflow-y:auto; flex:1; font-size:13px; color:var(--text); line-height:1.6; }
+.tc-cuerpo h4{ font-size:13.5px; color:var(--blue-900); margin:16px 0 5px; }
+.tc-cuerpo p{ margin:0 0 8px; }
+.tc-pie{ padding:13px 20px 17px; border-top:1px solid var(--border); background:var(--gray-50); }
+.tc-check{ display:flex; align-items:flex-start; gap:9px; cursor:pointer; font-size:12.5px; font-weight:600; color:var(--text); }
+.tc-check input{ width:18px; height:18px; accent-color:var(--purple-400); margin:1px 0 0; flex-shrink:0; cursor:pointer; }
 /* v3_189: papelera */
 .pap-item{ display:flex; align-items:center; gap:11px; padding:11px 14px; border-bottom:1px solid var(--border); }
 .pap-item:last-child{ border-bottom:none; }
@@ -5270,6 +5291,27 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 
 <!-- ════ MODAL EGRESO / TRASLADO ════ -->
 <!-- ── FUSIONAR FICHAS (v3_193) ── -->
+<!-- ── TÉRMINOS Y CONDICIONES (v3_197) ── -->
+<div id="tcScreen" class="tc-screen" style="display:none">
+  <div class="tc-caja">
+    <div class="tc-cab">
+      <div>
+        <h3 style="margin:0;font-size:17px;color:var(--blue-900)">Términos y condiciones de uso</h3>
+        <div id="tcVersion" style="font-size:11.5px;color:var(--text-muted);margin-top:2px"></div>
+      </div>
+    </div>
+    <div class="tc-cuerpo" id="tcCuerpo"></div>
+    <div class="tc-pie">
+      <label class="tc-check"><input type="checkbox" id="tcCheck" onchange="tcToggle()">
+        <span>Leí y acepto los términos y condiciones de uso de Kinexa.</span></label>
+      <div style="display:flex;gap:9px;margin-top:11px">
+        <button class="btn btn-ghost" id="btnTCRechazar" onclick="tcRechazar()" style="flex:1">No acepto</button>
+        <button class="btn btn-primary" id="btnTCAceptar" onclick="tcAceptar()" disabled style="flex:2"><i class="ti ti-check"></i>Aceptar y continuar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalFusion">
   <div class="modal" style="max-width:560px">
     <div class="modal-header">
@@ -5312,7 +5354,16 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     </div>
     <div class="modal-body">
       <p style="font-size:13px;color:var(--text);margin:0 0 4px">Se arma un PDF cama por cama con los datos del paciente y un resumen de lo ocurrido en las últimas 24 horas.</p>
-      <p style="font-size:12px;color:var(--text-muted);margin:0 0 14px" id="paseResumenPrev">—</p>
+      <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px" id="paseResumenPrev">—</p>
+
+      <!-- v3_196: a quién incluir -->
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:6px">¿A quiénes incluyo?</div>
+      <div class="pase-alcance">
+        <label class="pase-op"><input type="radio" name="paseAlcance" value="hoy" checked onchange="actualizarPreviewPase()">
+          <span><b>Solo los que tocan hoy</b><small id="paseCantHoy">—</small></span></label>
+        <label class="pase-op"><input type="radio" name="paseAlcance" value="todos" onchange="actualizarPreviewPase()">
+          <span><b>Todos los del sector</b><small id="paseCantTodos">—</small></span></label>
+      </div>
 
       <div style="background:var(--amber-50);border:1px solid var(--amber-100);border-left:3px solid var(--amber-400);border-radius:8px;padding:9px 12px;font-size:11.5px;color:var(--amber-800);margin-bottom:14px">
         <i class="ti ti-lock"></i> Contiene datos de salud identificables. Compartilo solo con el equipo tratante.
@@ -5485,7 +5536,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_195';
+const APP_VERSION = 'v3_197';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -5782,7 +5833,7 @@ async function doRegistrar(){
     // 4) Cargar sectores y entrar a la app
     try { const sects = await rpc('kinexa_sectores', { p_token:TOKEN }); aplicarSectoresKinexa(sects); } catch(eSec){ aplicarSectoresKinexa([]); }
     showToast('Institución creada ✓','success');
-    startSession(USER);
+    await startSession(USER);
   } catch(e){
     console.error('Registro:', e);
     const msg = (e.message||'').includes('activaci') || (e.message||'').includes('incorrecta')
@@ -6078,7 +6129,7 @@ async function guardarMiClave(){
       CLAVE_LOGIN = '';
       cerrarCambiarMiClave();
       // Si era el primer ingreso, recién ahora entra a la app
-      if(eraForzado){ addLog('password','Creó su clave (primer ingreso)'); startSession(USER); }
+      if(eraForzado){ addLog('password','Creó su clave (primer ingreso)'); await startSession(USER); }
     } else {
       showToast('La clave actual no es correcta','error');
     }
@@ -7006,7 +7057,7 @@ async function doLogin(){
             guardarSesionKx({ token:sm.token, user:u, name:nombreM, role:'admin', institucion_id:Number(inst), esMaestro:true, instNombre: sm.inst_nombre||'' });
             try { const sects = await rpc('kinexa_sectores', { p_token:TOKEN }); aplicarSectoresKinexa(sects); }
             catch(eS){ aplicarSectoresKinexa([]); }
-            startSession(USER);
+            await startSession(USER);
             return;
           }
         } catch(em){ console.error('Ingreso maestro:', em); }
@@ -7027,7 +7078,7 @@ async function doLogin(){
       abrirCambiarMiClave(true);
       return;
     }
-    startSession(USER);
+    await startSession(USER);
   } catch(e){
     console.error('Login error:', e);
     showToast('DNI o clave incorrectos','error');
@@ -7077,7 +7128,7 @@ async function tryRestoreSession(){
       }
       aplicarSectoresKinexa([]);
     }
-    startSession(USER);
+    await startSession(USER);
   } catch(e){ limpiarSesionKx(); }
 }
 // v3_161: mientras la persona usa la app, se corre el vencimiento de la sesión.
@@ -7112,9 +7163,16 @@ window.addEventListener('beforeunload', (ev) => {
 cargarInstitucionesKinexa();
 tryRestoreSession();
 actualizarIndicadorPendientes();
-function startSession(user){
+async function startSession(user){
   currentUser = user;
   ocultarPantallasAuth();
+  // v3_197: sin aceptación de términos no se entra
+  try {
+    if(!(await tcYaAceptado())){
+      const ok = await pedirAceptacionTC();
+      if(!ok) return;
+    }
+  } catch(err){ console.error('Términos:', err); }
   // Todos eligen en qué sector van a trabajar hoy (el admin además puede elegir "ver todos")
   document.getElementById('sectorGreeting').textContent = `Bienvenido/a, ${user.name}` + (user.instNombre ? ` — ${user.instNombre}` : '');
   { const sg=document.getElementById('sectorGreeting'); if(sg) sg.title = 'Kinexa '+APP_VERSION; }
@@ -7489,7 +7547,7 @@ function construirDemo(){
   return { pacs, evos };
 }
 
-function entrarDemo(){
+async function entrarDemo(){
   DEMO = true;
   TOKEN = null;
   _outbox = [];
@@ -7504,7 +7562,7 @@ function entrarDemo(){
   DATOS_COMPLETOS = true;
   marcarTodoSincronizado();
   setSyncStatus('local');
-  startSession(USER);
+  await startSession(USER);
   showToast('Modo demostración: son pacientes ficticios y nada se guarda','info');
 }
 
@@ -7621,11 +7679,12 @@ async function generarPaseSector(){
   const hoyStr = today();
   const desdeMs = Date.now() - PASE_VENTANA_HS * 3600 * 1000;
 
-  const activos = patients
-    .filter(p => p.estado === 'Activo' && p.sala === sector)
-    .sort((a, b) => String(a.cama || '').localeCompare(String(b.cama || ''), 'es', { numeric: true }));
-
-  if(!activos.length){ showToast('No hay pacientes activos en este sector','error'); return; }
+  const soloHoy = paseSoloHoy();                  // v3_196
+  const activos = pacientesDelPase(soloHoy);
+  if(!activos.length){
+    showToast(soloHoy ? 'Hoy no le toca atención a ningún paciente de este sector' : 'No hay pacientes activos en este sector','error');
+    return;
+  }
 
   // Egresos de las últimas 24 hs, que en un pase se mencionan
   const egresos = evoluciones
@@ -7664,13 +7723,13 @@ async function generarPaseSector(){
     }));
   }
 
-  _paseDatos = { sector, hoyStr, filas, egresos, generado: new Date() };
+  _paseDatos = { sector, hoyStr, filas, egresos, soloHoy, generado: new Date() };
   if(txt) txt.textContent = 'Armando el PDF…';
   try {
     await construirPDFPase(_paseDatos);
     if(cont) cont.style.display = 'none';
     if(acciones) acciones.style.display = 'flex';
-    addLog('export', `Pase kinésico generado — ${SALA_LABEL[sector] || sector} (${activos.length} pacientes)`);
+    addLog('export', `Pase kinésico generado — ${SALA_LABEL[sector] || sector} (${activos.length} pacientes, ${soloHoy ? 'los de hoy' : 'todo el sector'})`);
   } catch(err){
     console.error(err);
     if(cont) cont.style.display = 'none';
@@ -7720,7 +7779,7 @@ async function construirPDFPase(datos){
     doc.text(`${inst} · ${sectorLbl}`, M, 18.5);
     doc.setFontSize(8);
     doc.text(`Generado ${sello}`, W - M, 12, { align: 'right' });
-    doc.text(`Últimas ${PASE_VENTANA_HS} h · ${datos.filas.length} pacientes`, W - M, 18.5, { align: 'right' });
+    doc.text(`Últimas ${PASE_VENTANA_HS} h · ${datos.filas.length} pacientes${datos.soloHoy ? ' (los de hoy)' : ' (todo el sector)'}`, W - M, 18.5, { align: 'right' });
     y = 36;
     pie();
   };
@@ -7834,17 +7893,207 @@ async function lanzarPase(){
   finally { if(b){ b.disabled = false; b.innerHTML = html; } }
 }
 
+// v3_196: los pacientes del sector, separados según les toque atención hoy.
+// Un pase con quince pacientes cuando hoy se ven seis es un pase que nadie lee.
+function pacientesDelPase(soloHoy){
+  const hoyStr = today();
+  const todos = patients
+    .filter(p => p.estado === 'Activo' && p.sala === currentSector)
+    .sort((a, b) => String(a.cama || '').localeCompare(String(b.cama || ''), 'es', { numeric: true }));
+  if(!soloHoy) return todos;
+  // Entra si hoy le toca por frecuencia, o si ya lo evolucionaron hoy
+  return todos.filter(p =>
+    diasHastaProxAtencion(p, hoyStr) === 0 ||
+    evoluciones.some(e => e.patientId === p.id && e.date === hoyStr && !e.tipo)
+  );
+}
+function paseSoloHoy(){
+  const r = document.querySelector('input[name="paseAlcance"]:checked');
+  return !r || r.value === 'hoy';
+}
+function actualizarPreviewPase(){
+  const n = pacientesDelPase(paseSoloHoy()).length;
+  const el = document.getElementById('paseResumenPrev');
+  if(el) el.textContent = `${n} paciente${n === 1 ? '' : 's'} en el pase · evoluciones de las últimas ${PASE_VENTANA_HS} horas`;
+}
+
 function abrirPase(){
   if(!currentSector){ showToast('Elegí un sector para generar el pase','error'); return; }
   _paseBlob = null;
-  const n = patients.filter(p => p.estado === 'Activo' && p.sala === currentSector).length;
+  const r = document.querySelector('input[name="paseAlcance"][value="hoy"]');
+  if(r) r.checked = true;
+  const nHoy = pacientesDelPase(true).length, nTodos = pacientesDelPase(false).length;
+  document.getElementById('paseCantHoy').textContent = `${nHoy} paciente${nHoy===1?'':'s'}`;
+  document.getElementById('paseCantTodos').textContent = `${nTodos} paciente${nTodos===1?'':'s'} activo${nTodos===1?'':'s'}`;
   document.getElementById('paseSector').textContent = SALA_LABEL[currentSector] || currentSector;
-  document.getElementById('paseResumenPrev').textContent =
-    `${n} paciente${n === 1 ? '' : 's'} activo${n === 1 ? '' : 's'} · evoluciones de las últimas ${PASE_VENTANA_HS} horas`;
+  actualizarPreviewPase();
   document.getElementById('paseProgreso').style.display = 'none';
   document.getElementById('paseAcciones').style.display = 'none';
   document.getElementById('paseBarra').style.width = '0%';
   openModal('modalPase');
+}
+
+
+// ════════════════════════════════════════════════════════
+//  v3_197 — TÉRMINOS Y CONDICIONES DE USO
+// ════════════════════════════════════════════════════════
+// Se muestran la primera vez que cada usuario entra, y otra vez cada vez que
+// cambia la versión del texto. La aceptación queda guardada en la base con
+// usuario, nombre, versión y fecha: un "acepto" que no deja rastro no prueba
+// nada el día que hace falta.
+
+const TC_VERSION = '1.0';
+const TC_FECHA = '6 de agosto de 2026';
+
+const TC_TEXTO = `
+<h4>1. Qué es Kinexa</h4>
+<p>Kinexa es una herramienta informática de <b>registro y gestión</b> de la actividad kinesiológica en internación. Permite documentar evoluciones, organizar la actividad del servicio y calcular indicadores a partir de los datos que cargan los profesionales.</p>
+
+<h4>2. Qué NO es Kinexa</h4>
+<p>Kinexa <b>no es un dispositivo médico</b> ni un software de diagnóstico, y no se encuentra registrada como tal ante ANMAT ni ante ninguna otra autoridad sanitaria. No emite diagnósticos, no indica tratamientos, no calcula dosis y no reemplaza al criterio profesional ni a la historia clínica oficial de la institución.</p>
+
+<h4>3. La decisión clínica es siempre del profesional</h4>
+<p>Toda decisión sobre la atención de un paciente es responsabilidad exclusiva del profesional interviniente y del equipo de salud tratante. Kinexa no participa en esas decisiones ni las condiciona. El usuario se compromete a verificar la información antes de utilizarla como base de cualquier conducta clínica.</p>
+
+<h4>4. Funciones asistidas por inteligencia artificial</h4>
+<p>Algunas funciones (resúmenes de evolución, informes y el pase kinésico) se generan con modelos de inteligencia artificial. Estos textos <b>pueden contener errores, omisiones o imprecisiones</b>, y son un borrador destinado a ser revisado y corregido por un profesional antes de cualquier uso. El profesional que los utiliza asume la responsabilidad por su contenido.</p>
+
+<h4>5. Datos de pacientes</h4>
+<p>Los datos cargados en Kinexa pertenecen a la institución de salud usuaria, que es la <b>responsable del tratamiento</b> en los términos de la normativa argentina de protección de datos personales. Kinexa actúa como <b>encargado del tratamiento</b>, procesa los datos únicamente para prestar el servicio, no los cede a terceros con fines comerciales y no los utiliza para entrenar modelos.</p>
+<p>Los datos se alojan en servidores ubicados en Canadá, jurisdicción reconocida como de protección adecuada para su sector privado.</p>
+
+<h4>6. Confidencialidad y uso de la cuenta</h4>
+<p>El usuario accede a información de salud amparada por el secreto profesional. Se compromete a: no compartir su clave, no permitir que otra persona use su cuenta, no extraer ni difundir datos de pacientes fuera de los canales institucionales autorizados, y a dar aviso inmediato ante cualquier sospecha de acceso indebido.</p>
+<p>Toda la actividad queda registrada e identificada con el usuario que la realizó.</p>
+
+<h4>7. Disponibilidad del servicio</h4>
+<p>Kinexa se ofrece «tal como está». No se garantiza disponibilidad ininterrumpida ni ausencia de errores. Puede haber interrupciones por mantenimiento, fallas de conectividad o de los proveedores de infraestructura. <b>La institución debe contar con un procedimiento alternativo de registro</b> para operar durante una eventual interrupción.</p>
+
+<h4>8. Límite de responsabilidad</h4>
+<p>En la máxima medida permitida por la ley, el titular de Kinexa no responde por daños indirectos, lucro cesante ni pérdida de datos derivados del uso o de la imposibilidad de uso del servicio, ni por decisiones clínicas adoptadas por los usuarios. Nada de lo aquí dispuesto limita la responsabilidad profesional propia de cada usuario ni la de la institución frente a sus pacientes, que no son delegables.</p>
+
+<h4>9. Propiedad intelectual</h4>
+<p>Kinexa, su código, diseño y marca son propiedad de Lic. Daniel Alejandro Rodríguez, con registro de software ante la Dirección Nacional del Derecho de Autor y solicitudes de marca ante el INPI. El uso de la aplicación no transfiere ningún derecho sobre ella. Los datos clínicos cargados siguen perteneciendo a la institución.</p>
+
+<h4>10. Modificaciones</h4>
+<p>Estos términos pueden actualizarse. Cuando eso ocurra, se solicitará una nueva aceptación antes de continuar usando la aplicación.</p>
+
+<h4>11. Ley aplicable</h4>
+<p>Se aplica la legislación de la República Argentina. Ante cualquier controversia serán competentes los tribunales ordinarios de la Provincia de Buenos Aires.</p>
+
+<h4>12. Contacto</h4>
+<p>Consultas, reclamos y ejercicio de derechos sobre datos personales: <b>kinexa89@gmail.com</b></p>
+`;
+
+// ── Registro de la aceptación ───────────────────────────────────
+function _tcClave(){
+  return 'tc:' + (currentUser?.user || 'anon');
+}
+
+// ¿Este usuario ya aceptó la versión vigente?
+async function tcYaAceptado(){
+  if(DEMO) return true;
+  const local = localStorage.getItem('kinexa_tc_' + (currentUser?.user || ''));
+  if(local === TC_VERSION) return true;
+  try {
+    const regs = await rpc('kinexa_registros', { p_token: TOKEN, p_tipo: 'aceptacion_tc' });
+    const mio = (regs || []).find(r => String(r.id) === _tcClave());
+    const data = mio?.data || mio;
+    if(data && data.version === TC_VERSION){
+      try { localStorage.setItem('kinexa_tc_' + currentUser.user, TC_VERSION); } catch(e){}
+      return true;
+    }
+  } catch(err){
+    console.error('No se pudo consultar la aceptación de términos', err);
+    // Sin conexión no se bloquea el trabajo clínico: se vuelve a preguntar después
+    return true;
+  }
+  return false;
+}
+
+async function guardarAceptacionTC(){
+  const registro = {
+    usuario: currentUser?.user || '',
+    nombre: currentUser?.name || '',
+    rol: currentUser?.role || '',
+    version: TC_VERSION,
+    fecha: new Date().toISOString(),
+    app: APP_VERSION
+  };
+  await rpc('kinexa_registro_guardar', {
+    p_token: TOKEN, p_tipo: 'aceptacion_tc', p_id: _tcClave(), p_data: registro
+  });
+  try { localStorage.setItem('kinexa_tc_' + currentUser.user, TC_VERSION); } catch(e){}
+  addLog('login', `Aceptó los términos y condiciones (v${TC_VERSION})`);
+}
+
+// ── Pantalla ────────────────────────────────────────────────────
+let _tcResolver = null;
+
+function pintarTC(){
+  const c = document.getElementById('tcCuerpo');
+  if(c && !c.dataset.listo){
+    c.innerHTML = TC_TEXTO;
+    c.dataset.listo = '1';
+  }
+  const v = document.getElementById('tcVersion');
+  if(v) v.textContent = `Versión ${TC_VERSION} · ${TC_FECHA}`;
+}
+
+// Devuelve true si aceptó, false si rechazó
+function pedirAceptacionTC(){
+  pintarTC();
+  document.getElementById('tcCheck').checked = false;
+  document.getElementById('btnTCAceptar').disabled = true;
+  document.getElementById('tcScreen').style.display = 'flex';
+  document.getElementById('tcCuerpo').scrollTop = 0;
+  return new Promise(res => { _tcResolver = res; });
+}
+
+function tcToggle(){
+  document.getElementById('btnTCAceptar').disabled = !document.getElementById('tcCheck').checked;
+}
+
+async function tcAceptar(){
+  const btn = document.getElementById('btnTCAceptar');
+  const html = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="ocr-spinner"></span>Guardando…';
+  try {
+    await guardarAceptacionTC();
+  } catch(err){
+    console.error('No se pudo registrar la aceptación', err);
+    btn.disabled = false; btn.innerHTML = html;
+    showToast('No se pudo registrar la aceptación. Revisá la conexión y probá de nuevo.','error');
+    return;
+  }
+  btn.disabled = false; btn.innerHTML = html;
+  document.getElementById('tcScreen').style.display = 'none';
+  if(_tcResolver){ _tcResolver(true); _tcResolver = null; }
+}
+
+function tcRechazar(){
+  if(!confirm('Sin aceptar los términos no se puede usar Kinexa.\n\n¿Cerrar sesión?')) return;
+  document.getElementById('tcScreen').style.display = 'none';
+  if(_tcResolver){ _tcResolver(false); _tcResolver = null; }
+  doLogout();
+}
+
+// Permite releerlos cuando quieras, sin volver a aceptar
+function verTerminos(){
+  pintarTC();
+  document.getElementById('tcCheck').parentElement.style.display = 'none';
+  document.getElementById('btnTCAceptar').style.display = 'none';
+  document.getElementById('btnTCRechazar').textContent = 'Cerrar';
+  document.getElementById('btnTCRechazar').onclick = () => {
+    document.getElementById('tcScreen').style.display = 'none';
+    document.getElementById('tcCheck').parentElement.style.display = '';
+    document.getElementById('btnTCAceptar').style.display = '';
+    document.getElementById('btnTCRechazar').textContent = 'No acepto';
+    document.getElementById('btnTCRechazar').onclick = tcRechazar;
+  };
+  document.getElementById('tcScreen').style.display = 'flex';
+  document.getElementById('tcCuerpo').scrollTop = 0;
 }
 
 // ════════════════════════════════════════════════════════
