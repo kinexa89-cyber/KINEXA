@@ -346,6 +346,25 @@ tr:hover td{ background:var(--blue-50); }
 .tc-pie{ padding:13px 20px 17px; border-top:1px solid var(--border); background:var(--gray-50); }
 .tc-check{ display:flex; align-items:flex-start; gap:9px; cursor:pointer; font-size:12.5px; font-weight:600; color:var(--text); }
 .tc-check input{ width:18px; height:18px; accent-color:var(--purple-400); margin:1px 0 0; flex-shrink:0; cursor:pointer; }
+/* v3_198: aviso y panel de suscripción */
+.aviso-susc{ display:flex; align-items:center; gap:9px; padding:9px 14px; margin:0 0 10px;
+  border-radius:9px; font-size:12.5px; font-weight:600; }
+.aviso-susc.ambar{ background:var(--amber-50); color:var(--amber-800); border:1px solid var(--amber-100); border-left:3px solid var(--amber-400); }
+.aviso-susc.rojo{ background:var(--red-50); color:var(--red-800); border:1px solid var(--red-100); border-left:3px solid var(--red-400); }
+.aviso-susc i{ font-size:16px; flex-shrink:0; }
+.aviso-susc span{ flex:1; min-width:0; }
+.aviso-susc-link{ flex-shrink:0; font-weight:800; text-decoration:underline; color:inherit; }
+.susc-pago{ display:flex; align-items:center; gap:9px; padding:9px 12px; border-bottom:1px solid var(--border); }
+.susc-pago:last-child{ border-bottom:none; }
+/* v3_199: tarjetas de plan */
+.plan-card{ position:relative; border:1px solid var(--border); border-radius:12px; padding:16px 16px 14px; background:var(--surface); }
+.plan-card.destacado{ border:2px solid var(--purple-400); background:var(--purple-50); }
+.plan-cinta{ position:absolute; top:-10px; right:14px; background:var(--purple-400); color:#fff;
+  font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; padding:3px 9px; border-radius:9px; }
+.plan-nombre{ font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); }
+.plan-precio{ font-size:28px; font-weight:800; color:var(--blue-900); margin:3px 0 2px; line-height:1.1; }
+.plan-precio small{ font-size:13px; font-weight:600; color:var(--text-muted); margin-left:3px; }
+.plan-detalle{ font-size:12px; color:var(--text); margin-bottom:12px; }
 /* v3_189: papelera */
 .pap-item{ display:flex; align-items:center; gap:11px; padding:11px 14px; border-bottom:1px solid var(--border); }
 .pap-item:last-child{ border-bottom:none; }
@@ -980,6 +999,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <span class="sector-badge hide-mobile" id="sectorBadge" onclick="changeSector()" style="display:none" title="Cambiar sector">
         <i class="ti ti-map-pin"></i><span id="sectorBadgeLabel">—</span>
       </span>
+      <button class="btn-logout" id="btnSuscripcion" onclick="abrirPanelSuscripcion()" style="display:none" title="Suscripción"><i class="ti ti-receipt"></i></button>
       <button class="btn-logout" id="btnConfigKx" onclick="abrirConfigKinexa()" style="display:none" title="Configuración"><i class="ti ti-settings"></i></button>
       <button class="btn-logout" id="btnBandejaKx" onclick="abrirBandejaSugerencias()" style="display:none;position:relative" title="Sugerencias recibidas"><i class="ti ti-inbox"></i><span id="badgeSugerencias" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--red-500);color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;line-height:15px;border-radius:8px;padding:0 3px">0</span></button>
       <button class="btn-logout" onclick="abrirSugerencia()" title="Enviar una sugerencia o reportar un error"><i class="ti ti-message-plus"></i></button>
@@ -1037,6 +1057,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     </div>
 
     <!-- ── PACIENTES ── -->
+    <div id="avisoSuscripcion" class="aviso-susc" style="display:none"></div>
     <div class="section" id="section-pacientes">
       <div class="page-header">
         <div><h2>Todos los pacientes</h2><p>Historial completo de ingresos</p></div>
@@ -5290,6 +5311,97 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- ════ MODAL EGRESO / TRASLADO ════ -->
+<!-- ── PLANES (v3_199) ── -->
+<div class="modal-overlay" id="modalPlanes">
+  <div class="modal" style="max-width:500px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title"><i class="ti ti-license"></i> Planes de Kinexa</div>
+        <div class="modal-sub" id="planesEstado">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalPlanes')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 14px">Precio por institución, con usuarios y sectores ilimitados.</p>
+      <div id="planesLista" style="display:flex;flex-direction:column;gap:12px"></div>
+      <div style="margin-top:14px;font-size:11.5px;color:var(--text-muted);line-height:1.5">
+        Se emite factura. Para instituciones que abonan por transferencia u orden de compra, escribinos a <b>kinexa89@gmail.com</b> y coordinamos.
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalPlanes')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── SUSCRIPCIÓN (v3_198) ── -->
+<div class="modal-overlay" id="modalSuscripcion">
+  <div class="modal" style="max-width:540px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title"><i class="ti ti-receipt"></i> Suscripción</div>
+        <div class="modal-sub" id="suscEstadoActual">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalSuscripcion')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="suscCortesia" style="display:none;background:var(--teal-50);border:1px solid var(--teal-100);border-left:3px solid var(--teal-600);border-radius:9px;padding:10px 13px;font-size:12px;color:var(--teal-800);margin-bottom:14px">
+        <i class="ti ti-gift"></i> Esta institución está en la lista de <b>uso sin cargo</b>. No ve planes ni avisos de vencimiento, sin importar lo que se cargue acá.
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Plan</label><input type="text" id="suscPlan" placeholder="Ej: Institucional anual"></div>
+        <div class="form-group"><label>Estado</label>
+          <select id="suscEstado">
+            <option value="cortesia">Sin cargo (cortesía)</option>
+            <option value="prueba">Período de prueba</option>
+            <option value="activa">Al día</option>
+            <option value="vencida">Vencida</option>
+            <option value="suspendida">Suspendida</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Desde</label><input type="date" id="suscDesde"></div>
+        <div class="form-group"><label>Vigente hasta</label><input type="date" id="suscHasta"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Precio acordado</label><input type="text" id="suscPrecio" placeholder="Ej: $180.000 / año"></div>
+      </div>
+      <div class="form-group"><label>Notas</label><input type="text" id="suscNotas" placeholder="Contacto de facturación, número de expediente..."></div>
+      <button class="btn btn-primary btn-block" id="btnGuardarSusc" onclick="guardarDatosSuscripcion()"><i class="ti ti-device-floppy"></i>Guardar datos</button>
+
+      <div class="form-section" style="margin-top:16px">
+        <div class="form-section-title"><i class="ti ti-cash"></i> Registrar un pago recibido</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button class="btn btn-ghost btn-sm" style="flex:1" onclick="aplicarPlanRapido('mensual')">Plan mensual</button>
+          <button class="btn btn-ghost btn-sm" style="flex:1" onclick="aplicarPlanRapido('anual')">Plan anual</button>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Fecha</label><input type="date" id="pagoFecha"></div>
+          <div class="form-group"><label>Monto</label><input type="text" id="pagoMonto" placeholder="180000"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Moneda</label>
+            <select id="pagoMoneda"><option>ARS</option><option>USD</option></select></div>
+          <div class="form-group"><label>Medio</label>
+            <select id="pagoMedio"><option>Transferencia</option><option>Efectivo</option><option>Cheque</option><option>Mercado Pago</option><option>Otro</option></select></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Comprobante / factura</label><input type="text" id="pagoComprobante" placeholder="Factura B 0001-00000123"></div>
+          <div class="form-group"><label>Extiende hasta</label><input type="date" id="pagoHasta"></div>
+        </div>
+        <button class="btn btn-success btn-block" onclick="registrarPagoSuscripcion()"><i class="ti ti-plus"></i>Registrar pago y extender</button>
+      </div>
+
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 6px">Historial de pagos</div>
+      <div id="suscPagos" style="border:1px solid var(--border);border-radius:9px;max-height:190px;overflow-y:auto"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalSuscripcion')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── FUSIONAR FICHAS (v3_193) ── -->
 <!-- ── TÉRMINOS Y CONDICIONES (v3_197) ── -->
 <div id="tcScreen" class="tc-screen" style="display:none">
@@ -5536,7 +5648,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_197';
+const APP_VERSION = 'v3_201';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -7241,6 +7353,10 @@ function launchApp(){
   // v3_194: fusionar fichas es para toda la jefatura de cada institución
   { const bf = document.getElementById('btnFusionHeader');
     if(bf) bf.style.display = (currentUser?.role === 'admin') ? '' : 'none'; }
+  // v3_198: la suscripción la maneja solo el titular de Kinexa, no el admin del hospital
+  { const bs = document.getElementById('btnSuscripcion');
+    if(bs) bs.style.display = esRodriguez ? '' : 'none'; }
+  cargarSuscripcion();   // v3_198
   addLog('login',`Ingresó: ${currentUser.name}${currentSector?' ('+currentSector+')':''}`);
   updateDashHeader();
   setSyncStatus('syncing');
@@ -8094,6 +8210,310 @@ function verTerminos(){
   };
   document.getElementById('tcScreen').style.display = 'flex';
   document.getElementById('tcCuerpo').scrollTop = 0;
+}
+
+
+// ════════════════════════════════════════════════════════
+//  v3_198 — SUSCRIPCIÓN DE LA INSTITUCIÓN
+// ════════════════════════════════════════════════════════
+// Guarda plan, vigencia y pagos de cada institución. Está pensado para cobrar
+// por transferencia y factura, que es como paga una institución de salud, pero
+// el estado queda listo para que después se le enchufe un medio de pago
+// automático sin rehacer nada.
+//
+// LÍMITE IMPORTANTE: el corte de acceso es del lado del navegador. Alcanza para
+// que una institución que no pagó vea el aviso y deje de cargar, no para
+// impedírselo a alguien que sepa abrir la consola. El bloqueo de verdad va en
+// las funciones de Supabase y queda pendiente.
+
+// ── Planes y precios (v3_199) ───────────────────────────────────
+// Los precios son por institución. El anual equivale a pagar 10 meses:
+// dos meses de descuento por adelantar el año.
+//
+// LOS LINKS DE MERCADO PAGO SE PEGAN ACÁ ABAJO. Mientras estén vacíos, el
+// botón abre un mail en lugar de la pasarela, así nunca queda un botón muerto.
+const MP_LINK_MENSUAL = 'https://mpago.la/1Qab1NW';   // $100.000 / mes
+const MP_LINK_ANUAL   = 'https://mpago.la/1m8BxCM';   // $1.000.000 / año
+
+const PLANES_KINEXA = [
+  { id:'mensual', nombre:'Mensual', precio:100000, meses:1,
+    detalle:'Se abona todos los meses', link:MP_LINK_MENSUAL },
+  { id:'anual', nombre:'Anual', precio:1000000, meses:12,
+    detalle:'Equivale a 10 meses: ahorrás $200.000', link:MP_LINK_ANUAL, destacado:true },
+];
+
+const fmtPesos = n => '$' + Number(n||0).toLocaleString('es-AR');
+
+// Suma meses a una fecha, para calcular hasta cuándo cubre un pago
+function sumarMeses(desdeISO, meses){
+  const d = new Date((desdeISO || today()) + 'T00:00:00');
+  d.setMonth(d.getMonth() + meses);
+  const p = x => String(x).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+
+const SUSC_GRACIA_DIAS = 10;
+const SUSC_ESTADOS = {
+  cortesia:   { label:'Sin cargo',         color:'var(--teal-600)'   },
+  prueba:     { label:'Período de prueba', color:'var(--purple-400)' },
+  activa:     { label:'Al día',            color:'var(--teal-600)'   },
+  vencida:    { label:'Vencida',           color:'var(--amber-600)'  },
+  suspendida: { label:'Suspendida',        color:'var(--red-600)'    },
+};
+
+// v3_201: instituciones sin cargo. Se compara por palabra clave y sin tildes,
+// para que aguante variantes del nombre completo ("Hospital de Alta Complejidad
+// del Bicentenario Esteban Echeverría", "HBEE", etc.). Es una red de seguridad:
+// aunque nadie les cargue el estado 'cortesia', nunca van a ver un cobro.
+const INST_SIN_CARGO = ['bicentenario', 'cuenca alta', 'grierson', 'argerich'];
+function institucionSinCargo(){
+  const n = _normTxt(currentUser?.instNombre || '');
+  if(!n) return false;
+  return INST_SIN_CARGO.some(k => n.includes(k));
+}
+let SUSCRIPCION = null;
+
+function _hoyISO(){ return today(); }
+function _diasHasta(fecha){
+  if(!fecha) return null;
+  const a = new Date(_hoyISO() + 'T00:00:00').getTime();
+  const b = new Date(fecha + 'T00:00:00').getTime();
+  return Math.round((b - a) / 86400000);
+}
+
+// Estado real, calculado: lo guardado puede haber quedado viejo
+function estadoSuscripcion(){
+  const s = SUSCRIPCION;
+  // v3_201: cortesía por lista o por estado cargado. Nunca avisa ni bloquea.
+  if(institucionSinCargo() || s?.estado === 'cortesia'){
+    return { cod:'cortesia', label:'Sin cargo', dias:null, bloquea:false, avisa:false };
+  }
+  if(!s) return { cod:'sin_datos', label:'Sin suscripción registrada', dias:null, bloquea:false, avisa:false };
+  if(s.estado === 'suspendida') return { cod:'suspendida', label:'Suspendida', dias:null, bloquea:true, avisa:true };
+  const dias = _diasHasta(s.hasta);
+  if(dias === null) return { cod:s.estado || 'activa', label:(SUSC_ESTADOS[s.estado]?.label || '—'), dias:null, bloquea:false, avisa:false };
+  if(dias >= 0){
+    return { cod:s.estado === 'prueba' ? 'prueba' : 'activa',
+             label:(SUSC_ESTADOS[s.estado]?.label || 'Al día'), dias,
+             bloquea:false, avisa: dias <= 7 };
+  }
+  const vencidoHace = -dias;
+  return { cod:'vencida', label:'Vencida', dias:-vencidoHace,
+           bloquea: vencidoHace > SUSC_GRACIA_DIAS, avisa:true,
+           gracia: Math.max(0, SUSC_GRACIA_DIAS - vencidoHace) };
+}
+
+async function cargarSuscripcion(){
+  if(DEMO){ SUSCRIPCION = { plan:'Demostración', estado:'prueba', hasta:null, pagos:[] }; return; }
+  try {
+    const regs = await rpc('kinexa_registros', { p_token: TOKEN, p_tipo: 'suscripcion' });
+    const r = (regs || []).find(x => String(x.id) === 'actual');
+    SUSCRIPCION = (r && (r.data || r)) || null;
+  } catch(err){
+    console.error('No se pudo leer la suscripción', err);
+    SUSCRIPCION = null;   // sin datos NO se bloquea: nadie queda afuera por una falla de red
+  }
+  renderAvisoSuscripcion();
+}
+
+async function guardarSuscripcion(datos){
+  await rpc('kinexa_registro_guardar', {
+    p_token: TOKEN, p_tipo:'suscripcion', p_id:'actual', p_data: datos
+  });
+  SUSCRIPCION = datos;
+  renderAvisoSuscripcion();
+}
+
+// ── Aviso en pantalla ───────────────────────────────────────────
+function renderAvisoSuscripcion(){
+  const el = document.getElementById('avisoSuscripcion');
+  if(!el) return;
+  const e = estadoSuscripcion();
+  if(!e.avisa){ el.style.display = 'none'; return; }
+
+  let texto, tono;
+  if(e.cod === 'suspendida'){
+    texto = 'El servicio está suspendido. Escribinos a kinexa89@gmail.com para reactivarlo.';
+    tono = 'rojo';
+  } else if(e.cod === 'vencida' && e.bloquea){
+    texto = `La suscripción venció hace ${-e.dias} días. El acceso quedó limitado.`;
+    tono = 'rojo';
+  } else if(e.cod === 'vencida'){
+    texto = `La suscripción venció hace ${-e.dias} día${-e.dias===1?'':'s'}. Quedan ${e.gracia} día${e.gracia===1?'':'s'} de gracia para regularizar.`;
+    tono = 'ambar';
+  } else {
+    texto = `La suscripción vence ${e.dias === 0 ? 'hoy' : e.dias === 1 ? 'mañana' : 'en ' + e.dias + ' días'}.`;
+    tono = 'ambar';
+  }
+  el.className = 'aviso-susc ' + tono;
+  el.innerHTML = `<i class="ti ti-alert-circle"></i><span>${escapeHTML(texto)}</span>`
+    + `<a href="#" onclick="abrirPlanes();return false" class="aviso-susc-link">Ver planes</a>`;
+  el.style.display = 'flex';
+}
+
+// Bloqueo blando: se puede seguir consultando, no cargar
+function suscripcionBloquea(){
+  return estadoSuscripcion().bloquea === true;
+}
+function frenarSiVencida(){
+  if(!suscripcionBloquea()) return false;
+  showToast('La suscripción está vencida. Se pueden consultar los datos pero no cargar nuevos registros. Escribinos a kinexa89@gmail.com', 'error');
+  return true;
+}
+
+// ── Planes: lo que ve la institución ────────────────────────────
+function abrirPlanes(){
+  const cont = document.getElementById('planesLista');
+  const e = estadoSuscripcion();
+  const est = document.getElementById('planesEstado');
+  if(est){
+    est.textContent = SUSCRIPCION
+      ? `${e.label}${SUSCRIPCION.hasta ? ' · vigente hasta ' + fmtDate(SUSCRIPCION.hasta) : ''}`
+      : 'Sin suscripción activa';
+  }
+  cont.innerHTML = PLANES_KINEXA.map(pl => `
+    <div class="plan-card ${pl.destacado ? 'destacado' : ''}">
+      ${pl.destacado ? '<div class="plan-cinta">Más conveniente</div>' : ''}
+      <div class="plan-nombre">${escapeHTML(pl.nombre)}</div>
+      <div class="plan-precio">${fmtPesos(pl.precio)}<small>/ ${pl.meses === 1 ? 'mes' : 'año'}</small></div>
+      <div class="plan-detalle">${escapeHTML(pl.detalle)}</div>
+      <button class="btn ${pl.destacado ? 'btn-primary' : 'btn-ghost'} btn-block" onclick="pagarPlan('${pl.id}')">
+        <i class="ti ti-credit-card"></i>${pl.link ? 'Pagar con Mercado Pago' : 'Solicitar link de pago'}
+      </button>
+    </div>`).join('');
+  openModal('modalPlanes');
+}
+
+function pagarPlan(id){
+  const pl = PLANES_KINEXA.find(x => x.id === id);
+  if(!pl) return;
+  if(pl.link){
+    window.open(pl.link, '_blank', 'noopener');
+    showToast('Cuando el pago se acredite, activamos la suscripción. Guardá el comprobante.','info');
+    return;
+  }
+  const inst = currentUser?.instNombre || '';
+  const asunto = encodeURIComponent(`Suscripción Kinexa — plan ${pl.nombre}`);
+  const cuerpo = encodeURIComponent(
+    `Institución: ${inst}\nPlan solicitado: ${pl.nombre} (${fmtPesos(pl.precio)})\n\n` +
+    `Solicito el link de pago y los datos de facturación.`);
+  window.location.href = `mailto:kinexa89@gmail.com?subject=${asunto}&body=${cuerpo}`;
+}
+
+// ── Panel de administración (solo la jefatura de Kinexa) ────────
+function abrirPanelSuscripcion(){
+  if(!esJefatura(currentUser)){ showToast('Solo el titular de Kinexa puede editar la suscripción','error'); return; }
+  const s = SUSCRIPCION || {};
+  const G = (id, v) => { const el = document.getElementById(id); if(el) el.value = v ?? ''; };
+  G('suscPlan', s.plan || '');
+  G('suscEstado', s.estado || 'prueba');
+  G('suscDesde', s.desde || '');
+  G('suscHasta', s.hasta || '');
+  G('suscPrecio', s.precio || '');
+  G('suscNotas', s.notas || '');
+  renderPagosSuscripcion();
+  openModal('modalSuscripcion');
+}
+
+function renderPagosSuscripcion(){
+  const cont = document.getElementById('suscPagos');
+  if(!cont) return;
+  const pagos = (SUSCRIPCION?.pagos || []).slice().reverse();
+  const e = estadoSuscripcion();
+  const cortesia = document.getElementById('suscCortesia');
+  if(cortesia) cortesia.style.display = institucionSinCargo() ? '' : 'none';
+  const badge = document.getElementById('suscEstadoActual');
+  if(badge){
+    badge.textContent = e.label + (e.dias !== null && e.dias >= 0 ? ` · ${e.dias} día${e.dias===1?'':'s'} restantes` : '');
+    badge.style.color = SUSC_ESTADOS[e.cod]?.color || 'var(--text-muted)';
+  }
+  cont.innerHTML = pagos.length
+    ? pagos.map(p => `<div class="susc-pago">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:12.5px;color:var(--blue-900)">${escapeHTML(p.monto||'—')} ${escapeHTML(p.moneda||'')}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHTML(fmtDate(p.fecha))} · ${escapeHTML(p.medio||'—')}${p.comprobante ? ' · '+escapeHTML(p.comprobante) : ''}</div>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);flex-shrink:0">hasta ${escapeHTML(fmtDate(p.hasta))}</div>
+      </div>`).join('')
+    : '<div style="padding:12px;text-align:center;color:var(--text-muted);font-size:12px">Sin pagos registrados.</div>';
+}
+
+async function guardarDatosSuscripcion(){
+  const G = id => document.getElementById(id)?.value?.trim() || '';
+  const datos = {
+    plan: G('suscPlan'),
+    estado: G('suscEstado'),
+    desde: G('suscDesde'),
+    hasta: G('suscHasta'),
+    precio: G('suscPrecio'),
+    notas: G('suscNotas'),
+    pagos: SUSCRIPCION?.pagos || [],
+    actualizado: new Date().toISOString(),
+    actualizadoPor: currentUser?.name || ''
+  };
+  const btn = document.getElementById('btnGuardarSusc');
+  const html = btn ? btn.innerHTML : '';
+  if(btn){ btn.disabled = true; btn.innerHTML = '<span class="ocr-spinner"></span>Guardando…'; }
+  try {
+    await guardarSuscripcion(datos);
+    addLog('edit', `Actualizó la suscripción: ${datos.plan||'—'} · ${datos.estado} · hasta ${datos.hasta||'—'}`);
+    showToast('Suscripción actualizada ✓','success');
+    renderPagosSuscripcion();
+  } catch(err){
+    console.error(err);
+    showToast('No se pudo guardar: ' + (err.message||'').slice(0,60),'error');
+  }
+  if(btn){ btn.disabled = false; btn.innerHTML = html; }
+}
+
+// Registrar un pago recibido y extender la vigencia de una
+// Completa monto y vigencia según el plan elegido, para no tipearlo cada vez
+function aplicarPlanRapido(id){
+  const pl = PLANES_KINEXA.find(x => x.id === id);
+  if(!pl) return;
+  const base = document.getElementById('suscHasta').value || today();
+  const desde = (base >= today()) ? base : today();   // si ya venció, cuenta desde hoy
+  document.getElementById('pagoMonto').value = pl.precio;
+  document.getElementById('pagoMoneda').value = 'ARS';
+  document.getElementById('pagoHasta').value = sumarMeses(desde, pl.meses);
+  document.getElementById('pagoFecha').value = today();
+  document.getElementById('suscPlan').value = 'Institucional ' + pl.nombre.toLowerCase();
+  document.getElementById('suscPrecio').value = fmtPesos(pl.precio) + ' / ' + (pl.meses===1?'mes':'año');
+  showToast(`Plan ${pl.nombre} cargado · vigencia hasta ${fmtDate(document.getElementById('pagoHasta').value)}`,'info');
+}
+
+async function registrarPagoSuscripcion(){
+  const G = id => document.getElementById(id)?.value?.trim() || '';
+  const monto = G('pagoMonto'), hasta = G('pagoHasta');
+  if(!monto || !hasta){ showToast('Completá el monto y hasta qué fecha extiende','error'); return; }
+  const pago = {
+    fecha: G('pagoFecha') || _hoyISO(),
+    monto, moneda: G('pagoMoneda') || 'ARS',
+    medio: G('pagoMedio') || 'Transferencia',
+    comprobante: G('pagoComprobante'),
+    hasta,
+    registradoPor: currentUser?.name || ''
+  };
+  const datos = {
+    ...(SUSCRIPCION || {}),
+    estado: 'activa',
+    hasta,
+    pagos: [ ...(SUSCRIPCION?.pagos || []), pago ],
+    actualizado: new Date().toISOString(),
+    actualizadoPor: currentUser?.name || ''
+  };
+  try {
+    await guardarSuscripcion(datos);
+    addLog('edit', `Registró un pago de suscripción: ${monto} ${pago.moneda}, vigencia hasta ${hasta}`);
+    showToast('Pago registrado · suscripción extendida ✓','success');
+    ['pagoMonto','pagoComprobante'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    document.getElementById('suscHasta').value = hasta;
+    document.getElementById('suscEstado').value = 'activa';
+    renderPagosSuscripcion();
+  } catch(err){
+    console.error(err);
+    showToast('No se pudo registrar el pago: ' + (err.message||'').slice(0,60),'error');
+  }
 }
 
 // ════════════════════════════════════════════════════════
@@ -11469,6 +11889,7 @@ function openEvolucionMin(patientId){
 let _guardandoEvoMin = false;   // v3_181: este no tenía guard, por eso se duplicaba en Mínimos
 async function guardarEvoMin(){
   if(_guardandoEvoMin) return;
+  if(frenarSiVencida()) return;   // v3_198
   const date = document.getElementById('emDate').value;
   if(!date){ showToast('Ingresá la fecha','error'); return; }
   _guardandoEvoMin = true;
@@ -14981,6 +15402,7 @@ async function guardarEvolucion(){
   if(_guardandoEvo) return;
   const date = document.getElementById('eDate').value;
   if(!date){ showToast('Ingresá la fecha','error'); return; }
+  if(frenarSiVencida()) return;   // v3_198
   _guardandoEvo = true;
   const btnEvo = document.getElementById('btnGuardarEvo');
   const btnEvoHTML = btnEvo ? btnEvo.innerHTML : '';
