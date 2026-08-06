@@ -45,3 +45,4 @@ self.addEventListener('fetch', (event) => {
   }
   // El resto de las peticiones siguen el comportamiento normal del navegador.
 });
+// reset
