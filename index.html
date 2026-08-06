@@ -313,6 +313,15 @@ tr:hover td{ background:var(--blue-50); }
   border-left:3px solid var(--amber-400); font-size:12px; font-weight:600; color:var(--amber-800);
   display:flex; align-items:center; gap:8px; }
 .evo-banner-edit i{ font-size:15px; color:var(--amber-600); flex-shrink:0; }
+/* v3_193: fusión de fichas */
+.fus-op{ display:flex; align-items:center; gap:9px; padding:9px 12px; border-bottom:1px solid var(--border); cursor:pointer; }
+.fus-op:last-child{ border-bottom:none; }
+.fus-op:hover{ background:var(--purple-50); }
+.fus-op.sel{ background:var(--purple-50); box-shadow:inset 3px 0 0 var(--purple-400); }
+.fus-prev{ margin-top:13px; background:var(--amber-50); border:1px solid var(--amber-100);
+  border-left:3px solid var(--amber-400); border-radius:9px; padding:11px 13px;
+  font-size:12px; color:var(--amber-800); line-height:1.55; }
+.fus-prev i{ color:var(--amber-600); }
 /* v3_189: papelera */
 .pap-item{ display:flex; align-items:center; gap:11px; padding:11px 14px; border-bottom:1px solid var(--border); }
 .pap-item:last-child{ border-bottom:none; }
@@ -5254,6 +5263,37 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- ════ MODAL EGRESO / TRASLADO ════ -->
+<!-- ── FUSIONAR FICHAS (v3_193) ── -->
+<div class="modal-overlay" id="modalFusion">
+  <div class="modal" style="max-width:560px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title"><i class="ti ti-arrow-merge"></i> Fusionar fichas</div>
+        <div class="modal-sub">Unir dos fichas del mismo paciente sin perder historia</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalFusion')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:5px">Ficha que se conserva</div>
+      <div style="display:flex;align-items:center;gap:9px;background:var(--purple-50);border:1px solid var(--purple-400);border-radius:9px;padding:10px 12px;font-weight:700;font-size:13.5px;color:var(--blue-900)">
+        <div id="fusionPrincipal" style="flex:1;min-width:0">—</div>
+        <button class="btn btn-ghost btn-sm" onclick="invertirFusion()" title="Intercambiar cuál se conserva"><i class="ti ti-switch-vertical"></i></button>
+      </div>
+
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:14px 0 5px">Ficha que se absorbe</div>
+      <input type="text" id="fusionBusca" placeholder="Buscar por apellido o DNI..." oninput="buscarFusion(this.value)"
+             style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;font-size:13px;font-family:var(--font);box-sizing:border-box">
+      <div id="fusionLista" style="margin-top:8px;max-height:230px;overflow-y:auto;border:1px solid var(--border);border-radius:9px"></div>
+
+      <div id="fusionPreview"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalFusion')">Cancelar</button>
+      <button class="btn btn-primary" id="btnFusionar" disabled onclick="confirmarFusion()"><i class="ti ti-arrow-merge"></i>Fusionar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── PASE KINÉSICO DEL SECTOR (v3_188) ── -->
 <div class="modal-overlay" id="modalPase">
   <div class="modal" style="max-width:520px">
@@ -5439,7 +5479,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_192';
+const APP_VERSION = 'v3_193';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -6435,6 +6475,77 @@ const _numId = v => { const n = Number(v); return (v !== null && v !== '' && Num
 // que un error de dedo era irreversible.
 const PAPELERA_DIAS = 30;
 let papeleraPacientes = [], papeleraEvos = [];
+
+// ── v3_193: comparación de personas sin tildes ni ruido ─────────
+// Hasta acá la app comparaba nombres letra por letra: "Rodríguez" y "Rodriguez"
+// eran dos personas, y "Martín" y "Martín Emanuel" también. De ahí salían las
+// fichas duplicadas cuando un paciente pasa de un sector a otro.
+function _normTxt(t){
+  return String(t || '')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')   // fuera los tildes
+    .toLowerCase()
+    .replace(/[^a-z0-9ñ ]/g, ' ')                        // fuera puntos, guiones, comas
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+const _normDNI = d => String(d || '').replace(/\D/g, '');
+
+// Distancia de edición, para tolerar un error de tipeo (Rodrigez / Rodriguez)
+function _distancia(a, b){
+  if(a === b) return 0;
+  if(!a.length || !b.length) return Math.max(a.length, b.length);
+  let prev = Array.from({length: b.length + 1}, (_, i) => i);
+  for(let i = 1; i <= a.length; i++){
+    const fila = [i];
+    for(let j = 1; j <= b.length; j++){
+      fila[j] = Math.min(prev[j] + 1, fila[j-1] + 1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+    }
+    prev = fila;
+  }
+  return prev[b.length];
+}
+
+// ¿Estos dos nombres pueden ser la misma persona? Devuelve null o el motivo.
+function _mismaPersona(a, b){
+  const dniA = _normDNI(a.dni), dniB = _normDNI(b.dni);
+  if(dniA && dniB){
+    if(dniA === dniB) return { nivel:'seguro', motivo:'mismo DNI' };
+    return null;                       // dos DNI distintos: son personas distintas
+  }
+  const apA = _normTxt(a.apellido), apB = _normTxt(b.apellido);
+  if(!apA || !apB) return null;
+  const apIgual = apA === apB;
+  const apParecido = !apIgual && apA.length > 4 && _distancia(apA, apB) <= 1;
+  if(!apIgual && !apParecido) return null;
+
+  const nomA = _normTxt(a.nombre), nomB = _normTxt(b.nombre);
+  if(!nomA || !nomB) return { nivel:'posible', motivo:'mismo apellido, falta el nombre en una ficha' };
+  if(nomA === nomB) return { nivel: apIgual ? 'seguro' : 'probable', motivo:'mismo apellido y nombre' };
+
+  // "Martin" contra "Martin Emanuel": uno es el nombre completo del otro
+  const tokA = nomA.split(' '), tokB = nomB.split(' ');
+  const unoDentroDelOtro = tokA.every((t,i) => tokB[i] === t) || tokB.every((t,i) => tokA[i] === t);
+  if(unoDentroDelOtro) return { nivel:'probable', motivo:'un nombre es la versión completa del otro' };
+  if(tokA[0] && tokA[0] === tokB[0]) return { nivel:'posible', motivo:'mismo apellido y primer nombre' };
+  if(nomA.length > 4 && _distancia(nomA, nomB) <= 1) return { nivel:'posible', motivo:'nombre casi idéntico' };
+  return null;
+}
+
+// Candidatos a ser el mismo paciente que uno que se está por cargar.
+// Solo mira los activos y los que ingresaron hace poco: un homónimo de hace
+// ocho meses no tiene por qué molestar a nadie.
+const DIAS_VENTANA_DUPLICADO = 20;
+function posiblesDuplicados(datos, excluirId){
+  const limite = Date.now() - DIAS_VENTANA_DUPLICADO * 86400000;
+  return patients.filter(p => {
+    if(excluirId != null && String(p.id) === String(excluirId)) return false;
+    const ing = p.fISector || p.fIUTI || p.fIHosp;
+    const reciente = ing ? new Date(ing + 'T12:00:00').getTime() >= limite : false;
+    if(p.estado !== 'Activo' && !reciente) return false;
+    return !!_mismaPersona(datos, p);
+  }).map(p => ({ p, ..._mismaPersona(datos, p) }))
+    .sort((a,b) => ({seguro:0, probable:1, posible:2}[a.nivel] - {seguro:0, probable:1, posible:2}[b.nivel]));
+}
 
 function normalizarPacientes(lista){
   const todos = (lista || []).filter(Boolean).map(p => ({ ...p, id: _numId(p.id) }));
@@ -12920,9 +13031,9 @@ function filterDash(q){
 }
 
 function filterPacientes(q){
-  const s = q.toLowerCase();
+  const s = _normTxt(q);   // v3_193: buscar "rodriguez" encuentra "Rodríguez"
   const filtroE = document.getElementById('filtroEstado').value;
-  let lista = patients.filter(p=>`${p.apellido} ${p.nombre} ${p.dni} ${p.sala} ${p.diagnostico}`.toLowerCase().includes(s));
+  let lista = patients.filter(p=>_normTxt(`${p.apellido} ${p.nombre} ${p.dni} ${p.sala} ${p.diagnostico}`).includes(s));
   if(filtroE) lista = lista.filter(p=>p.estado===filtroE);
   const todayStr = today();
   const tbody = document.getElementById('tbodyPacientes');
@@ -12941,11 +13052,181 @@ function filterPacientes(q){
           <button class="btn-evolve" onclick="openEvolucion(${p.id})"><i class="ti ti-stethoscope"></i> <span class="evo-count">${nEvo}</span></button>
           <button class="btn btn-icon btn-sm" onclick="openEditPaciente(${p.id})"><i class="ti ti-pencil"></i></button>
           ${currentUser?.role==='admin' && p.estado!=='Activo' ? `<button class="btn btn-icon btn-sm" title="Reactivar paciente" style="color:var(--teal-600)" onclick="reactivarPaciente(${p.id})"><i class="ti ti-arrow-back-up"></i></button>` : ''}
+          ${currentUser?.role==='admin' ? `<button class="btn btn-icon btn-sm" title="Fusionar con otra ficha" style="color:var(--purple-400)" onclick="abrirFusion(${p.id})"><i class="ti ti-arrow-merge"></i></button>` : ''}
           ${currentUser?.role==='admin' ? `<button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarPaciente(${p.id})"><i class="ti ti-trash"></i></button>` : ''}
         </div>
       </td>
     </tr>`;
   }).join('') || '<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--text-muted)">Sin resultados</td></tr>';
+}
+
+// ── v3_193: FUSIONAR DOS FICHAS DEL MISMO PACIENTE ──────────────
+// Pasa cuando alguien ingresa por emergencias sin DNI y el sector siguiente lo
+// carga de cero: quedan dos fichas de la misma persona y la historia partida.
+// Borrar una pierde información; dejar las dos duplica egresos e indicadores.
+let _fusionA = null;   // ficha que se conserva
+let _fusionB = null;   // ficha que se absorbe
+
+function abrirFusion(idA){
+  if(currentUser?.role !== 'admin'){ showToast('Solo la jefatura puede fusionar fichas','error'); return; }
+  _fusionA = patients.find(x => x.id === idA) || null;
+  _fusionB = null;
+  if(!_fusionA) return;
+  document.getElementById('fusionBusca').value = '';
+  // Se ofrecen primero los candidatos que la app detecta como la misma persona
+  const sug = posiblesDuplicados(_fusionA, _fusionA.id);
+  renderFusion(sug.map(c => c.p));
+  openModal('modalFusion');
+}
+
+function buscarFusion(q){
+  const t = _normTxt(q);
+  const lista = !t
+    ? posiblesDuplicados(_fusionA, _fusionA.id).map(c => c.p)
+    : patients.filter(p => p.id !== _fusionA.id && _normTxt(`${p.apellido} ${p.nombre} ${p.dni}`).includes(t));
+  renderFusion(lista.slice(0, 12));
+}
+
+function _fichaResumen(p){
+  const n = evoluciones.filter(e => e.patientId === p.id).length;
+  return `${escapeHTML(p.apellido)}, ${escapeHTML(p.nombre)}`
+    + `<div style="font-size:11px;color:var(--text-muted);font-weight:500">`
+    + `${p.dni ? 'DNI '+escapeHTML(p.dni) : '<b style="color:var(--amber-700)">sin DNI</b>'}`
+    + ` · ${escapeHTML(SALA_LABEL[p.sala]||p.sala||'—')} C${escapeHTML(p.cama||'—')}`
+    + ` · ${escapeHTML(p.estado||'—')} · ${n} evolución/es</div>`;
+}
+
+function renderFusion(lista){
+  const cont = document.getElementById('fusionLista');
+  document.getElementById('fusionPrincipal').innerHTML = _fichaResumen(_fusionA);
+  if(!lista.length){
+    cont.innerHTML = '<div style="padding:16px;text-align:center;color:var(--text-muted);font-size:12.5px">Sin coincidencias. Buscá por apellido o DNI.</div>';
+  } else {
+    cont.innerHTML = lista.map(p => {
+      const m = _mismaPersona(_fusionA, p);
+      const sel = _fusionB && _fusionB.id === p.id;
+      return `<div class="fus-op ${sel?'sel':''}" onclick="elegirFusion(${p.id})">
+        <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px;color:var(--blue-900)">${_fichaResumen(p)}</div></div>
+        ${m ? `<span class="badge badge-purple" style="font-size:10px;flex-shrink:0">${escapeHTML(m.motivo)}</span>` : ''}
+      </div>`;
+    }).join('');
+  }
+  document.getElementById('btnFusionar').disabled = !_fusionB;
+  document.getElementById('fusionPreview').innerHTML = _fusionB ? _previewFusion() : '';
+}
+
+function elegirFusion(id){
+  _fusionB = patients.find(x => x.id === id) || null;
+  buscarFusion(document.getElementById('fusionBusca').value);
+}
+
+function invertirFusion(){
+  if(!_fusionB) return;
+  const t = _fusionA; _fusionA = _fusionB; _fusionB = t;
+  buscarFusion(document.getElementById('fusionBusca').value);
+}
+
+// Campos que se completan desde la ficha absorbida si en la principal faltan
+function _fusionResultado(){
+  const A = _fusionA, B = _fusionB;
+  const r = { ...A };
+  const tomados = [];
+  Object.keys(B).forEach(k => {
+    if(['id','_borrada','estado','sala','cama','fISector'].includes(k)) return;
+    const va = A[k], vb = B[k];
+    const vacioA = va === '' || va === null || va === undefined || (Array.isArray(va) && !va.length);
+    if(vacioA && vb !== '' && vb !== null && vb !== undefined && !(Array.isArray(vb) && !vb.length)){
+      r[k] = vb;
+      tomados.push(EVO_LABELS[k] || k);
+    }
+  });
+  // Antecedentes: se unen las dos listas
+  const antes = [...new Set([...(A.antecedentes||[]), ...(B.antecedentes||[])])];
+  if(antes.length > (A.antecedentes||[]).length){ r.antecedentes = antes; tomados.push('antecedentes'); }
+  // El ingreso más temprano manda: si no, se pierden días de internación
+  ['fIHosp','fIUTI'].forEach(k => {
+    if(B[k] && (!A[k] || B[k] < A[k])){ r[k] = B[k]; if(!tomados.includes(k)) tomados.push(k === 'fIHosp' ? 'fecha de ingreso al hospital' : 'fecha de ingreso a UTI'); }
+  });
+  return { r, tomados };
+}
+
+function _previewFusion(){
+  const { tomados } = _fusionResultado();
+  const evosB = evoluciones.filter(e => e.patientId === _fusionB.id);
+  const egresos = evosB.filter(e => ['alta','obito','traslado'].includes(e.tipo)).length;
+  const egresosA = evoluciones.filter(e => e.patientId === _fusionA.id && ['alta','obito'].includes(e.tipo)).length;
+  const egresosB = evosB.filter(e => ['alta','obito'].includes(e.tipo)).length;
+  return `<div class="fus-prev">
+    <div><i class="ti ti-arrow-merge"></i> <b>${escapeHTML(_fusionB.apellido)}, ${escapeHTML(_fusionB.nombre)}</b> se absorbe dentro de <b>${escapeHTML(_fusionA.apellido)}, ${escapeHTML(_fusionA.nombre)}</b>.</div>
+    <ul style="margin:7px 0 0 16px;padding:0">
+      <li>Se mueven <b>${evosB.length}</b> evolución/es${egresos ? ` (incluye ${egresos} movimiento/s de egreso)` : ''}.</li>
+      <li>${tomados.length ? `Se completan datos que faltaban: <b>${escapeHTML(tomados.slice(0,8).join(', '))}</b>${tomados.length>8?'…':''}.` : 'No hay datos para completar.'}</li>
+      <li>Queda el estado, sector y cama de la ficha principal (<b>${escapeHTML(_fusionA.estado||'—')}</b>).</li>
+      <li>La ficha absorbida va a la <b>Papelera</b>, recuperable ${PAPELERA_DIAS} días.</li>
+      ${egresosA && egresosB ? '<li style="color:var(--red-700)"><b>Ojo:</b> las dos fichas tienen egreso cargado. Después de fusionar, borrá el que sobre desde el historial para que no se cuente dos veces.</li>' : ''}
+    </ul>
+  </div>`;
+}
+
+async function confirmarFusion(){
+  if(!_fusionA || !_fusionB) return;
+  const A = _fusionA, B = _fusionB;
+  const { r: fusionada, tomados } = _fusionResultado();
+  const evosB = evoluciones.filter(e => e.patientId === B.id);
+
+  if(!confirm(
+    `Fusionar fichas\n\n` +
+    `Se conserva: ${A.apellido}, ${A.nombre}\n` +
+    `Se absorbe:  ${B.apellido}, ${B.nombre}\n\n` +
+    `${evosB.length} evolución/es pasan a la ficha conservada.\n` +
+    `${tomados.length ? 'Se completan: '+tomados.slice(0,6).join(', ')+'\n' : ''}` +
+    `\nLa ficha absorbida va a la Papelera. ¿Continuar?`
+  )) return;
+
+  const btn = document.getElementById('btnFusionar');
+  const html = btn ? btn.innerHTML : '';
+  if(btn){ btn.disabled = true; btn.innerHTML = '<span class="ocr-spinner"></span>Fusionando…'; }
+
+  const tumba = JSON.parse(JSON.stringify({ ...B, _borrada: {
+    por: currentUser.name || currentUser.user, porUser: currentUser.user,
+    fecha: new Date().toISOString(), motivo: `Fusionada con ${A.apellido}, ${A.nombre}`
+  }}, (k,v) => v === undefined ? null : v));
+
+  try {
+    if(!DEMO){
+      // 1) Las evoluciones apuntan a la ficha que se conserva
+      for(let i = 0; i < evosB.length; i += 5){
+        const lote = evosB.slice(i, i + 5);
+        await Promise.all(lote.map(e => {
+          const mov = { ...e, patientId: A.id };
+          return rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'evolucion', p_id:String(e.id), p_data:_limpiarObj(mov) });
+        }));
+      }
+      // 2) La ficha conservada, ya completada
+      await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'paciente', p_id:String(A.id), p_data:_limpiarObj(fusionada) });
+      // 3) Recién al final se manda la absorbida a la papelera
+      await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'paciente', p_id:String(B.id), p_data:_limpiarObj(tumba) });
+    }
+  } catch(err){
+    console.error('Fusión fallida', err);
+    if(btn){ btn.disabled = false; btn.innerHTML = html; }
+    setSyncStatus('error');
+    showToast('No se pudo fusionar. No se cambió nada. Revisá la conexión.','error');
+    return;
+  }
+
+  evoluciones.forEach(e => { if(e.patientId === B.id) e.patientId = A.id; });
+  const idxA = patients.findIndex(x => x.id === A.id);
+  patients[idxA] = fusionada;
+  patients = patients.filter(x => x.id !== B.id);
+  papeleraPacientes.push(tumba);
+  marcarTodoSincronizado();
+  savePacientes(); saveEvos();
+  addLog('edit', `Fusionó las fichas de ${B.apellido}, ${B.nombre} dentro de ${A.apellido}, ${A.nombre} (${evosB.length} evoluciones)`);
+  if(btn){ btn.disabled = false; btn.innerHTML = html; }
+  closeModal('modalFusion', true);
+  showToast(`Fichas fusionadas · ${evosB.length} evolución/es unificadas`,'success');
+  renderAll();
 }
 
 // ── v3_190: deshacer un egreso cargado por error ────────────────
@@ -13244,20 +13525,16 @@ async function guardarPaciente(){
   // paciente queda duplicado. Se avisa ANTES de guardar, con la opción de
   // trasladarlo (conservando toda su historia) en vez de crear una ficha nueva.
   if(!idEdicion){
-    const dniNuevo = String(G('fDNI')||'').replace(/\D/g,'');
-    const norm = t => String(t||'').normalize('NFC').trim().toLowerCase();
-    const yaInternado = patients.find(p => {
-      if(p.estado !== 'Activo') return false;
-      const dniP = String(p.dni||'').replace(/\D/g,'');
-      if(dniNuevo && dniP && dniNuevo === dniP) return true;                    // mismo documento
-      return !dniNuevo && norm(p.apellido)===norm(apellido) && norm(p.nombre)===norm(G('fNombre'));
-    });
+    // v3_193: comparación tolerante a tildes, nombres incompletos y tipeos
+    const candidatos = posiblesDuplicados({ apellido, nombre:G('fNombre'), dni:G('fDNI') }, null);
+    const yaInternado = candidatos.length ? candidatos[0].p : null;
+    const motivoDup = candidatos.length ? candidatos[0].motivo : '';
     if(yaInternado){
       const salaTxt = (SALA_LABEL[yaInternado.sala] || yaInternado.sala || '—');
       const nEvos = evoluciones.filter(e => e.patientId === yaInternado.id && !e.tipo).length;
       const trasladar = confirm(
-        `⚠️ Este paciente YA ESTÁ CARGADO en el servicio.\n\n` +
-        `${yaInternado.apellido}, ${yaInternado.nombre}\n` +
+        `⚠️ Puede que este paciente YA ESTÉ CARGADO (${motivoDup}).\n\n` +
+        `${yaInternado.apellido}, ${yaInternado.nombre}${yaInternado.dni ? ' · DNI '+yaInternado.dni : ' · sin DNI'}\n` +
         `Sector: ${salaTxt} · Cama ${yaInternado.cama || '—'}\n` +
         `Evoluciones cargadas: ${nEvos}\n\n` +
         `Si lo cargás de nuevo van a quedar dos fichas del mismo paciente y la historia va a quedar partida.\n\n` +
@@ -14637,10 +14914,10 @@ function abrirEvolucionDesdeHistorial(){
 //  HISTORIAL
 // ════════════════════════════════════════════════════════
 function buscarHistorial(){
-  const q = document.getElementById('histBuscar').value.trim().toLowerCase();
+  const q = _normTxt(document.getElementById('histBuscar').value);   // v3_193
   const el = document.getElementById('historialResult');
   if(!q){ el.innerHTML=''; return; }
-  const found = patients.filter(p=>`${p.apellido} ${p.nombre} ${p.dni}`.toLowerCase().includes(q));
+  const found = patients.filter(p=>_normTxt(`${p.apellido} ${p.nombre} ${p.dni}`).includes(q));
   if(!found.length){
     el.innerHTML='<div class="empty"><i class="ti ti-user-off"></i><p>No se encontró ningún paciente</p></div>'; return;
   }
