@@ -357,6 +357,12 @@ tr:hover td{ background:var(--blue-50); }
 .aviso-susc-link{ flex-shrink:0; font-weight:800; text-decoration:underline; color:inherit; }
 .susc-pago{ display:flex; align-items:center; gap:9px; padding:9px 12px; border-bottom:1px solid var(--border); }
 .susc-pago:last-child{ border-bottom:none; }
+/* v3_204: panel de instituciones */
+.inst-fila{ display:flex; align-items:center; gap:11px; padding:11px 13px; border-bottom:1px solid var(--border); }
+.inst-fila:last-child{ border-bottom:none; }
+.inst-fila:hover{ background:var(--gray-50); }
+.inst-nueva{ display:inline-block; background:var(--purple-400); color:#fff; font-size:9px; font-weight:800;
+  letter-spacing:.5px; padding:2px 6px; border-radius:6px; margin-right:6px; vertical-align:1px; }
 /* v3_199: tarjetas de plan */
 .plan-card{ position:relative; border:1px solid var(--border); border-radius:12px; padding:16px 16px 14px; background:var(--surface); }
 .plan-card.destacado{ border:2px solid var(--purple-400); background:var(--purple-50); }
@@ -1001,6 +1007,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <span class="sector-badge hide-mobile" id="sectorBadge" onclick="changeSector()" style="display:none" title="Cambiar sector">
         <i class="ti ti-map-pin"></i><span id="sectorBadgeLabel">—</span>
       </span>
+      <button class="btn-logout" id="btnInstituciones" onclick="abrirPanelInstituciones()" style="display:none" title="Instituciones"><i class="ti ti-building-community"></i></button>
       <button class="btn-logout" id="btnPlanes" onclick="abrirPlanes()" style="display:none" title="Planes y suscripción"><i class="ti ti-license"></i></button>
       <button class="btn-logout" id="btnSuscripcion" onclick="abrirPanelSuscripcion()" style="display:none" title="Administrar suscripción"><i class="ti ti-receipt"></i></button>
       <button class="btn-logout" id="btnConfigKx" onclick="abrirConfigKinexa()" style="display:none" title="Configuración"><i class="ti ti-settings"></i></button>
@@ -1025,6 +1032,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
   <main>
 
     <!-- ── DASHBOARD ── -->
+    <div id="avisoSuscripcion" class="aviso-susc" style="display:none"></div>
     <div class="section active" id="section-dashboard">
       <div class="page-header">
         <div>
@@ -1060,7 +1068,6 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     </div>
 
     <!-- ── PACIENTES ── -->
-    <div id="avisoSuscripcion" class="aviso-susc" style="display:none"></div>
     <div class="section" id="section-pacientes">
       <div class="page-header">
         <div><h2>Todos los pacientes</h2><p>Historial completo de ingresos</p></div>
@@ -5314,6 +5321,27 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- ════ MODAL EGRESO / TRASLADO ════ -->
+<!-- ── PANEL DE INSTITUCIONES (v3_204) ── -->
+<div class="modal-overlay" id="modalInstituciones">
+  <div class="modal" style="max-width:620px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title"><i class="ti ti-building-community"></i> Instituciones</div>
+        <div class="modal-sub" id="panelInstResumen">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalInstituciones')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="panelInstLista" style="border:1px solid var(--border);border-radius:10px;max-height:60vh;overflow-y:auto"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalInstituciones')">Cerrar</button>
+      <button class="btn btn-ghost" onclick="marcarInstitucionesVistas()"><i class="ti ti-checks"></i>Marcar todo como visto</button>
+      <button class="btn btn-primary" onclick="cargarPanelInstituciones()"><i class="ti ti-refresh"></i>Actualizar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── PLANES (v3_199) ── -->
 <div class="modal-overlay" id="modalPlanes">
   <div class="modal" style="max-width:500px">
@@ -5659,7 +5687,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_203';
+const APP_VERSION = 'v3_204';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -7368,6 +7396,8 @@ function launchApp(){
   // v3_198: la administración de la suscripción es solo del titular de Kinexa
   { const bs = document.getElementById('btnSuscripcion');
     if(bs) bs.style.display = esRodriguez ? '' : 'none'; }
+  { const bi = document.getElementById('btnInstituciones');
+    if(bi) bi.style.display = esRodriguez ? '' : 'none'; }
   // v3_202: los planes los ve el admin de cada institución que sí paga.
   // A las que están sin cargo no se les muestra: no tienen nada que pagar.
   { const bp = document.getElementById('btnPlanes');
@@ -8669,6 +8699,160 @@ async function registrarPagoSuscripcion(){
   } catch(err){
     console.error(err);
     showToast('No se pudo registrar el pago: ' + (err.message||'').slice(0,60),'error');
+  }
+}
+
+
+// ════════════════════════════════════════════════════════
+//  v3_204 — PANEL DE INSTITUCIONES (solo el titular de Kinexa)
+// ════════════════════════════════════════════════════════
+// Una vista de todas las instituciones con su estado comercial, aviso de las
+// que se sumaron desde la última vez, y acceso directo a cada una.
+//
+// Cómo lee el estado de cada una: la suscripción vive dentro de la institución,
+// así que hay que entrar a cada una para leerla. Se usa el ingreso maestro, el
+// mismo que ya existía. Por eso pide la clave una vez por sesión: no se guarda
+// en ningún lado ni sobrevive al cierre de la app.
+
+let _maestroClave = null;
+let PANEL_INST = [];
+
+function _instVistas(){
+  try { return JSON.parse(localStorage.getItem('kinexa_inst_vistas')) || []; }
+  catch(e){ return []; }
+}
+function _marcarInstVistas(ids){
+  try { localStorage.setItem('kinexa_inst_vistas', JSON.stringify(ids)); } catch(e){}
+}
+
+async function abrirPanelInstituciones(){
+  if(!esJefatura(currentUser)){ showToast('Solo el titular de Kinexa','error'); return; }
+  if(!_maestroClave){
+    _maestroClave = prompt('Ingresá tu clave para leer el estado de las instituciones.\n(No se guarda: se pide una vez por sesión)');
+    if(!_maestroClave) return;
+  }
+  openModal('modalInstituciones');
+  document.getElementById('panelInstLista').innerHTML =
+    '<div style="padding:22px;text-align:center;color:var(--text-muted);font-size:13px"><span class="ocr-spinner"></span> Leyendo instituciones…</div>';
+  await cargarPanelInstituciones();
+}
+
+async function cargarPanelInstituciones(){
+  let insts = [];
+  try {
+    insts = await rpc('kinexa_instituciones', {}) || [];
+  } catch(err){
+    document.getElementById('panelInstLista').innerHTML =
+      '<div style="padding:22px;text-align:center;color:var(--red-700);font-size:13px">No se pudo leer la lista de instituciones.</div>';
+    return;
+  }
+
+  const vistas = _instVistas();
+  const filas = [];
+  // De a tres en paralelo: cada una implica un ingreso maestro
+  for(let i = 0; i < insts.length; i += 3){
+    const lote = insts.slice(i, i + 3);
+    const res = await Promise.all(lote.map(async inst => {
+      const fila = { id: inst.id, nombre: inst.nombre, susc: null, error: false,
+                     nueva: !vistas.includes(String(inst.id)) };
+      try {
+        const rm = await rpc('kinexa_maestro_entrar', {
+          p_dni: currentUser.user, p_clave: _maestroClave, p_institucion_id: Number(inst.id) });
+        const sm = Array.isArray(rm) ? rm[0] : rm;
+        if(!sm?.token){ fila.error = true; return fila; }
+        const regs = await rpc('kinexa_registros', { p_token: sm.token, p_tipo: 'suscripcion' });
+        const r = (regs || []).find(x => String(x.id) === 'actual');
+        fila.susc = (r && (r.data || r)) || null;
+      } catch(err){ fila.error = true; }
+      return fila;
+    }));
+    filas.push(...res);
+    renderPanelInstituciones(filas, insts.length);
+  }
+  PANEL_INST = filas;
+  renderPanelInstituciones(filas, insts.length);
+}
+
+// Estado comercial de una institución del listado (no de la sesión actual)
+function _estadoDeFila(f){
+  const n = _normTxt(f.nombre || '');
+  if(INST_SIN_CARGO.some(k => n.includes(k))) return { cod:'cortesia', txt:'Sin cargo', color:'var(--teal-600)', orden:4 };
+  const s = f.susc;
+  if(!s) return { cod:'sin_datos', txt:'Sin suscripción', color:'var(--text-muted)', orden:3 };
+  if(s.estado === 'cortesia') return { cod:'cortesia', txt:'Sin cargo', color:'var(--teal-600)', orden:4 };
+  if(s.estado === 'suspendida') return { cod:'suspendida', txt:'Suspendida', color:'var(--red-600)', orden:0 };
+  const dias = s.hasta ? Math.round((new Date(s.hasta+'T00:00:00') - new Date(today()+'T00:00:00')) / 86400000) : null;
+  if(dias === null) return { cod:'activa', txt:'Al día', color:'var(--teal-600)', orden:5 };
+  if(dias < -SUSC_GRACIA_DIAS) return { cod:'bloqueada', txt:`Vencida hace ${-dias} d`, color:'var(--red-600)', orden:0 };
+  if(dias < 0) return { cod:'gracia', txt:`Vencida hace ${-dias} d (gracia)`, color:'var(--amber-600)', orden:1 };
+  if(s.estado === 'prueba') return { cod:'prueba', txt:`Prueba · ${dias} d`, color:'var(--purple-400)', orden:2 };
+  return { cod:'activa', txt:`Al día · ${dias} d`, color:'var(--teal-600)', orden:5 };
+}
+
+function renderPanelInstituciones(filas, total){
+  const cont = document.getElementById('panelInstLista');
+  if(!cont) return;
+
+  const conEstado = filas.map(f => ({ f, e: _estadoDeFila(f) }));
+  // Primero lo que necesita atención: vencidas, en gracia, y las nuevas
+  conEstado.sort((a,b) => (a.f.nueva === b.f.nueva ? a.e.orden - b.e.orden : (a.f.nueva ? -1 : 1)));
+
+  const nuevas = filas.filter(f => f.nueva).length;
+  const pend = conEstado.filter(x => (x.f.susc?.informados || []).some(p => p.estado === 'pendiente')).length;
+
+  const resumen = document.getElementById('panelInstResumen');
+  if(resumen){
+    const partes = [`${filas.length} de ${total} leídas`];
+    if(nuevas) partes.push(`<b style="color:var(--purple-400)">${nuevas} nueva${nuevas===1?'':'s'}</b>`);
+    if(pend) partes.push(`<b style="color:var(--amber-700)">${pend} pago${pend===1?'':'s'} por verificar</b>`);
+    resumen.innerHTML = partes.join(' · ');
+  }
+
+  cont.innerHTML = conEstado.map(({ f, e }) => {
+    const informados = (f.susc?.informados || []).filter(p => p.estado === 'pendiente').length;
+    return `<div class="inst-fila">
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:700;font-size:13.5px;color:var(--blue-900)">
+          ${f.nueva ? '<span class="inst-nueva">NUEVA</span>' : ''}${escapeHTML(f.nombre)}
+        </div>
+        <div style="font-size:11.5px;margin-top:2px;color:${e.color};font-weight:700">
+          ${f.error ? 'No se pudo leer' : escapeHTML(e.txt)}
+          ${informados ? ` · <span style="color:var(--amber-700)">${informados} pago informado</span>` : ''}
+        </div>
+        ${f.susc?.plan ? `<div style="font-size:11px;color:var(--text-muted)">${escapeHTML(f.susc.plan)}${f.susc.hasta ? ' · hasta '+fmtDate(f.susc.hasta) : ''}</div>` : ''}
+      </div>
+      <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="entrarComoInstitucion(${f.id})"><i class="ti ti-login"></i>Entrar</button>
+    </div>`;
+  }).join('');
+}
+
+function marcarInstitucionesVistas(){
+  _marcarInstVistas(PANEL_INST.map(f => String(f.id)));
+  PANEL_INST.forEach(f => f.nueva = false);
+  renderPanelInstituciones(PANEL_INST, PANEL_INST.length);
+  showToast('Listo, ya no figuran como nuevas','success');
+}
+
+// Entrar directo a una institución desde el panel
+async function entrarComoInstitucion(id){
+  const f = PANEL_INST.find(x => String(x.id) === String(id));
+  if(!confirm(`Vas a entrar a ${f?.nombre || 'la institución'} como administrador.\n\nSe cierra tu sesión actual. ¿Continuar?`)) return;
+  try {
+    const rm = await rpc('kinexa_maestro_entrar', {
+      p_dni: currentUser.user, p_clave: _maestroClave, p_institucion_id: Number(id) });
+    const sm = Array.isArray(rm) ? rm[0] : rm;
+    if(!sm?.token) throw new Error('No se pudo ingresar');
+    const nombreM = ((sm.nombre||'') + ' ' + (sm.apellido||'')).trim() || currentUser.user;
+    guardarSesionKx({ token:sm.token, user:currentUser.user, name:nombreM, role:'admin',
+                      institucion_id:Number(id), esMaestro:true, instNombre: sm.inst_nombre || f?.nombre || '' }, false);
+    try { const sects = await rpc('kinexa_sectores', { p_token:TOKEN }); aplicarSectoresKinexa(sects); }
+    catch(e){ aplicarSectoresKinexa([]); }
+    closeModal('modalInstituciones', true);
+    patients = []; evoluciones = []; papeleraPacientes = []; papeleraEvos = [];
+    await startSession(USER);
+  } catch(err){
+    console.error(err);
+    showToast('No se pudo entrar: ' + (err.message||'').slice(0,60), 'error');
   }
 }
 
