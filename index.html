@@ -793,7 +793,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <i class="ti ti-cloud-check" style="color:var(--teal-600)"></i>
       <span id="loginSyncText">Google Drive configurado</span>
     </div>
-    <div class="form-group">
+    <div class="form-group" id="loginInstGroup" style="display:none">
       <label>Institución</label>
       <select id="loginInst"><option value="">Cargando…</option></select>
     </div>
@@ -5321,6 +5321,25 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- ════ MODAL EGRESO / TRASLADO ════ -->
+<!-- ── ELEGIR INSTITUCIÓN AL INGRESAR (v3_206) ── -->
+<div class="modal-overlay" id="modalElegirInst">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title"><i class="ti ti-building-hospital"></i> ¿A qué institución entrás?</div>
+        <div class="modal-sub">Estás registrado en más de una</div>
+      </div>
+      <button class="modal-close" onclick="cancelarElegirInst()">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="elegirInstLista" style="border:1px solid var(--border);border-radius:10px;overflow:hidden"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="cancelarElegirInst()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── PANEL DE INSTITUCIONES (v3_204) ── -->
 <div class="modal-overlay" id="modalInstituciones">
   <div class="modal" style="max-width:620px">
@@ -5688,7 +5707,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_205';
+const APP_VERSION = 'v3_206';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -7187,12 +7206,71 @@ function mostrarAyudaClave(){
 }
 
 
+// ── v3_206: ingreso por DNI y clave, sin elegir institución ─────
+// Antes había que elegir el hospital de un desplegable público. Eso obligaba a
+// exponer la lista de instituciones a cualquiera y, para quien trabaja en dos
+// hospitales, no dejaba claro a cuál estaba entrando.
+// Ahora la base devuelve en cuáles esa combinación es válida.
+async function institucionesDelUsuario(dni, clave){
+  const res = await rpc('kinexa_instituciones_de', { p_dni: dni, p_clave: clave });
+  return Array.isArray(res) ? res : (res ? [res] : []);
+}
+
+function elegirInstitucionLogin(lista){
+  return new Promise(res => {
+    const cont = document.getElementById('elegirInstLista');
+    cont.innerHTML = lista.map(x => `
+      <div class="inst-fila" onclick="_resolverElegirInst(${x.institucion_id})">
+        <div style="flex:1;min-width:0;font-weight:700;font-size:13.5px;color:var(--blue-900)">${escapeHTML(x.institucion_nombre)}</div>
+        <i class="ti ti-chevron-right" style="color:var(--purple-400)"></i>
+      </div>`).join('');
+    _elegirInstResolver = res;
+    openModal('modalElegirInst');
+  });
+}
+let _elegirInstResolver = null;
+function _resolverElegirInst(id){
+  closeModal('modalElegirInst', true);
+  if(_elegirInstResolver){ _elegirInstResolver(id); _elegirInstResolver = null; }
+}
+function cancelarElegirInst(){
+  closeModal('modalElegirInst', true);
+  if(_elegirInstResolver){ _elegirInstResolver(null); _elegirInstResolver = null; }
+}
+
 async function doLogin(){
-  const inst = document.getElementById('loginInst')?.value;
   const u = document.getElementById('loginUser').value.trim();
   const p = document.getElementById('loginPass').value;
-  if(!inst){ showToast('Elegí tu institución','error'); return; }
   if(!u || !p){ showToast('Ingresá tu DNI y clave','error'); return; }
+
+  let inst = document.getElementById('loginInst')?.value;
+  const grupoVisible = document.getElementById('loginInstGroup')?.style.display !== 'none';
+
+  // Si el desplegable está oculto (caso normal), se resuelve la institución sola
+  if(!grupoVisible){
+    const btn0 = document.getElementById('btnLogin');
+    if(btn0){ btn0.disabled = true; btn0.innerHTML = '<i class="ti ti-loader-2"></i> Verificando…'; }
+    let lista = [];
+    try {
+      lista = await institucionesDelUsuario(u, p);
+    } catch(err){
+      // La función todavía no está creada en la base: se vuelve al desplegable
+      console.error('kinexa_instituciones_de:', err);
+      document.getElementById('loginInstGroup').style.display = '';
+      if(btn0){ btn0.disabled = false; btn0.innerHTML = '<i class="ti ti-login"></i> Ingresar'; }
+      showToast('Elegí tu institución de la lista','info');
+      return;
+    }
+    if(btn0){ btn0.disabled = false; btn0.innerHTML = '<i class="ti ti-login"></i> Ingresar'; }
+    if(!lista.length){ showToast('DNI o clave incorrectos','error'); return; }
+    if(lista.length === 1){
+      inst = lista[0].institucion_id;
+    } else {
+      inst = await elegirInstitucionLogin(lista);
+      if(!inst) return;
+    }
+  }
+  if(!inst){ showToast('Elegí tu institución','error'); return; }
   const btn = document.getElementById('btnLogin');
   if(btn){ btn.disabled = true; btn.innerHTML = '<i class="ti ti-loader-2"></i> Ingresando…'; }
   try {
@@ -7312,7 +7390,8 @@ window.addEventListener('beforeunload', (ev) => {
   return ev.returnValue;
 });
 
-// Al cargar: poblar instituciones e intentar restaurar sesión
+// v3_206: el desplegable de instituciones ya no se usa en el ingreso normal.
+// Se puebla igual, callado, por si hay que caer al plan B.
 cargarInstitucionesKinexa();
 tryRestoreSession();
 actualizarIndicadorPendientes();
