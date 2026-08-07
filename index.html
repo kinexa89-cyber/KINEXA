@@ -351,6 +351,7 @@ tr:hover td{ background:var(--blue-50); }
   border-radius:9px; font-size:12.5px; font-weight:600; }
 .aviso-susc.ambar{ background:var(--amber-50); color:var(--amber-800); border:1px solid var(--amber-100); border-left:3px solid var(--amber-400); }
 .aviso-susc.rojo{ background:var(--red-50); color:var(--red-800); border:1px solid var(--red-100); border-left:3px solid var(--red-400); }
+.aviso-susc.suave{ background:var(--purple-50); color:var(--blue-800); border:1px solid var(--purple-400); border-left:3px solid var(--purple-400); }
 .aviso-susc i{ font-size:16px; flex-shrink:0; }
 .aviso-susc span{ flex:1; min-width:0; }
 .aviso-susc-link{ flex-shrink:0; font-weight:800; text-decoration:underline; color:inherit; }
@@ -830,6 +831,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="mostrarRegistro()"><i class="ti ti-building-hospital"></i>Registrar mi institución</button>
     <button class="btn btn-ghost btn-block" style="margin-top:10px;color:var(--purple-400)" onclick="entrarDemo()"><i class="ti ti-eye"></i>Ver una demostración</button>
     <div style="text-align:center;margin-top:1.4rem;padding-top:.9rem;border-top:1px solid var(--border)">
+      <p style="margin-bottom:9px"><a href="#" onclick="abrirPlanes();return false" style="font-size:12.5px;font-weight:700;color:var(--purple-400);text-decoration:none"><i class="ti ti-license"></i> Planes y precios</a></p>
       <p style="font-size:10.5px;color:var(--text-light)">Desarrollado por <strong style="color:var(--text-muted)">Lic. Rodríguez Daniel</strong></p>
       <p style="font-size:10px;color:var(--text-light);margin-top:3px">Kinexa <span class="appVersionTag"></span></p>
     </div>
@@ -999,7 +1001,8 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <span class="sector-badge hide-mobile" id="sectorBadge" onclick="changeSector()" style="display:none" title="Cambiar sector">
         <i class="ti ti-map-pin"></i><span id="sectorBadgeLabel">—</span>
       </span>
-      <button class="btn-logout" id="btnSuscripcion" onclick="abrirPanelSuscripcion()" style="display:none" title="Suscripción"><i class="ti ti-receipt"></i></button>
+      <button class="btn-logout" id="btnPlanes" onclick="abrirPlanes()" style="display:none" title="Planes y suscripción"><i class="ti ti-license"></i></button>
+      <button class="btn-logout" id="btnSuscripcion" onclick="abrirPanelSuscripcion()" style="display:none" title="Administrar suscripción"><i class="ti ti-receipt"></i></button>
       <button class="btn-logout" id="btnConfigKx" onclick="abrirConfigKinexa()" style="display:none" title="Configuración"><i class="ti ti-settings"></i></button>
       <button class="btn-logout" id="btnBandejaKx" onclick="abrirBandejaSugerencias()" style="display:none;position:relative" title="Sugerencias recibidas"><i class="ti ti-inbox"></i><span id="badgeSugerencias" style="display:none;position:absolute;top:-2px;right:-2px;background:var(--red-500);color:#fff;font-size:9px;font-weight:700;min-width:15px;height:15px;line-height:15px;border-radius:8px;padding:0 3px">0</span></button>
       <button class="btn-logout" onclick="abrirSugerencia()" title="Enviar una sugerencia o reportar un error"><i class="ti ti-message-plus"></i></button>
@@ -5324,6 +5327,12 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     <div class="modal-body">
       <p style="font-size:12.5px;color:var(--text-muted);margin:0 0 14px">Precio por institución, con usuarios y sectores ilimitados.</p>
       <div id="planesLista" style="display:flex;flex-direction:column;gap:12px"></div>
+      <div id="planesYaPague" style="margin-top:14px;display:none">
+        <button class="btn btn-ghost btn-block" onclick="informarPago()"><i class="ti ti-receipt-2"></i>Ya aboné — informar el pago</button>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:6px;line-height:1.45">
+          Informá el número de operación y seguís trabajando en el acto. Verificamos el pago y confirmamos la vigencia completa.
+        </div>
+      </div>
       <div style="margin-top:14px;font-size:11.5px;color:var(--text-muted);line-height:1.5">
         Se emite factura. Para instituciones que abonan por transferencia u orden de compra, escribinos a <b>kinexa89@gmail.com</b> y coordinamos.
       </div>
@@ -5393,11 +5402,13 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <button class="btn btn-success btn-block" onclick="registrarPagoSuscripcion()"><i class="ti ti-plus"></i>Registrar pago y extender</button>
       </div>
 
+      <div id="suscPendientes"></div>
       <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin:16px 0 6px">Historial de pagos</div>
       <div id="suscPagos" style="border:1px solid var(--border);border-radius:9px;max-height:190px;overflow-y:auto"></div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalSuscripcion')">Cerrar</button>
+      <button class="btn btn-ghost" onclick="abrirPlanes()"><i class="ti ti-eye"></i>Ver como lo ve el cliente</button>
     </div>
   </div>
 </div>
@@ -5648,7 +5659,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_201';
+const APP_VERSION = 'v3_203';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -5944,7 +5955,8 @@ async function doRegistrar(){
     await rpc('kinexa_setup', { p_token:TOKEN, p_config:{ institucion:inst, sectores, usuarios } });
     // 4) Cargar sectores y entrar a la app
     try { const sects = await rpc('kinexa_sectores', { p_token:TOKEN }); aplicarSectoresKinexa(sects); } catch(eSec){ aplicarSectoresKinexa([]); }
-    showToast('Institución creada ✓','success');
+    await crearSuscripcionPrueba();   // v3_203: 30 días de prueba, automáticos
+    showToast('Institución creada ✓ · 30 días de prueba','success');
     await startSession(USER);
   } catch(e){
     console.error('Registro:', e);
@@ -7353,9 +7365,13 @@ function launchApp(){
   // v3_194: fusionar fichas es para toda la jefatura de cada institución
   { const bf = document.getElementById('btnFusionHeader');
     if(bf) bf.style.display = (currentUser?.role === 'admin') ? '' : 'none'; }
-  // v3_198: la suscripción la maneja solo el titular de Kinexa, no el admin del hospital
+  // v3_198: la administración de la suscripción es solo del titular de Kinexa
   { const bs = document.getElementById('btnSuscripcion');
     if(bs) bs.style.display = esRodriguez ? '' : 'none'; }
+  // v3_202: los planes los ve el admin de cada institución que sí paga.
+  // A las que están sin cargo no se les muestra: no tienen nada que pagar.
+  { const bp = document.getElementById('btnPlanes');
+    if(bp) bp.style.display = (currentUser?.role === 'admin' && !institucionSinCargo()) ? '' : 'none'; }
   cargarSuscripcion();   // v3_198
   addLog('login',`Ingresó: ${currentUser.name}${currentSector?' ('+currentSector+')':''}`);
   updateDashHeader();
@@ -8252,6 +8268,7 @@ function sumarMeses(desdeISO, meses){
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
 }
 
+const SUSC_PRUEBA_DIAS = 30;
 const SUSC_GRACIA_DIAS = 10;
 const SUSC_ESTADOS = {
   cortesia:   { label:'Sin cargo',         color:'var(--teal-600)'   },
@@ -8316,6 +8333,110 @@ async function cargarSuscripcion(){
   renderAvisoSuscripcion();
 }
 
+// v3_203: toda institución nueva arranca con 30 días de prueba, sin que nadie
+// tenga que activarle nada. Si falla, no se corta el registro: quedaría sin
+// suscripción, que es el estado que no bloquea.
+async function crearSuscripcionPrueba(){
+  try {
+    const desde = today();
+    const datos = {
+      plan: 'Prueba gratuita',
+      estado: 'prueba',
+      desde,
+      hasta: sumarDias(desde, SUSC_PRUEBA_DIAS),
+      precio: '',
+      notas: 'Alta automática al crear la institución',
+      pagos: [],
+      informados: [],
+      creado: new Date().toISOString()
+    };
+    await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'suscripcion', p_id:'actual', p_data:datos });
+    SUSCRIPCION = datos;
+  } catch(err){ console.error('No se pudo crear la prueba', err); }
+}
+
+function sumarDias(desdeISO, dias){
+  const d = new Date((desdeISO || today()) + 'T00:00:00');
+  d.setDate(d.getDate() + dias);
+  const p = x => String(x).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
+}
+
+// ── El cliente informa que pagó ──────────────────────────────────
+// Con links de pago, el aviso no vuelve solo a la app. En vez de dejar a la
+// institución esperando a que alguien la active, informa el pago y el acceso se
+// extiende en el acto; la confirmación queda pendiente del lado de Kinexa.
+const SUSC_EXT_PROVISORIA = 12;   // días que se otorgan mientras se verifica
+
+function hayPagoPendiente(){
+  return (SUSCRIPCION?.informados || []).some(p => p.estado === 'pendiente');
+}
+
+async function informarPago(){
+  if(hayPagoPendiente()){
+    showToast('Ya hay un pago informado esperando confirmación. Te avisamos apenas lo verifiquemos.','info');
+    return;
+  }
+  const op = (prompt('Número de operación o comprobante de Mercado Pago (o de la transferencia):') || '').trim();
+  if(!op) return;
+  const plan = (prompt('¿Qué plan abonaste? Escribí "mensual" o "anual":', 'mensual') || '').trim().toLowerCase();
+  const pl = PLANES_KINEXA.find(x => x.id === (plan.startsWith('a') ? 'anual' : 'mensual'));
+
+  const informe = {
+    fecha: today(),
+    operacion: op,
+    plan: pl.id,
+    montoEsperado: pl.precio,
+    estado: 'pendiente',
+    informadoPor: currentUser?.name || '',
+    ts: new Date().toISOString()
+  };
+  // Extensión provisoria para que puedan seguir trabajando ya mismo
+  const base = (SUSCRIPCION?.hasta && SUSCRIPCION.hasta >= today()) ? SUSCRIPCION.hasta : today();
+  const datos = {
+    ...(SUSCRIPCION || {}),
+    estado: 'activa',
+    hasta: sumarDias(base, SUSC_EXT_PROVISORIA),
+    informados: [ ...(SUSCRIPCION?.informados || []), informe ]
+  };
+  try {
+    await guardarSuscripcion(datos);
+    addLog('edit', `Informó un pago (${pl.nombre}, op. ${op}) — pendiente de confirmación`);
+    showToast('¡Gracias! Ya podés seguir trabajando. Verificamos el pago y confirmamos la vigencia completa.','success');
+    closeModal('modalPlanes');
+  } catch(err){
+    console.error(err);
+    showToast('No se pudo registrar el aviso. Escribinos a kinexa89@gmail.com','error');
+  }
+}
+
+// Del lado de Kinexa: confirmar el pago informado y dar la vigencia completa
+async function confirmarPagoInformado(idx){
+  const inf = (SUSCRIPCION?.informados || [])[idx];
+  if(!inf) return;
+  const pl = PLANES_KINEXA.find(x => x.id === inf.plan) || PLANES_KINEXA[0];
+  const base = (SUSCRIPCION?.desde && SUSCRIPCION.hasta && SUSCRIPCION.hasta >= today()) ? SUSCRIPCION.hasta : today();
+  if(!confirm(`Confirmar el pago informado el ${fmtDate(inf.fecha)}\n\nOperación: ${inf.operacion}\nPlan: ${pl.nombre} (${fmtPesos(pl.precio)})\n\nSe extiende la vigencia hasta ${fmtDate(sumarMeses(base, pl.meses))}.`)) return;
+  const informados = (SUSCRIPCION.informados || []).map((x,i) => i===idx ? { ...x, estado:'confirmado', confirmado: new Date().toISOString() } : x);
+  const datos = {
+    ...SUSCRIPCION,
+    estado: 'activa',
+    plan: 'Institucional ' + pl.nombre.toLowerCase(),
+    precio: fmtPesos(pl.precio) + ' / ' + (pl.meses===1?'mes':'año'),
+    hasta: sumarMeses(base, pl.meses),
+    informados,
+    pagos: [ ...(SUSCRIPCION.pagos || []), {
+      fecha: inf.fecha, monto: String(pl.precio), moneda:'ARS',
+      medio:'Mercado Pago', comprobante: inf.operacion,
+      hasta: sumarMeses(base, pl.meses), registradoPor: currentUser?.name || ''
+    }]
+  };
+  await guardarSuscripcion(datos);
+  addLog('edit', `Confirmó el pago informado (op. ${inf.operacion})`);
+  showToast('Pago confirmado ✓','success');
+  renderPagosSuscripcion();
+}
+
 async function guardarSuscripcion(datos){
   await rpc('kinexa_registro_guardar', {
     p_token: TOKEN, p_tipo:'suscripcion', p_id:'actual', p_data: datos
@@ -8329,6 +8450,14 @@ function renderAvisoSuscripcion(){
   const el = document.getElementById('avisoSuscripcion');
   if(!el) return;
   const e = estadoSuscripcion();
+  // v3_203: durante la prueba se muestra siempre el contador, sin dramatismo
+  if(e.cod === 'prueba' && !e.avisa && e.dias !== null){
+    el.className = 'aviso-susc suave';
+    el.innerHTML = `<i class="ti ti-gift"></i><span>Prueba gratuita · quedan ${e.dias} día${e.dias===1?'':'s'}</span>`
+      + `<a href="#" onclick="abrirPlanes();return false" class="aviso-susc-link">Ver planes</a>`;
+    el.style.display = 'flex';
+    return;
+  }
   if(!e.avisa){ el.style.display = 'none'; return; }
 
   let texto, tono;
@@ -8340,6 +8469,9 @@ function renderAvisoSuscripcion(){
     tono = 'rojo';
   } else if(e.cod === 'vencida'){
     texto = `La suscripción venció hace ${-e.dias} día${-e.dias===1?'':'s'}. Quedan ${e.gracia} día${e.gracia===1?'':'s'} de gracia para regularizar.`;
+    tono = 'ambar';
+  } else if(e.cod === 'prueba'){
+    texto = `La prueba gratuita termina ${e.dias === 0 ? 'hoy' : e.dias === 1 ? 'mañana' : 'en ' + e.dias + ' días'}. Elegí un plan para seguir usando Kinexa.`;
     tono = 'ambar';
   } else {
     texto = `La suscripción vence ${e.dias === 0 ? 'hoy' : e.dias === 1 ? 'mañana' : 'en ' + e.dias + ' días'}.`;
@@ -8364,12 +8496,18 @@ function frenarSiVencida(){
 // ── Planes: lo que ve la institución ────────────────────────────
 function abrirPlanes(){
   const cont = document.getElementById('planesLista');
-  const e = estadoSuscripcion();
   const est = document.getElementById('planesEstado');
+  // v3_202: también se abre sin sesión iniciada, desde la pantalla de inicio.
+  // Un interesado tiene que poder ver el precio antes de registrarse.
   if(est){
-    est.textContent = SUSCRIPCION
-      ? `${e.label}${SUSCRIPCION.hasta ? ' · vigente hasta ' + fmtDate(SUSCRIPCION.hasta) : ''}`
-      : 'Sin suscripción activa';
+    if(!currentUser){
+      est.textContent = 'Precio por institución · usuarios y sectores ilimitados';
+    } else {
+      const e = estadoSuscripcion();
+      est.textContent = SUSCRIPCION
+        ? `${e.label}${SUSCRIPCION.hasta ? ' · vigente hasta ' + fmtDate(SUSCRIPCION.hasta) : ''}`
+        : 'Sin suscripción activa';
+    }
   }
   cont.innerHTML = PLANES_KINEXA.map(pl => `
     <div class="plan-card ${pl.destacado ? 'destacado' : ''}">
@@ -8381,6 +8519,9 @@ function abrirPlanes(){
         <i class="ti ti-credit-card"></i>${pl.link ? 'Pagar con Mercado Pago' : 'Solicitar link de pago'}
       </button>
     </div>`).join('');
+  // El aviso de "ya aboné" solo tiene sentido con sesión iniciada
+  const yp = document.getElementById('planesYaPague');
+  if(yp) yp.style.display = currentUser ? '' : 'none';
   openModal('modalPlanes');
 }
 
@@ -8426,6 +8567,21 @@ function renderPagosSuscripcion(){
   if(badge){
     badge.textContent = e.label + (e.dias !== null && e.dias >= 0 ? ` · ${e.dias} día${e.dias===1?'':'s'} restantes` : '');
     badge.style.color = SUSC_ESTADOS[e.cod]?.color || 'var(--text-muted)';
+  }
+  // Pagos informados por la institución, esperando verificación
+  const pend = document.getElementById('suscPendientes');
+  if(pend){
+    const lista = (SUSCRIPCION?.informados || [])
+      .map((x,i) => ({ ...x, i })).filter(x => x.estado === 'pendiente');
+    pend.innerHTML = lista.length ? `
+      <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--amber-800);margin:16px 0 6px">Pagos informados sin verificar</div>
+      ${lista.map(x => `<div class="susc-pago" style="background:var(--amber-50);border-radius:9px;margin-bottom:6px">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:12.5px;color:var(--amber-800)">Op. ${escapeHTML(x.operacion)} · plan ${escapeHTML(x.plan)}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHTML(fmtDate(x.fecha))} · informado por ${escapeHTML(x.informadoPor||'—')}</div>
+        </div>
+        <button class="btn btn-success btn-sm" style="flex-shrink:0" onclick="confirmarPagoInformado(${x.i})"><i class="ti ti-check"></i>Confirmar</button>
+      </div>`).join('')}` : '';
   }
   cont.innerHTML = pagos.length
     ? pagos.map(p => `<div class="susc-pago">
