@@ -363,6 +363,18 @@ tr:hover td{ background:var(--blue-50); }
 .inst-fila:hover{ background:var(--gray-50); }
 .inst-nueva{ display:inline-block; background:var(--purple-400); color:#fff; font-size:9px; font-weight:800;
   letter-spacing:.5px; padding:2px 6px; border-radius:6px; margin-right:6px; vertical-align:1px; }
+/* v3_207: historial de evaluaciones de deglución */
+.deg-eval{ border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--surface); }
+.deg-cab{ display:flex; align-items:center; gap:10px; padding:11px 13px; cursor:pointer; }
+.deg-cab:hover{ background:var(--gray-50); }
+.deg-flecha{ color:var(--text-muted); transition:transform .2s; flex-shrink:0; }
+.deg-eval.abierta .deg-flecha{ transform:rotate(180deg); }
+.deg-cuerpo{ display:none; padding:4px 13px 13px; border-top:1px solid var(--border); }
+.deg-eval.abierta .deg-cuerpo{ display:block; }
+.deg-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:7px; margin-top:9px; }
+.deg-item{ background:var(--gray-50); border-radius:7px; padding:6px 9px; }
+.deg-rot{ font-size:9.5px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:var(--text-muted); }
+.deg-val{ font-size:12.5px; font-weight:600; color:var(--text); margin-top:1px; }
 /* v3_199: tarjetas de plan */
 .plan-card{ position:relative; border:1px solid var(--border); border-radius:12px; padding:16px 16px 14px; background:var(--surface); }
 .plan-card.destacado{ border:2px solid var(--purple-400); background:var(--purple-50); }
@@ -5321,6 +5333,26 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- ════ MODAL EGRESO / TRASLADO ════ -->
+<!-- ── HISTORIAL DE DEGLUCIÓN (v3_207) ── -->
+<div class="modal-overlay" id="modalDegHistorial">
+  <div class="modal" style="max-width:600px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title"><i class="ti ti-mouth"></i> <span id="degHistTitulo">—</span></div>
+        <div class="modal-sub" id="degHistSub">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalDegHistorial')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px">Tocá una evaluación para ver el detalle completo y comparar con las anteriores.</p>
+      <div id="degHistLista" style="display:flex;flex-direction:column;gap:9px"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalDegHistorial')">Cerrar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── ELEGIR INSTITUCIÓN AL INGRESAR (v3_206) ── -->
 <div class="modal-overlay" id="modalElegirInst">
   <div class="modal" style="max-width:440px">
@@ -5640,7 +5672,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             <option value="Muerte encefálica">Muerte encefálica</option>
           </select>
         </div>
-        <div class="form-group" id="egresoDonanteRow" style="display:none">
+        <div class="form-group" id="egresoDonanteRow">
           <label class="check-donante">
             <input type="checkbox" id="egresoDonante">
             <span id="egresoDonanteLabel">Fue donante de órganos</span>
@@ -5707,7 +5739,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_206';
+const APP_VERSION = 'v3_208';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -8436,6 +8468,11 @@ async function cargarSuscripcion(){
     const regs = await rpc('kinexa_registros', { p_token: TOKEN, p_tipo: 'suscripcion' });
     const r = (regs || []).find(x => String(x.id) === 'actual');
     SUSCRIPCION = (r && (r.data || r)) || null;
+    // v3_207: instituciones creadas antes de que existiera la prueba automática.
+    // Se les abre la prueba ahora; las de la lista sin cargo quedan afuera.
+    if(!SUSCRIPCION && !institucionSinCargo() && currentUser?.role === 'admin'){
+      await crearSuscripcionPrueba();
+    }
   } catch(err){
     console.error('No se pudo leer la suscripción', err);
     SUSCRIPCION = null;   // sin datos NO se bloquea: nadie queda afuera por una falla de red
@@ -12030,6 +12067,22 @@ function actualizarBloquesRespiratorios(){
   if(eab) eab.style.display = (enARM || esp.startsWith('CNAF') || esp.startsWith('VNI')) ? 'block' : 'none';
   const sec = document.getElementById('secrecionesWrap');
   if(sec) sec.style.display = (enARM || esp.startsWith('TQT')) ? 'block' : 'none';
+  actualizarCuffLeak();   // v3_207
+}
+
+// v3_207: el cuff leak test evalúa el edema de vía aérea antes de extubar, así
+// que solo tiene sentido con TET. En un traqueostomizado no se extuba nada.
+// Antes se mostraba a todo paciente quemado, estuviera intubado o no.
+function actualizarCuffLeak(){
+  const box = document.getElementById('pveSubCuffLeak');
+  if(!box) return;
+  const p = patients.find(x => x.id === currentEvoPacId);
+  const esQuemado = p?.tipoKine === 'quemado';
+  const iface = String(document.getElementById('eInterfazPrincipal')?.value || '');
+  const conTET = iface === 'TET';
+  const ver = esQuemado && conTET;
+  box.style.display = ver ? 'block' : 'none';
+  if(!ver){ const el = document.getElementById('eCuffLeak'); if(el) el.value = ''; }
 }
 
 // Vía de administración de la aerosolterapia
@@ -12243,6 +12296,7 @@ function setVANO2tipo(tipo){
   document.getElementById('eSubMRflujo').style.display = tipo === 'MR' ? 'block' : 'none';
   const mapaInterfaz = { CN:'Cánula nasal', MV:'Máscara Venturi', MR:'Máscara reservorio' };
   document.getElementById('eInterfazPrincipal').value = mapaInterfaz[tipo] || tipo;
+  actualizarCuffLeak();   // v3_207
 }
 
 // ── Lógica de grupos ────────────────────────────────────
@@ -13053,7 +13107,7 @@ function openEgreso(patientId){
   document.getElementById('egresoDestinoAlta').value = '';
   document.getElementById('egresoCausaObito').value = '';        // v3_182
   document.getElementById('egresoDonante').checked = false;
-  document.getElementById('egresoDonanteRow').style.display = 'none';
+  actualizarDonanteObito();                                     // v3_207
   document.getElementById('egresoTraslado').style.display = 'none';
   document.getElementById('egresoAlta').style.display = 'none';
   document.getElementById('egresoObito').style.display = 'none';
@@ -13117,12 +13171,14 @@ function actualizarDonanteObito(){
   const row   = document.getElementById('egresoDonanteRow');
   const lbl   = document.getElementById('egresoDonanteLabel');
   const hint  = document.getElementById('egresoDonanteHint');
+  // v3_207: el tilde está siempre visible. Antes aparecía recién al elegir el
+  // mecanismo y quedaba escondido, así que parecía que no se podía tildar.
+  row.style.display = 'block';
   if(!causa){
-    row.style.display = 'none';
-    document.getElementById('egresoDonante').checked = false;
+    lbl.textContent  = 'Fue donante de órganos';
+    hint.textContent = 'Elegí arriba el mecanismo para precisar el tipo de donación.';
     return;
   }
-  row.style.display = 'block';
   if(causa === 'Muerte encefálica'){
     lbl.textContent  = 'Fue donante de órganos';
     hint.textContent = 'Certificada la muerte encefálica y concretada la ablación.';
@@ -13191,13 +13247,13 @@ async function confirmarEgreso(){
     // v3_182: mecanismo del fallecimiento y donación. Ambos opcionales: si el
     // kinesiólogo no lo sabe, el óbito se registra igual y el dato queda vacío.
     const causa   = document.getElementById('egresoCausaObito').value;
-    const donante = causa ? !!document.getElementById('egresoDonante').checked : false;
-    const detalle = causa ? (causa + (donante ? ' — Donante' : ' — No donante')) : '';
-    cambios = { estado:'Óbito', fEUTI:fecha, causaObito:causa, donanteObito:causa ? (donante?'Sí':'No') : '' };
+    const donante = !!document.getElementById('egresoDonante').checked;   // v3_207
+    const detalle = causa ? (causa + (donante ? ' — Donante' : ' — No donante')) : (donante ? 'Donante' : '');
+    cambios = { estado:'Óbito', fEUTI:fecha, causaObito:causa, donanteObito:donante?'Sí':'No' };
     evo = {
       id:Date.now(), patientId:egresoPacId, date:fecha,
       turno:currentShift(), kine:currentUser.name, tipo:'obito',
-      causaObito:causa, donanteObito:causa ? (donante?'Sí':'No') : '',
+      causaObito:causa, donanteObito:donante?'Sí':'No',
       obs:`ÓBITO${detalle?': '+detalle:''}${obs?'. '+obs:''}`,
       tecnicas:[], secCant:'', secChar:'', tolerancia:'',
     };
@@ -15212,9 +15268,7 @@ function openEvolucion(patientId){
   const posBox = document.getElementById('eSubARMposicion'); if(posBox) posBox.style.display = 'none';
   setPosicionARM('supino');
   // Cuff Leak Test: visible solo para quemados (dentro de PVE)
-  const esQuemado = patients.find(x=>x.id===patientId)?.tipoKine === 'quemado';
-  const pveSubCuff = document.getElementById('pveSubCuffLeak');
-  if(pveSubCuff) pveSubCuff.style.display = esQuemado ? 'block' : 'none';
+  actualizarCuffLeak();   // v3_207: depende del grupo Y de que esté con TET
   const cuffLeakEl = document.getElementById('eCuffLeak'); if(cuffLeakEl) cuffLeakEl.value = '';
   document.getElementById('eSubCNflujo').style.display = 'none';
   document.getElementById('eSubMVfio2').style.display = 'none';
@@ -16465,6 +16519,19 @@ function etiquetaPeriodo(periodo){
 let SECTORES = [];
 const SECTOR_LBL = s => SALA_LABEL[s]||s;
 
+// v3_207: días de ARM contados desde las evoluciones, un día por paciente y
+// fecha. Así el total es exactamente TET + TQT y el desglose siempre cierra.
+function _enSector(e, s){ return !s || patients.find(p=>p.id===e.patientId)?.sala === s; }
+function diasTETreg(mesStr, s){
+  return contarDiasUnicos(e => enPeriodo(e.date, mesStr) && e.interfaz === 'TET' && _enSector(e, s));
+}
+function diasTQTARMreg(mesStr, s){
+  return contarDiasUnicos(e => enPeriodo(e.date, mesStr) && e.interfaz === 'TQT' && _enSector(e, s));
+}
+function diasARMregistrados(mesStr, s){
+  return diasTETreg(mesStr, s) + diasTQTARMreg(mesStr, s);
+}
+
 function diasARMenMes(p, mesStr){
   // v3_163: días del período en que el paciente estuvo en ARM. El tope superior
   // es el fin del período o el día de hoy, lo que ocurra primero: antes, con el
@@ -16961,11 +17028,13 @@ function renderIndMensual(mesStr){
         ${PROCEDIMIENTOS_ESP.map(pr => fila(pr.label, s=>procedimientoEspEnMes(s,mesStr,pr.label))).join('')}
         ${fila('Evaluación neurológica (ficha)', s=>fichasNeuroEnMes(s,mesStr))}
         <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">ARM / Ventilación mecánica</td></tr>
-        ${filaARM('Días de ARMI totales', s=>patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0))}
-        ${filaARM('Días de TET', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.interfaz==='TET'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
-        ${filaARM('Días de TQT en ARM', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.interfaz==='TQT'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
+        ${filaARM('Días de ARM registrados (TET + TQT)', s=>diasARMregistrados(mesStr,s))}
+        ${filaARM('— Días de TET', s=>diasTETreg(mesStr,s))}
+        ${filaARM('— Días de TQT en ARM', s=>diasTQTARMreg(mesStr,s))}
+        ${filaARM('Días de ARM según fechas de la ficha', s=>patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0))}
+        ${filaARM('— Días de ARM sin evolución cargada', s=>Math.max(0, patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0) - diasARMregistrados(mesStr,s)))}
         ${filaARM('Días de TQT sin ARM (espontáneo)', s=>diasInterfazEnMes(mesStr,s,'TQT_ESP'))}
-        ${filaARM('Pacientes únicos en ARM', s=>pacientesEnARMenMes(s,mesStr))}
+        ${filaARM('Pacientes distintos que pasaron por ARM', s=>pacientesEnARMenMes(s,mesStr))}
         <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Soporte no invasivo / Oxigenoterapia (días)</td></tr>
         ${filaARM('Días de VNI', s=>diasInterfazEnMes(mesStr,s,'VNI'))}
         ${filaARM('Días de CNAF', s=>diasInterfazEnMes(mesStr,s,'CNAF'))}
@@ -17185,7 +17254,7 @@ async function exportarIndicadoresCompleto(mesStr){
   rows.push(calcFila('Días de CNAF', s=>diasInterfazEnMes(mesStr,s,'CNAF')));
   rows.push(calcFila('Días de VAN con O2', s=>diasInterfazEnMes(mesStr,s,'VAN_O2')));
   rows.push(calcFila('Días en aire ambiente', s=>diasInterfazEnMes(mesStr,s,'AA')));
-  rows.push(calcFila('Pacientes únicos en ARM', s=>pacientesEnARMenMes(s,mesStr)));
+  rows.push(calcFila('Pacientes distintos que pasaron por ARM', s=>pacientesEnARMenMes(s,mesStr)));
 
   // ── 5. EXTUBACIONES ──
   seccion('EXTUBACIONES (por sector)');
@@ -17291,7 +17360,7 @@ async function exportarIndicadores(vista, mesStr){
     rows.push(calcFila('Días de TET', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.interfaz==='TET'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
     rows.push(calcFila('Días de TQT en ARM', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.interfaz==='TQT'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
     rows.push(calcFila('Días de TQT sin ARM', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&(e.interfaz||'').includes('TQT espontáneo')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
-    rows.push(calcFila('Pacientes únicos en ARM', s=>pacientesEnARMenMes(s,mesStr)));
+    rows.push(calcFila('Pacientes distintos que pasaron por ARM', s=>pacientesEnARMenMes(s,mesStr)));
     rows.push(['EXTUBACIONES']);
     rows.push(calcFila('Exitosas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.extubacion==='Sí — planificada'&&e.pveResult==='Exitosa'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
     rows.push(calcFila('Fallidas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.extubacion?.startsWith('Sí')&&e.pveResult?.startsWith('Fallida')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
@@ -17546,11 +17615,75 @@ async function guardarEvalDeglusion(){
   renderBannerDeglusion(degPacId);
 }
 
+// v3_207: hasta ahora solo se veía el resultado de la última evaluación. Saber
+// que un paciente está "apto para semisólidos" no dice DÓNDE falló: para eso
+// hace falta el detalle, y la comparación con las anteriores.
+const DEG_LABELS = {
+  fc:'FC', fr:'FR', spo2:'SpO₂', ta:'TA', temp:'Temperatura', gcs:'Glasgow', rass:'RASS',
+  pc:'Pares craneales', pcObs:'Obs. pares craneales',
+  praxCierre:'Praxia — cierre labial', praxLengua:'Praxia — lengua', praxPaladar:'Praxia — paladar',
+  praxMandibula:'Praxia — mandíbula', praxMejillas:'Praxia — mejillas', praxHioides:'Praxia — hioides',
+  muscFacial:'Musculatura facial', muscLingual:'Musculatura lingual', muscFaringea:'Musculatura faríngea',
+  vozTono:'Voz — tono', vozVolumen:'Voz — volumen', vozClaridad:'Voz — claridad',
+  tosVol:'Tos voluntaria', carraspeo:'Carraspeo', reflNauseoso:'Reflejo nauseoso', reflDeglut:'Reflejo deglutorio',
+  lofVoz:'LOF — voz', lofAscLar:'LOF — ascenso laríngeo', lofHigiene:'LOF — higiene oral',
+  lofTosPost:'LOF — tos posterior', blueTest:'Blue test',
+  reflRDD:'Reflejo RDD', reflTosVAA:'Reflejo tusígeno VAA',
+  val1:'Valoración 1', val2:'Valoración 2', val3:'Valoración 3', val4:'Valoración 4', val5:'Valoración 5',
+  etapaOralPrep:'Etapa oral preparatoria', etapaOral:'Etapa oral', etapaFaringea:'Etapa faríngea', etapaEsofagica:'Etapa esofágica',
+  alimSemi:'Semisólidos', alimLiq:'Líquidos', alimSol:'Sólidos', obs:'Observaciones'
+};
+
+function _degDetalleHTML(ev){
+  const filas = [];
+  const push = (rot, val) => { if(val !== '' && val != null) filas.push([rot, val]); };
+  if(ev.tipo === 'A' && ev.guss){
+    Object.entries(ev.guss).forEach(([k,v]) => {
+      if(k === 'obs') return;
+      if(v === '' || v == null) return;
+      push(k.replace(/_/g,' '), typeof v === 'boolean' ? (v?'Sí':'No') : v);
+    });
+    if(ev.guss.obs) push('Observaciones', ev.guss.obs);
+  } else if(ev.formal){
+    Object.entries(ev.formal).forEach(([k,v]) => push(DEG_LABELS[k] || k, v));
+  }
+  if(!filas.length) return '<div style="font-size:12px;color:var(--text-muted);padding:6px 0">Sin detalle cargado.</div>';
+  return `<div class="deg-grid">${filas.map(([r,v]) =>
+    `<div class="deg-item"><div class="deg-rot">${escapeHTML(r)}</div><div class="deg-val">${escapeHTML(String(v))}</div></div>`).join('')}</div>`;
+}
+
+function verHistorialDeglusion(patientId){
+  const lista = evalDeglusion.filter(e => e.patientId === patientId);
+  const p = patients.find(x => x.id === patientId);
+  document.getElementById('degHistTitulo').textContent = p ? `${p.apellido}, ${p.nombre}` : 'Evaluaciones de deglución';
+  document.getElementById('degHistSub').textContent =
+    `${lista.length} evaluación${lista.length===1?'':'es'} registrada${lista.length===1?'':'s'}`;
+  const cont = document.getElementById('degHistLista');
+  cont.innerHTML = lista.length ? lista.map((ev, i) => `
+    <div class="deg-eval">
+      <div class="deg-cab" onclick="this.parentElement.classList.toggle('abierta')">
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:13px;color:var(--blue-900)">
+            ${escapeHTML(fmtDate(ev.fecha))} · ${ev.tipo==='A'?'GUSS-ICU':'Evaluación formal'}${ev.score!=null?` · ${ev.score}/10`:''}
+            ${i===0?'<span class="badge badge-purple" style="font-size:9px;margin-left:5px">ÚLTIMA</span>':''}
+          </div>
+          <div style="font-size:12px;font-weight:600;margin-top:2px">${escapeHTML(ev.resultadoTxt||'')}</div>
+          <div style="font-size:11px;color:var(--text-muted)">${escapeHTML(ev.kine||'—')}</div>
+        </div>
+        <i class="ti ti-chevron-down deg-flecha"></i>
+      </div>
+      <div class="deg-cuerpo">${_degDetalleHTML(ev)}</div>
+    </div>`).join('')
+    : '<div style="padding:22px;text-align:center;color:var(--text-muted);font-size:13px">Todavía no hay evaluaciones.</div>';
+  openModal('modalDegHistorial');
+}
+
 function renderBannerDeglusion(patientId){
   const el = document.getElementById('evoBannerDeglusion');
   if(!el) return;
   const ultima = evalDeglusion.find(e=>e.patientId===patientId);
   if(!ultima){ el.style.display='none'; el.innerHTML=''; return; }
+  const totalEval = evalDeglusion.filter(e=>e.patientId===patientId).length;
   const colorMap = { no_apto:'var(--red-200)', semi:'var(--amber-200)', semi_liq:'var(--blue-200)', todo:'var(--teal-200)', derivar_fees:'var(--purple-200)' };
   const bgMap = { no_apto:'var(--red-50)', semi:'var(--amber-50)', semi_liq:'var(--blue-50)', todo:'var(--teal-50)', derivar_fees:'var(--purple-50)' };
   const colorTxt = colorMap[ultima.resultado]||'var(--border)';
@@ -17563,7 +17696,10 @@ function renderBannerDeglusion(patientId){
         <div style="font-size:12px;margin-top:2px;font-weight:600">${ultima.resultadoTxt}</div>
         <div style="font-size:11px;color:var(--text-muted);margin-top:1px">Kine: ${ultima.kine}</div>
       </div>
-      <button onclick="abrirEvalDeglusion()" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--blue-600);white-space:nowrap">Nueva eval.</button>
+      <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+        <button onclick="verHistorialDeglusion(${patientId})" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--blue-600);white-space:nowrap"><i class="ti ti-history"></i> Ver evaluaciones${totalEval>1?' ('+totalEval+')':''}</button>
+        <button onclick="abrirEvalDeglusion()" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--blue-600);white-space:nowrap">Nueva eval.</button>
+      </div>
     </div>`;
   el.style.display='block';
 }
