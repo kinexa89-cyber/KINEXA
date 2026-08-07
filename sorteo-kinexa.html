@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sorteo Kinexa — selección verificable</title>
+<style>
+  :root{
+    --violeta:#5B21B6; --violeta-cla:#7C3AED; --violeta-osc:#3B0765;
+    --verde:#0F6E56; --verde-cla:#1D9E75; --verde-50:#E1F5EE;
+    --rojo:#B91C1C; --ambar:#8C5610; --ambar-50:#FAEEDA;
+    --gris-50:#F5F4F0; --gris-100:#E6E4DC; --gris-400:#888780;
+    --texto:#1a1a2e; --texto-suave:#5F5E5A; --borde:#DAD8D0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;padding:0;background:linear-gradient(140deg,#3B0765,#7C3AED 55%,#A68AF9);
+       min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+       color:var(--texto);padding:16px}
+  .wrap{max-width:860px;margin:0 auto}
+  header{text-align:center;color:#fff;padding:22px 8px 26px}
+  .logo{width:56px;height:56px;border-radius:15px;background:#fff;color:var(--violeta);
+        display:inline-flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;margin-bottom:12px}
+  header h1{margin:0;font-size:27px;font-weight:800;letter-spacing:-.4px}
+  header p{margin:7px 0 0;font-size:14px;opacity:.85}
+  .card{background:#fff;border-radius:16px;padding:20px;margin-bottom:14px;
+        box-shadow:0 8px 26px rgba(0,0,0,.16)}
+  .card h2{margin:0 0 4px;font-size:15px;font-weight:800;text-transform:uppercase;
+           letter-spacing:.7px;color:var(--violeta)}
+  .card .hint{margin:0 0 14px;font-size:13px;color:var(--texto-suave);line-height:1.5}
+  textarea{width:100%;min-height:190px;padding:12px;border:1.5px solid var(--borde);
+           border-radius:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+           font-size:13px;line-height:1.55;resize:vertical}
+  textarea:focus{outline:none;border-color:var(--violeta-cla)}
+  .fila{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+  button{padding:11px 18px;border:none;border-radius:10px;font-size:14px;font-weight:700;
+         cursor:pointer;font-family:inherit;transition:opacity .15s}
+  button:hover{opacity:.88}
+  button:disabled{opacity:.45;cursor:not-allowed}
+  .b-pri{background:var(--violeta);color:#fff}
+  .b-sec{background:var(--gris-100);color:var(--texto)}
+  .b-ok{background:var(--verde);color:#fff}
+  input[type=text],input[type=number]{padding:10px 12px;border:1.5px solid var(--borde);
+        border-radius:9px;font-size:14px;font-family:inherit}
+  label.chk{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--texto-suave);cursor:pointer}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:14px 0}
+  .stat{background:var(--gris-50);border-radius:11px;padding:12px;text-align:center}
+  .stat .n{font-size:26px;font-weight:800;color:var(--violeta)}
+  .stat .l{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--texto-suave);margin-top:2px}
+  .lista{max-height:340px;overflow-y:auto;border:1px solid var(--borde);border-radius:11px;margin-top:6px}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{position:sticky;top:0;background:var(--gris-50);padding:9px 10px;text-align:left;
+     font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--texto-suave);
+     border-bottom:2px solid var(--gris-100)}
+  td{padding:8px 10px;border-bottom:1px solid #f0efeb;vertical-align:top}
+  tr.gana{background:var(--verde-50);font-weight:700}
+  tr.desc{opacity:.55}
+  .num{font-family:ui-monospace,monospace;color:var(--gris-400);width:46px}
+  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
+  .b-val{background:var(--verde-50);color:var(--verde)}
+  .b-des{background:#FDE8E8;color:var(--rojo)}
+  .b-ext{background:#EDE9FE;color:var(--violeta)}
+  .ganador{background:linear-gradient(135deg,var(--verde),var(--verde-cla));color:#fff;
+           border-radius:16px;padding:26px 22px;text-align:center;margin-bottom:14px}
+  .ganador .rot{font-size:12px;text-transform:uppercase;letter-spacing:1.4px;opacity:.85}
+  .ganador .user{font-size:32px;font-weight:800;margin:8px 0 4px;word-break:break-word}
+  .ganador .inst{font-size:16px;opacity:.94}
+  .ganador .idx{font-size:12px;opacity:.8;margin-top:10px;font-family:ui-monospace,monospace}
+  .supl{background:var(--gris-50);border-radius:12px;padding:13px 15px;margin-top:9px;font-size:14px}
+  .supl b{color:var(--violeta)}
+  .aviso{background:var(--ambar-50);border:1px solid #F3D49A;border-radius:10px;
+         padding:11px 13px;font-size:12.5px;color:var(--ambar);line-height:1.55;margin-top:12px}
+  .semilla{background:#1a1a2e;color:#7DD3AC;border-radius:10px;padding:12px 14px;
+           font-family:ui-monospace,monospace;font-size:12.5px;margin-top:12px;word-break:break-all;line-height:1.7}
+  .semilla span{color:#A68AF9}
+  .sorteando{font-size:30px;font-weight:800;color:var(--violeta);text-align:center;padding:26px 10px;
+             font-family:ui-monospace,monospace}
+  footer{text-align:center;color:rgba(255,255,255,.7);font-size:12px;padding:18px 10px 30px;line-height:1.6}
+  @media(max-width:520px){
+    header h1{font-size:22px} .ganador .user{font-size:25px} .card{padding:16px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo">K</div>
+    <h1>Sorteo Kinexa</h1>
+    <p>Selección aleatoria verificable · Beca Kinexa 2026</p>
+  </header>
+
+  <!-- 1. Pegar comentarios -->
+  <div class="card">
+    <h2>1 · Pegá los comentarios</h2>
+    <p class="hint">
+      Un comentario por línea, con el formato <b>usuario: texto del comentario</b>.
+      Si copiás y pegás directo de Instagram suele venir así.
+      También sirve solo <b>usuario texto</b> — la herramienta detecta el @ igual.
+    </p>
+    <textarea id="entrada" spellcholding="false" placeholder="lucia.ferrari: @martin.gomez — Hospital San Martín, La Plata
+kine.martin: @sofi.re @juanpk — Hospital Posadas, El Palomar
+sofia.re: @lucia.ferrari — Hospital Posadas, El Palomar"></textarea>
+
+    <div class="fila">
+      <label class="chk"><input type="checkbox" id="exigirInst" checked> Exigir institución</label>
+      <label class="chk"><input type="checkbox" id="unaPorUsuario"> Una sola chance por usuario</label>
+    </div>
+    <div class="fila">
+      <button class="b-pri" onclick="procesar()">Procesar comentarios</button>
+      <button class="b-sec" onclick="cargarEjemplo()">Cargar ejemplo</button>
+      <button class="b-sec" onclick="limpiar()">Limpiar</button>
+    </div>
+  </div>
+
+  <!-- 2. Historias -->
+  <div class="card" id="cardHistorias" style="display:none">
+    <h2>2 · Chances extra por historia</h2>
+    <p class="hint">
+      Usuarios que compartieron en historia etiquetando a @kinexa.app.
+      Uno por línea, con o sin arroba. Cada uno suma una chance más.
+    </p>
+    <textarea id="historias" style="min-height:110px" placeholder="@lucia.ferrari
+kine.martin"></textarea>
+    <div class="fila"><button class="b-sec" onclick="procesar()">Recalcular</button></div>
+  </div>
+
+  <!-- 3. Participantes -->
+  <div class="card" id="cardLista" style="display:none">
+    <h2>3 · Participantes</h2>
+    <div class="stats" id="stats"></div>
+    <div class="lista"><table id="tabla"></table></div>
+    <div class="aviso" id="avisoDesc" style="display:none"></div>
+  </div>
+
+  <!-- 4. Sortear -->
+  <div class="card" id="cardSorteo" style="display:none">
+    <h2>4 · Sortear</h2>
+    <p class="hint">
+      La semilla es el número del que sale el azar. Dejá la que viene o poné una que se pueda
+      verificar después (por ejemplo, los números del Quini 6 de ese día). Con la misma semilla
+      y la misma lista, el resultado siempre es el mismo: por eso es auditable.
+    </p>
+    <div class="fila">
+      <input type="text" id="semilla" style="flex:1;min-width:180px" placeholder="Semilla">
+      <button class="b-sec" onclick="nuevaSemilla()">Otra semilla</button>
+    </div>
+    <div class="fila">
+      <button class="b-ok" id="btnSortear" onclick="sortear()">🎲 Sortear ahora</button>
+      <button class="b-sec" onclick="exportar()">Descargar acta (.txt)</button>
+    </div>
+  </div>
+
+  <div id="resultado"></div>
+
+  <footer>
+    Todo se procesa en este dispositivo. Nada se envía a ningún servidor.<br>
+    Kinexa · kinexa-app.com.ar
+  </footer>
+</div>
+
+<script>
+let participantes = [];   // { usuario, etiquetados, institucion, texto, valido, motivo, extra }
+let chances = [];         // una entrada por chance: { n, usuario, institucion, tipo }
+let ultimoSorteo = null;
+
+/* ── Utilidades ─────────────────────────────────────────── */
+const norm = u => String(u||'').trim().toLowerCase().replace(/^@+/,'').replace(/[.,;:]+$/,'');
+const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* Generador con semilla (mulberry32). Determinista: misma semilla, mismo resultado. */
+function rngDesde(semilla){
+  let h = 1779033703 ^ String(semilla).length;
+  for(let i=0;i<String(semilla).length;i++){
+    h = Math.imul(h ^ String(semilla).charCodeAt(i), 3432918353);
+    h = h << 13 | h >>> 19;
+  }
+  let a = h >>> 0;
+  return function(){
+    a |= 0; a = a + 0x6D2B79F5 | 0;
+    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/* ── Parseo de un comentario ────────────────────────────── */
+function parsearLinea(linea){
+  const cruda = linea.trim();
+  if(!cruda) return null;
+
+  // "usuario: texto"  →  separamos autor y contenido
+  let usuario = '', texto = cruda;
+  const m = cruda.match(/^@?([A-Za-z0-9._]{2,30})\s*[::]\s*(.*)$/);
+  if(m){ usuario = norm(m[1]); texto = m[2].trim(); }
+  else {
+    // "usuario @etiquetado ..." → el primer token es el autor
+    const t = cruda.match(/^@?([A-Za-z0-9._]{2,30})\s+(.*)$/);
+    if(t){ usuario = norm(t[1]); texto = t[2].trim(); }
+  }
+  if(!usuario) return { usuario:'(sin identificar)', etiquetados:[], institucion:'', texto:cruda,
+                        valido:false, motivo:'No se pudo identificar al autor' };
+
+  // Etiquetados: todos los @ del texto, sin el propio autor ni repetidos
+  const brutos = (texto.match(/@[A-Za-z0-9._]{2,30}/g) || []).map(norm);
+  const etiquetados = [...new Set(brutos)].filter(e => e !== usuario && e !== 'kinexa.app');
+
+  // Institución: lo que queda después de sacar las etiquetas y los separadores
+  let institucion = texto.replace(/@[A-Za-z0-9._]{2,30}/g, ' ')
+                         .replace(/[—–\-|]+/g, ' ')
+                         .replace(/\s+/g, ' ')
+                         .trim()
+                         .replace(/^[,.;:]+|[,.;:]+$/g, '')
+                         .trim();
+
+  const exigirInst = document.getElementById('exigirInst').checked;
+  let valido = true, motivo = '';
+  if(!etiquetados.length){ valido = false; motivo = 'No etiquetó a ningún colega'; }
+  else if(exigirInst && institucion.length < 4){ valido = false; motivo = 'No indicó institución'; }
+
+  return { usuario, etiquetados, institucion, texto: cruda, valido, motivo };
+}
+
+/* ── Procesar todo ──────────────────────────────────────── */
+function procesar(){
+  const lineas = document.getElementById('entrada').value.split('\n');
+  participantes = lineas.map(parsearLinea).filter(Boolean);
+
+  // Historias → chance extra
+  const extras = new Set(
+    document.getElementById('historias').value.split('\n').map(norm).filter(Boolean)
+  );
+
+  const unaPorUsuario = document.getElementById('unaPorUsuario').checked;
+  const yaConChance = new Set();
+
+  chances = [];
+  participantes.forEach(p=>{
+    p.extra = false;
+    if(!p.valido) return;
+    if(unaPorUsuario && yaConChance.has(p.usuario)){
+      p.valido = false; p.motivo = 'Ya tenía una chance (modo 1 por usuario)';
+      return;
+    }
+    yaConChance.add(p.usuario);
+    chances.push({ n: chances.length+1, usuario:p.usuario, institucion:p.institucion, tipo:'comentario' });
+  });
+
+  // Una chance extra por usuario que compartió en historia y además comentó válido
+  const conComentario = new Set(chances.map(c=>c.usuario));
+  extras.forEach(u=>{
+    if(!conComentario.has(u)) return;
+    const inst = chances.find(c=>c.usuario===u)?.institucion || '';
+    chances.push({ n: chances.length+1, usuario:u, institucion:inst, tipo:'historia' });
+    const p = participantes.find(x=>x.usuario===u && x.valido);
+    if(p) p.extra = true;
+  });
+
+  render();
+  document.getElementById('cardHistorias').style.display = 'block';
+  document.getElementById('cardLista').style.display = 'block';
+  document.getElementById('cardSorteo').style.display = chances.length ? 'block' : 'none';
+  if(!document.getElementById('semilla').value) nuevaSemilla();
+  document.getElementById('resultado').innerHTML = '';
+  ultimoSorteo = null;
+}
+
+function render(){
+  const val = participantes.filter(p=>p.valido);
+  const desc = participantes.filter(p=>!p.valido);
+  const usuarios = new Set(val.map(p=>p.usuario)).size;
+  const inst = new Set(val.map(p=>p.institucion.toLowerCase()).filter(Boolean)).size;
+
+  document.getElementById('stats').innerHTML = `
+    <div class="stat"><div class="n">${chances.length}</div><div class="l">Chances</div></div>
+    <div class="stat"><div class="n">${usuarios}</div><div class="l">Participantes</div></div>
+    <div class="stat"><div class="n">${inst}</div><div class="l">Instituciones</div></div>
+    <div class="stat"><div class="n">${desc.length}</div><div class="l">Descartados</div></div>`;
+
+  let filas = '<tr><th>#</th><th>Usuario</th><th>Institución</th><th>Estado</th></tr>';
+  let i = 0;
+  participantes.forEach(p=>{
+    if(p.valido){
+      i++;
+      filas += `<tr><td class="num">${i}</td><td><b>@${esc(p.usuario)}</b>${p.extra?' <span class="badge b-ext">+historia</span>':''}</td>
+        <td>${esc(p.institucion)||'<i>—</i>'}</td><td><span class="badge b-val">válido</span></td></tr>`;
+    } else {
+      filas += `<tr class="desc"><td class="num">—</td><td>@${esc(p.usuario)}</td>
+        <td>${esc(p.texto).slice(0,60)}</td><td><span class="badge b-des">${esc(p.motivo)}</span></td></tr>`;
+    }
+  });
+  document.getElementById('tabla').innerHTML = filas;
+
+  const av = document.getElementById('avisoDesc');
+  if(desc.length){
+    av.style.display = 'block';
+    av.innerHTML = `<b>${desc.length} comentario${desc.length>1?'s':''} descartado${desc.length>1?'s':''}.</b>
+      Revisá que no sea un error de formato antes de sortear: si a alguien le falta la institución
+      pero se entiende cuál es, podés corregirlo en el texto de arriba y volver a procesar.`;
+  } else av.style.display = 'none';
+}
+
+/* ── Sorteo ─────────────────────────────────────────────── */
+function nuevaSemilla(){
+  const f = new Date();
+  document.getElementById('semilla').value =
+    'kinexa-' + f.toISOString().slice(0,10) + '-' + Math.floor(Math.random()*1e6).toString().padStart(6,'0');
+}
+
+function sortear(){
+  if(!chances.length) return;
+  const semilla = document.getElementById('semilla').value.trim() || 'kinexa';
+  const btn = document.getElementById('btnSortear');
+  btn.disabled = true;
+
+  // Animación de suspenso, después el resultado real
+  const res = document.getElementById('resultado');
+  res.innerHTML = '<div class="card"><div class="sorteando" id="ruleta">…</div></div>';
+  const rul = document.getElementById('ruleta');
+  let t = 0;
+  const iv = setInterval(()=>{
+    rul.textContent = '@' + chances[Math.floor(Math.random()*chances.length)].usuario;
+    if(++t > 22){ clearInterval(iv); mostrar(semilla); btn.disabled = false; }
+  }, 85);
+}
+
+function mostrar(semilla){
+  const rnd = rngDesde(semilla);
+  // Barajado Fisher-Yates completo → el orden da ganador y suplentes
+  const orden = chances.map((c,i)=>i);
+  for(let i=orden.length-1;i>0;i--){
+    const j = Math.floor(rnd()*(i+1));
+    [orden[i],orden[j]] = [orden[j],orden[i]];
+  }
+  // Ganador y suplentes tienen que ser usuarios distintos
+  const elegidos = [];
+  for(const idx of orden){
+    const c = chances[idx];
+    if(elegidos.some(e=>e.c.usuario===c.usuario)) continue;
+    elegidos.push({ c, idx });
+    if(elegidos.length===3) break;
+  }
+
+  ultimoSorteo = { semilla, elegidos, total: chances.length, fecha: new Date().toISOString() };
+
+  const g = elegidos[0];
+  let html = `<div class="ganador">
+      <div class="rot">Servicio ganador</div>
+      <div class="user">@${esc(g.c.usuario)}</div>
+      <div class="inst">${esc(g.c.institucion)||'—'}</div>
+      <div class="idx">chance n° ${g.idx+1} de ${chances.length}${g.c.tipo==='historia'?' · por historia':''}</div>
+    </div><div class="card">`;
+
+  elegidos.slice(1).forEach((e,i)=>{
+    html += `<div class="supl"><b>${i+1}° suplente:</b> @${esc(e.c.usuario)} — ${esc(e.c.institucion)||'—'}
+             <span style="color:var(--texto-suave)">(chance n° ${e.idx+1})</span></div>`;
+  });
+
+  html += `<div class="semilla">
+      <span>semilla:</span> ${esc(semilla)}<br>
+      <span>chances totales:</span> ${chances.length}<br>
+      <span>chance sorteada:</span> ${g.idx+1}<br>
+      <span>fecha:</span> ${new Date().toLocaleString('es-AR')}
+    </div>
+    <div class="aviso">Con esta misma semilla y esta misma lista, cualquiera puede repetir el sorteo
+    y obtener exactamente este resultado. Mostrá esta pantalla en el video.</div>
+    <div class="fila"><button class="b-sec" onclick="exportar()">Descargar acta (.txt)</button></div>
+    </div>`;
+
+  document.getElementById('resultado').innerHTML = html;
+  document.getElementById('resultado').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+/* ── Acta ───────────────────────────────────────────────── */
+function exportar(){
+  const L = [];
+  L.push('ACTA DE SORTEO — BECA KINEXA 2026');
+  L.push('='.repeat(52));
+  L.push('Generada: ' + new Date().toLocaleString('es-AR'));
+  L.push('');
+  L.push('PARTICIPANTES VÁLIDOS (' + chances.length + ' chances)');
+  L.push('-'.repeat(52));
+  chances.forEach(c=>L.push(String(c.n).padStart(4) + '. @' + c.usuario +
+    ' — ' + (c.institucion||'—') + (c.tipo==='historia' ? '  [historia]' : '')));
+  const desc = participantes.filter(p=>!p.valido);
+  if(desc.length){
+    L.push('');
+    L.push('DESCARTADOS (' + desc.length + ')');
+    L.push('-'.repeat(52));
+    desc.forEach(p=>L.push('  @' + p.usuario + ' — ' + p.motivo));
+  }
+  L.push('');
+  if(ultimoSorteo){
+    L.push('RESULTADO');
+    L.push('-'.repeat(52));
+    L.push('Semilla: ' + ultimoSorteo.semilla);
+    L.push('Chances totales: ' + ultimoSorteo.total);
+    L.push('');
+    ultimoSorteo.elegidos.forEach((e,i)=>{
+      const rot = i===0 ? 'GANADOR' : (i + '° SUPLENTE');
+      L.push(rot + ': @' + e.c.usuario + ' — ' + (e.c.institucion||'—') + '  (chance n° ' + (e.idx+1) + ')');
+    });
+  } else {
+    L.push('(Todavía no se realizó el sorteo)');
+  }
+  L.push('');
+  L.push('El resultado es reproducible: con la misma lista y la misma semilla,');
+  L.push('la herramienta devuelve siempre el mismo ganador.');
+
+  const blob = new Blob([L.join('\n')], {type:'text/plain;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'acta-sorteo-kinexa-' + new Date().toISOString().slice(0,10) + '.txt';
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function cargarEjemplo(){
+  document.getElementById('entrada').value =
+`lucia.ferrari: @martin.gomez — Hospital San Martín, La Plata
+kine.martin: @sofi.re @juanpk — Hospital Posadas, El Palomar
+sofia.re: @lucia.ferrari — Hospital Posadas, El Palomar
+juanpk: @kine.martin — Hospital Posadas, El Palomar
+ana.kinesio: @pablo.rt — Hospital Iturraspe, Santa Fe
+pablo.rt: @ana.kinesio — Hospital Iturraspe, Santa Fe
+kinesiobelgrano: @nadie
+carla.utip: @flor.kine — Hospital de Niños, Córdoba
+lucia.ferrari: @sofia.re — Hospital San Martín, La Plata`;
+  document.getElementById('historias').value = '@lucia.ferrari\nkine.martin';
+  procesar();
+}
+
+function limpiar(){
+  document.getElementById('entrada').value = '';
+  document.getElementById('historias').value = '';
+  participantes = []; chances = []; ultimoSorteo = null;
+  ['cardHistorias','cardLista','cardSorteo'].forEach(id=>document.getElementById(id).style.display='none');
+  document.getElementById('resultado').innerHTML = '';
+}
+
+nuevaSemilla();
+</script>
+</body>
+</html>
