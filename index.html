@@ -628,18 +628,36 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 /* v3_181: mientras se guarda, el botón TIENE que verse ocupado */
 .btn:disabled, .btn[disabled]{ opacity:.55; cursor:not-allowed; pointer-events:none; filter:grayscale(.35); }
 .btn:disabled .ocr-spinner, .btn[disabled] .ocr-spinner{ border-color:currentColor; border-top-color:transparent; }
-/* v3_182: tilde de donante en el óbito */
-.check-donante{ display:flex; align-items:center; gap:9px; cursor:pointer; font-size:13.5px;
-  font-weight:600; color:var(--text); padding:9px 11px; border:1px solid var(--border);
-  border-radius:8px; background:var(--gray-50); }
+/* v3_182: tilde de donante en el óbito
+   v3_209: el checkbox nativo se veía tenue en el celular y no quedaba claro si
+   estaba tildado. Ahora es un cuadro grande con tilde blanco + chip SÍ/NO. */
+.check-donante{ position:relative; display:flex; align-items:center; gap:11px; cursor:pointer; font-size:13.5px;
+  font-weight:600; color:var(--text); padding:11px 13px; border:1.5px solid var(--border);
+  border-radius:10px; background:var(--gray-50); user-select:none;
+  transition:background .15s, border-color .15s, color .15s; }
 .check-donante:hover{ background:#fff; border-color:var(--teal-400); }
-.check-donante input{ width:17px; height:17px; accent-color:var(--teal-600); cursor:pointer; margin:0; flex-shrink:0; }
+.check-donante input{ position:absolute; opacity:0; width:0; height:0; pointer-events:none; }
+.check-donante .cd-box{ width:27px; height:27px; flex-shrink:0; border:2px solid var(--gray-400);
+  border-radius:8px; background:#fff; display:flex; align-items:center; justify-content:center;
+  color:#fff; font-size:18px; line-height:1;
+  transition:background .15s, border-color .15s, transform .12s; }
+.check-donante .cd-box i{ opacity:0; transform:scale(.4); transition:opacity .12s, transform .12s; }
+.check-donante .cd-estado{ margin-left:auto; flex-shrink:0; font-size:11px; font-weight:800;
+  text-transform:uppercase; letter-spacing:.5px; padding:3px 10px; border-radius:999px;
+  background:var(--gray-100); color:var(--text-muted); transition:background .15s, color .15s; }
+.check-donante.on{ background:var(--teal-50); border-color:var(--teal-600); color:var(--teal-800); }
+.check-donante.on:hover{ background:var(--teal-50); }
+.check-donante.on .cd-box{ background:var(--teal-600); border-color:var(--teal-600); transform:scale(1.06); }
+.check-donante.on .cd-box i{ opacity:1; transform:scale(1); }
+.check-donante.on .cd-estado{ background:var(--teal-600); color:#fff; }
 @keyframes spin{ to{transform:rotate(360deg)} }
 .ocr-chip{ display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:6px;font-size:11px;background:var(--teal-50);border:1px solid var(--teal-100);color:var(--teal-800);margin:2px; }
 .btn-ocr{ display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--radius);font-size:12px;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:var(--font);background:linear-gradient(135deg,var(--teal-600),var(--blue-600));color:#fff; }
 .btn-ocr:hover{ opacity:.9; }
 .btn-ocr:disabled{ opacity:.6;cursor:not-allowed; }
 .field-ai{ border-color:var(--teal-400) !important;background:rgba(29,158,117,.06) !important;transition:border .3s,background .3s; }
+/* v3_209: parpadeo cuando la FiO₂ se acomoda sola al rango 21–100 */
+.fio2-fix{ border-color:var(--amber-400) !important; background:var(--amber-50) !important; }
 
 /* ─── SEPARATOR ─── */
 .sep{ border:none; border-top:1px solid var(--border); margin:1rem 0; }
@@ -2311,7 +2329,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <div class="form-row three">
             <div class="form-group"><label>FR (rpm)</label><input type="number" id="eVNIFr" inputmode="numeric" placeholder="rpm"></div>
             <div class="form-group"><label>PEEP (cmH₂O)</label><input type="number" id="eVNIPeep" inputmode="decimal" placeholder="cmH₂O"></div>
-            <div class="form-group"><label>FiO₂ (%)</label><input type="number" id="eVNIFio2" inputmode="decimal" placeholder="21–100"></div>
+            <div class="form-group"><label>FiO₂ (%)</label><input type="text" id="eVNIFio2" inputmode="numeric" maxlength="3" placeholder="21–100" oninput="filtrarFiO2(this)" onblur="normalizarFiO2(this)"></div>
           </div>
           <div class="form-row">
             <div class="form-group"><label>Tipo de máscara</label>
@@ -2322,7 +2340,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div id="eSubCNAF" style="display:none" class="dec-sublevel">
           <div class="form-row">
             <div class="form-group"><label>Flujo (L/min)</label><input type="number" id="eCNAFflujo" inputmode="decimal" placeholder="20–60" oninput="calcROX()"></div>
-            <div class="form-group"><label>FiO₂ (%)</label><input type="number" id="eCNAFfio2" inputmode="decimal" placeholder="21–100" oninput="calcROX()"></div>
+            <div class="form-group"><label>FiO₂ (%)</label><input type="text" id="eCNAFfio2" inputmode="numeric" maxlength="3" placeholder="21–100" oninput="filtrarFiO2(this); calcROX()" onblur="normalizarFiO2(this); calcROX()"></div>
           </div>
           <div id="eROXBox" style="display:none;margin-top:8px;background:var(--teal-50);border:1px solid var(--teal-100);border-radius:8px;padding:8px 12px">
             <div style="display:flex;align-items:baseline;gap:8px">
@@ -2647,7 +2665,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-group"><label>FR seteada (rpm)</label><input type="number" id="eFR" inputmode="numeric" oninput="autoCalculate()"></div>
         <div class="form-group"><label>FR real (rpm)</label><input type="number" id="eFRreal" inputmode="numeric"></div>
         <div class="form-group"><label>PEEP (cmH₂O)</label><input type="number" id="ePEEP" inputmode="decimal" step="0.5" oninput="autoCalculate()"></div>
-        <div class="form-group"><label>FiO₂ (%)</label><input type="number" id="eFiO2" inputmode="numeric" min="21" max="100" oninput="calcIndicesOxigenacion()"></div>
+        <div class="form-group"><label>FiO₂ (%)</label><input type="text" id="eFiO2" inputmode="numeric" maxlength="3" placeholder="21–100" oninput="filtrarFiO2(this); calcIndicesOxigenacion()" onblur="normalizarFiO2(this); calcIndicesOxigenacion(); autoCalculate()"><div class="form-hint">% entero (ej: 40, no 0.40)</div></div>
         <div class="form-group"><label>Ti total (seg)</label><input type="number" id="eTi" inputmode="decimal" step="0.1"></div>
         <div class="form-group"><label>Pausa insp. (seg)</label><input type="text" id="ePausaInsp" inputmode="decimal" placeholder="Ej: 0.2" onblur="normalizarDecimal(this)"></div>
       </div>
@@ -2756,7 +2774,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <div class="form-row four">
         <div class="form-group"><label>FR (rpm)</label><input type="number" id="eFR2" inputmode="numeric" oninput="autoCalculate2()"></div>
         <div class="form-group"><label>PEEP (cmH₂O)</label><input type="number" id="ePEEP2" inputmode="decimal" step="0.5" oninput="autoCalculate2()"></div>
-        <div class="form-group"><label>FiO₂ (%)</label><input type="number" id="eFiO22" inputmode="numeric" min="21" max="100"></div>
+        <div class="form-group"><label>FiO₂ (%)</label><input type="text" id="eFiO22" inputmode="numeric" maxlength="3" placeholder="21–100" oninput="filtrarFiO2(this)" onblur="normalizarFiO2(this)"></div>
         <div class="form-group"><label>Ti total (seg)</label><input type="number" id="eTi2" inputmode="decimal" step="0.1"></div>
         <div class="form-group"><label>Pausa insp. (seg)</label><input type="text" id="ePausaInsp2" inputmode="decimal" placeholder="Ej: 0.2" onblur="normalizarDecimal(this)"></div>
       </div>
@@ -3213,6 +3231,48 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       </div>
     </div>
     </div>
+
+    <!-- v3_209: Humidificación de la vía aérea artificial (TET o TQT, en ARM o espontáneo) -->
+    <div id="humidBlock" style="display:none">
+      <div class="form-section-title" style="margin-top:8px"><i class="ti ti-droplet-filled"></i> Humidificación de la vía aérea</div>
+      <div class="dec-row">
+        <button type="button" class="dec-btn dec-sel" id="eBtnHumidPasiva" onclick="setHumidificacion('Pasiva (HME)')">
+          <i class="ti ti-filter"></i> Pasiva (HME)
+        </button>
+        <button type="button" class="dec-btn" id="eBtnHumidActiva" onclick="setHumidificacion('Activa')">
+          <i class="ti ti-droplet-filled"></i> Activa
+        </button>
+      </div>
+      <input type="hidden" id="eHumidificacion" value="Pasiva (HME)">
+      <div class="form-hint" style="margin-top:6px">Por defecto queda en pasiva (HME), que es lo que se coloca casi siempre.</div>
+
+      <div id="eHumidMotivoBox" style="display:none;margin-top:10px;background:var(--amber-50);border:1.5px solid var(--amber-100);border-radius:8px;padding:11px 13px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--amber-800);margin-bottom:8px">
+          <i class="ti ti-help-circle"></i> ¿Por qué se pasó a humidificación activa?
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Motivo</label>
+            <select id="eHumidMotivo" onchange="onHumidMotivoChange()">
+              <option value="">Seleccioná el motivo...</option>
+              <option value="Más de 4 HME en un día">Más de 4 HME en un día</option>
+              <option value="Hipotermia">Hipotermia</option>
+              <option value="Fuga">Fuga</option>
+              <option value="Vt bajo">Vt bajo</option>
+              <option value="Hemoptisis">Hemoptisis</option>
+              <option value="Secreciones espesas/adherentes">Secreciones espesas / adherentes</option>
+              <option value="Quemadura de vía aérea">Quemadura de vía aérea</option>
+              <option value="Otro">Otro</option>
+            </select>
+          </div>
+          <div class="form-group" id="eHumidMotivoOtroWrap" style="display:none">
+            <label>Especificá el motivo</label>
+            <input type="text" id="eHumidMotivoOtro" placeholder="Detallá el motivo">
+          </div>
+        </div>
+      </div>
+      <hr class="sep">
+    </div><!-- fin humidBlock -->
 
     <div id="tqtBlock" style="display:none">
     <div class="accordion-header" onclick="toggleAccordion('accTQT')">
@@ -5673,9 +5733,11 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           </select>
         </div>
         <div class="form-group" id="egresoDonanteRow">
-          <label class="check-donante">
-            <input type="checkbox" id="egresoDonante">
+          <label class="check-donante" id="egresoDonanteWrap">
+            <input type="checkbox" id="egresoDonante" onchange="pintarDonanteObito()">
+            <span class="cd-box"><i class="ti ti-check"></i></span>
             <span id="egresoDonanteLabel">Fue donante de órganos</span>
+            <span class="cd-estado" id="egresoDonanteEstado">No</span>
           </label>
           <div class="egreso-sub" id="egresoDonanteHint" style="margin-top:4px"></div>
         </div>
@@ -5739,7 +5801,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_208';
+const APP_VERSION = 'v3_209';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -9232,6 +9294,7 @@ async function generarResumenIA(){
     } else {
       if(e.interfaz) partes.push(`Interfaz: ${e.interfaz}.`);
       if(e.modo) partes.push(`Modo: ${e.modo}, VT ${e.vt||'—'}ml, FiO2 ${e.fio2||'—'}%, PEEP ${e.peep||'—'}.`);
+      if(e.humidificacion) partes.push(`Humidificación: ${fmtHumidificacion(e)}.`);   // v3_209
       if(e.pafi) partes.push(`PAFI: ${e.pafi}.`);
       if(e.rass) partes.push(`RASS: ${e.rass}.`);
       if(e.akm1) partes.push(`AKM: ${e.akm1}.`);
@@ -9387,6 +9450,7 @@ async function generarInformeAlta(patientId){
     } else {
       if(e.interfaz) partes.push(`Interfaz: ${e.interfaz}.`);
       if(e.modo) partes.push(`Modo: ${e.modo}, VT ${e.vt||'—'}ml (${e.vtkg||'—'} ml/kg PCP), FiO2 ${e.fio2||'—'}%, PEEP ${e.peep||'—'}.`);
+      if(e.humidificacion) partes.push(`Humidificación: ${fmtHumidificacion(e)}.`);   // v3_209
       if(e.pafi) partes.push(`PAFI: ${e.pafi}.`);
       if(e.rass) partes.push(`RASS: ${e.rass}, CPOT: ${e.cpot||'—'}.`);
       if((e.sedacion||[]).length || (e.analgesia||[]).length) partes.push(`Sedoanalgesia: ${[...(e.sedacion||[]),...(e.analgesia||[])].join(', ')}.`);
@@ -9626,6 +9690,7 @@ function construirTextoEvo(evo, p){
     add('Diámetro de TET/cánula', evo.armDiametro); add('TET a nivel de ADS (cm)', evo.tetADS);
     add('Posición', evo.posicionARM); add('Ciclo de prono', evo.pronoCiclo);
     add('Cuff leak test', evo.cuffLeak);
+    add('Humidificación de la vía aérea', fmtHumidificacion(evo));   // v3_209
     add('Cánula nasal (flujo L/min)', evo.cnFlujo); add('Máscara Venturi FiO2 (%)', evo.mvFio2);
     add('Máscara con reservorio (flujo L/min)', evo.mrFlujo);
     add('CNAF flujo (L/min)', evo.cnafFlujo); add('CNAF FiO2 (%)', evo.cnafFio2);
@@ -10117,6 +10182,36 @@ function normalizarDecimal(el){
   if(partes.length > 2) v = partes[0] + '.' + partes.slice(1).join('');
   const n = parseFloat(v);
   el.value = isNaN(n) ? '' : String(n);
+}
+
+// ── v3_209: la FiO₂ se carga SIEMPRE en porcentaje entero (21 a 100) ──
+// Antes se podía escribir 0.21 y la PAFI salía multiplicada por 100. Ahora el
+// campo directamente no deja tipear ni comas ni puntos, y al salir se acomoda
+// solo al rango válido avisando qué pasó.
+function filtrarFiO2(el){
+  if(!el) return;
+  const antes = String(el.value || '');
+  const limpio = antes.replace(/[^0-9]/g, '').replace(/^0+(?=\d)/, '').slice(0, 3);
+  if(limpio !== antes) el.value = limpio;
+}
+
+function normalizarFiO2(el){
+  if(!el) return;
+  filtrarFiO2(el);
+  if(el.value === ''){ el.classList.remove('fio2-fix'); return; }
+  let n = parseInt(el.value, 10);
+  if(isNaN(n)){ el.value = ''; el.classList.remove('fio2-fix'); return; }
+  let corregido = false;
+  if(n < 21){ n = 21; corregido = true; }
+  if(n > 100){ n = 100; corregido = true; }
+  el.value = String(n);
+  if(corregido){
+    el.classList.add('fio2-fix');
+    showToast('La FiO₂ va en % entero, de 21 a 100. Se ajustó a ' + n + '%.', 'info');
+    setTimeout(()=>el.classList.remove('fio2-fix'), 1600);
+  } else {
+    el.classList.remove('fio2-fix');
+  }
 }
 
 function showToast(msg, type='info'){
@@ -11435,10 +11530,23 @@ function precargarVentilacionUltimaEvo(patientId){
     return false;
   }
 
+  // v3_209: la humidificación también se hereda. Si ayer estaba en activa, lo
+  // más probable es que hoy siga igual; el kine la cambia si corresponde.
+  actualizarHumidificacion();
+  if(ult.humidificacion && _humidVisible()){
+    setHumidificacion(ult.humidificacion);
+    if(ult.humidificacion === 'Activa'){
+      const m = document.getElementById('eHumidMotivo'); if(m) m.value = ult.humidMotivo || '';
+      const o = document.getElementById('eHumidMotivoOtro'); if(o) o.value = ult.humidMotivoOtro || '';
+      onHumidMotivoChange();
+    }
+  }
+
   // Aviso: el estado viene heredado, hay que verificarlo
   const hint = document.getElementById('eVentHeredadoHint');
   if(hint){
     const detalle = [];
+    if(ult.humidificacion) detalle.push('humidificación ' + ult.humidificacion.toLowerCase());
     if(ult.mvFio2) detalle.push('FiO₂ ' + ult.mvFio2);
     if(ult.cnFlujo) detalle.push(ult.cnFlujo + ' L/min');
     if(ult.mrFlujo) detalle.push(ult.mrFlujo + ' L/min');
@@ -12085,6 +12193,70 @@ function actualizarCuffLeak(){
   if(!ver){ const el = document.getElementById('eCuffLeak'); if(el) el.value = ''; }
 }
 
+// ── v3_209: humidificación de la vía aérea artificial ──────────────
+// Aplica a todo paciente con TET o TQT, esté en ARM o respirando espontáneamente.
+// Arranca siempre en pasiva (HME), que es lo que se coloca en la mayoría de los
+// casos; si alguien la pasa a activa, se pide el motivo del cambio.
+function actualizarHumidificacion(){
+  const box = document.getElementById('humidBlock');
+  if(!box) return;
+  const iface = String(document.getElementById('eInterfazPrincipal')?.value || '');
+  const conVAA = iface === 'TET' || iface.includes('TQT');   // TQT en ARM y TQT espontáneo
+  box.style.display = conVAA ? 'block' : 'none';
+  if(conVAA){
+    const h = document.getElementById('eHumidificacion');
+    if(!h || !h.value) setHumidificacion('Pasiva (HME)');    // valor por defecto
+  } else {
+    resetHumidificacion();   // sin vía aérea artificial no se guarda nada
+  }
+}
+
+function resetHumidificacion(){
+  const h = document.getElementById('eHumidificacion'); if(h) h.value = '';
+  document.getElementById('eBtnHumidPasiva')?.classList.remove('dec-sel');
+  document.getElementById('eBtnHumidActiva')?.classList.remove('dec-sel');
+  const box = document.getElementById('eHumidMotivoBox'); if(box) box.style.display = 'none';
+  const m = document.getElementById('eHumidMotivo'); if(m) m.value = '';
+  const o = document.getElementById('eHumidMotivoOtro'); if(o) o.value = '';
+  const w = document.getElementById('eHumidMotivoOtroWrap'); if(w) w.style.display = 'none';
+}
+
+function setHumidificacion(tipo){
+  const activa = tipo === 'Activa';
+  const h = document.getElementById('eHumidificacion'); if(h) h.value = tipo;
+  document.getElementById('eBtnHumidPasiva')?.classList.toggle('dec-sel', !activa);
+  document.getElementById('eBtnHumidActiva')?.classList.toggle('dec-sel', activa);
+  const box = document.getElementById('eHumidMotivoBox');
+  if(box) box.style.display = activa ? 'block' : 'none';
+  if(!activa){
+    // Al volver a pasiva no queda colgado el motivo del cambio anterior
+    const m = document.getElementById('eHumidMotivo'); if(m) m.value = '';
+    const o = document.getElementById('eHumidMotivoOtro'); if(o) o.value = '';
+    const w = document.getElementById('eHumidMotivoOtroWrap'); if(w) w.style.display = 'none';
+  }
+}
+
+function onHumidMotivoChange(){
+  const esOtro = document.getElementById('eHumidMotivo')?.value === 'Otro';
+  const w = document.getElementById('eHumidMotivoOtroWrap');
+  if(w) w.style.display = esOtro ? 'block' : 'none';
+  if(!esOtro){ const o = document.getElementById('eHumidMotivoOtro'); if(o) o.value = ''; }
+}
+
+// ¿El bloque de humidificación está en pantalla? (o sea, ¿hay TET o TQT?)
+function _humidVisible(){
+  const b = document.getElementById('humidBlock');
+  return !!b && b.style.display !== 'none';
+}
+
+// Texto legible de la humidificación, para historial e informes
+function fmtHumidificacion(e){
+  if(!e || !e.humidificacion) return '';
+  if(e.humidificacion !== 'Activa') return e.humidificacion;
+  const mot = e.humidMotivo === 'Otro' ? (e.humidMotivoOtro || 'Otro') : (e.humidMotivo || '');
+  return 'Activa' + (mot ? ' — ' + mot : '');
+}
+
 // Vía de administración de la aerosolterapia
 function actualizarAerosol(){
   const activo = document.getElementById('tagAerosol')?.classList.contains('active');
@@ -12237,6 +12409,8 @@ function actualizarCuidadosVAA(){
     tagTitPEEP.style.display = enARM ? 'inline-flex' : 'none';
     if(!enARM) tagTitPEEP.classList.remove('active');
   }
+
+  actualizarHumidificacion();   // v3_209
 }
 
 // ── EAB adicionales (varios en el día) ──────────────────
@@ -13107,6 +13281,7 @@ function openEgreso(patientId){
   document.getElementById('egresoDestinoAlta').value = '';
   document.getElementById('egresoCausaObito').value = '';        // v3_182
   document.getElementById('egresoDonante').checked = false;
+  pintarDonanteObito();                                         // v3_209
   actualizarDonanteObito();                                     // v3_207
   document.getElementById('egresoTraslado').style.display = 'none';
   document.getElementById('egresoAlta').style.display = 'none';
@@ -13163,6 +13338,18 @@ function selectEgresoTipo(tipo){
     hint.textContent = 'Es el día en que el paciente deja el sector, que puede no coincidir con el de la muerte encefálica.';
   }
   document.getElementById('egresoConfirmBtn').disabled = false;
+}
+
+// v3_209: pinta el estado del tilde de donante (marcado / sin marcar).
+// Se llama en cada toque y también al abrir el modal, así el cuadro y el chip
+// SÍ/NO siempre reflejan lo que está realmente guardado en el checkbox.
+function pintarDonanteObito(){
+  const chk  = document.getElementById('egresoDonante');
+  const wrap = document.getElementById('egresoDonanteWrap');
+  const est  = document.getElementById('egresoDonanteEstado');
+  if(!chk || !wrap) return;
+  wrap.classList.toggle('on', chk.checked);
+  if(est) est.textContent = chk.checked ? 'Sí' : 'No';
 }
 
 // v3_182: el tilde de donante se adapta al mecanismo.
@@ -13367,6 +13554,7 @@ const EVO_LABELS = {
   utiDia:'Día en el sector', diasHosp:'Días de internación',
   interfaz:'Interfaz', interfazEsp:'Detalle de interfaz', armDiametro:'Diámetro TET/cánula (mm)', tetADS:'TET a ADS (cm)',
   posicionARM:'Posición', pronoCiclo:'Ciclo de prono', cuffLeak:'Cuff leak test',
+  humidificacion:'Humidificación', humidMotivo:'Motivo de humidificación activa', humidMotivoOtro:'Motivo (otro)',
   cnFlujo:'Cánula nasal (L/min)', mvFio2:'Máscara Venturi FiO₂ (%)', mrFlujo:'Máscara reservorio (L/min)',
   cnafFlujo:'CNAF flujo (L/min)', cnafFio2:'CNAF FiO₂ (%)',
   vniModo:'VNI modo', vniPi:'VNI Pi', vniVt:'VNI Vt', vniFr:'VNI FR', vniPeep:'VNI PEEP', vniFio2:'VNI FiO₂ (%)', vniMascara:'VNI máscara',
@@ -13433,6 +13621,7 @@ const EVO_SKIP_CAMPOS = new Set([
   // Ventilación / interfaz / O₂
   'interfaz','interfazEsp','diasVE','motivoVM','motivoVMOtro','balon','map','io','osi',
   'comfortB','sbs','nrs','ops','flacc','capd','sophia','tal','woodDownes','armDiametro','tetADS','posicionARM','pronoCiclo','cuffLeak',
+  'humidificacion','humidMotivo','humidMotivoOtro',   // v3_209: van en la sección Ventilación
   'cnFlujo','mvFio2','mrFlujo','cnafFlujo','cnafFio2',
   'vniModo','vniPi','vniVt','vniFr','vniPeep','vniFio2','vniMascara',
   // Neurológico / Sedoanalgesia
@@ -13614,7 +13803,7 @@ function evoCardHTML(e, i){
   const _sinO2NI = v => _ARMinv ? '' : v;
   const secVent = evoSeccionGrid('Ventilación / Interfaz', [
     [interfazTxt,'Interfaz'], [motivoVMTxt,'Motivo de ARM'], [e.balon,'Balón'], [e.diasVE,'Día de vent. espontánea'], [e.armDiametro,'Diámetro TET/cán. (mm)'], [e.tetADS,'TET a ADS (cm)'],
-    [posicionTxt,'Posición'], [e.cuffLeak,'Cuff leak test'],
+    [posicionTxt,'Posición'], [e.cuffLeak,'Cuff leak test'], [fmtHumidificacion(e),'Humidificación'],
     [_sinO2NI(e.cnFlujo),'Cánula nasal (L/min)'], [_sinO2NI(e.mvFio2),'Venturi FiO₂ (%)'], [_sinO2NI(e.mrFlujo),'Reservorio (L/min)'],
     [_sinO2NI(e.cnafFlujo),'CNAF flujo (L/min)'], [_sinO2NI(e.cnafFio2),'CNAF FiO₂ (%)'],
     [_sinO2NI(e.vniModo),'VNI modo'], [_sinO2NI(e.vniPi),'VNI Pi'], [_sinO2NI(e.vniVt),'VNI Vt'], [_sinO2NI(e.vniFr),'VNI FR'],
@@ -15257,6 +15446,9 @@ function openEvolucion(patientId){
   document.getElementById('eSubArmNo').style.display = 'none';
   document.getElementById('armOnlyBlock').style.display = 'none';
   document.getElementById('tqtBlock').style.display = 'none';
+  // v3_209: humidificación en blanco hasta que se elija TET o TQT
+  { const hb = document.getElementById('humidBlock'); if(hb) hb.style.display = 'none'; }
+  resetHumidificacion();
   document.getElementById('eSubVANO2').style.display = 'none';
   document.getElementById('eSubCNAF').style.display = 'none';
   document.getElementById('eCuidadosVAABox').style.display = 'none';
@@ -15476,6 +15668,8 @@ function selectInterfaz(tipo, visual=true){
     if(tipo === 'TQT'){ actualizarModoCanulaTQT(true); abrirAcordeon('accTQT'); }
   }
 
+  actualizarHumidificacion();   // v3_209: TET/TQT llevan humidificación
+
   // Si es ARM, abrir acordeón de mecánica automáticamente
   if(visual && ['TET','TQT'].includes(tipo)){
     const accVent = document.getElementById('accVent');
@@ -15623,6 +15817,7 @@ const EVO_FIELD_MAP = {
   hora:'eHora', turno:'eTurno', armDia:'eARM', utiDia:'eUTI',
   interfazEsp:'eInterfazEsp', armDiametro:'eARMdiametro', tetADS:'eTETads',
   posicionARM:'ePosicionARM', pronoCiclo:'ePronoCiclo', cuffLeak:'eCuffLeak',
+  humidMotivo:'eHumidMotivo', humidMotivoOtro:'eHumidMotivoOtro',   // v3_209
   cnFlujo:'eCNflujo', mvFio2:'eMVfio2', mrFlujo:'eMRflujo',
   cnafFlujo:'eCNAFflujo', cnafFio2:'eCNAFfio2',
   vniModo:'eVNIModo', vniPi:'eVNIPi', vniVt:'eVNIVt', vniFr:'eVNIFr', vniPeep:'eVNIPeep', vniFio2:'eVNIFio2', vniMascara:'eVNIMascara',
@@ -15723,6 +15918,18 @@ function precargarCamposEvolucion(evo){
     const el = document.getElementById(EVO_FIELD_MAP[key]);
     if(el) el.value = val;
   });
+
+  // v3_209: humidificación. Va después del mapa de campos porque hay que pintar
+  // los botones y abrir el motivo según lo que se había guardado.
+  actualizarHumidificacion();
+  if(evo.humidificacion && _humidVisible()){
+    setHumidificacion(evo.humidificacion);
+    if(evo.humidificacion === 'Activa'){
+      const m = document.getElementById('eHumidMotivo'); if(m) m.value = evo.humidMotivo || '';
+      const o = document.getElementById('eHumidMotivoOtro'); if(o) o.value = evo.humidMotivoOtro || '';
+      onHumidMotivoChange();
+    }
+  }
 
   // EAB adicionales
   const eabCont = document.getElementById('eabExtraContainer');
@@ -15917,6 +16124,20 @@ async function guardarEvolucion(){
   if(_guardandoEvo) return;
   const date = document.getElementById('eDate').value;
   if(!date){ showToast('Ingresá la fecha','error'); return; }
+  // v3_209: si pasaron la humidificación a activa, el motivo no es opcional
+  if(_humidVisible() && document.getElementById('eHumidificacion')?.value === 'Activa'){
+    const mot = document.getElementById('eHumidMotivo')?.value || '';
+    if(!mot){
+      showToast('Indicá por qué se pasó a humidificación activa','error');
+      document.getElementById('eHumidMotivo')?.focus();
+      return;
+    }
+    if(mot === 'Otro' && !(document.getElementById('eHumidMotivoOtro')?.value || '').trim()){
+      showToast('Detallá el motivo de la humidificación activa','error');
+      document.getElementById('eHumidMotivoOtro')?.focus();
+      return;
+    }
+  }
   if(frenarSiVencida()) return;   // v3_198
   _guardandoEvo = true;
   const btnEvo = document.getElementById('btnGuardarEvo');
@@ -15957,6 +16178,13 @@ async function guardarEvolucion(){
     motivoVM: (document.getElementById('eMotivoVMBlock')?.style.display !== 'none') ? G('eMotivoVM') : '',
     motivoVMOtro: (document.getElementById('eMotivoVMBlock')?.style.display !== 'none') ? G('eMotivoVMOtro') : '',
     // v3_117: días de ventilación espontánea (solo si es TQT sin ARM y estuvo en ARM antes)
+    // v3_209: humidificación de la vía aérea artificial. Solo se guarda si el
+    // bloque estaba visible (TET o TQT); si no, el paciente no tiene VAA y el
+    // dato no corresponde.
+    humidificacion: _humidVisible() ? G('eHumidificacion') : '',
+    humidMotivo: (_humidVisible() && G('eHumidificacion') === 'Activa') ? G('eHumidMotivo') : '',
+    humidMotivoOtro: (_humidVisible() && G('eHumidificacion') === 'Activa' && G('eHumidMotivo') === 'Otro')
+                       ? G('eHumidMotivoOtro') : '',
     diasVE: (['TQT_O2','TQT_AA'].includes(G('eInterfazEsp'))
               ? (diasVentilacionEspontanea(currentEvoPacId, date) ?? '') : ''),
     armDiametro:G('eARMdiametro'),
@@ -16919,6 +17147,46 @@ function diasInterfazEnMes(mesStr, sala, tipo){
   });
 }
 
+// ── v3_209: humidificación de la vía aérea artificial ──────────────
+// Se cuenta en días únicos paciente+fecha, igual que el resto de los días de
+// soporte. Si en un mismo día quedaron cargadas las dos (por ejemplo, el turno
+// mañana la puso activa y el de la tarde volvió a pasiva), ese día se cuenta
+// como ACTIVA: es el estado que motivó el cambio y el que hay que auditar.
+function humidDiasEnMes(mesStr, sala){
+  const activa = new Set(), pasiva = new Set();
+  evoluciones.forEach(e=>{
+    if(e.tipo || !e.date) return;
+    if(!e.humidificacion) return;
+    if(!enPeriodo(e.date, mesStr)) return;
+    if(sala){ const p = patients.find(x=>x.id===e.patientId); if(!p || p.sala!==sala) return; }
+    const k = e.patientId + '|' + e.date;
+    if(e.humidificacion === 'Activa') activa.add(k); else pasiva.add(k);
+  });
+  activa.forEach(k=>pasiva.delete(k));
+  return { activa: activa.size, pasiva: pasiva.size, total: activa.size + pasiva.size };
+}
+
+// Desglose de motivos del pase a humidificación activa.
+// Un mismo motivo, en el mismo paciente y el mismo día, cuenta una sola vez
+// aunque lo hayan registrado en dos turnos.
+function motivosHumidActivaEnMes(mesStr, sala){
+  const cont = {}, vistos = new Set();
+  evoluciones.forEach(e=>{
+    if(e.tipo || !e.date) return;
+    if(e.humidificacion !== 'Activa') return;
+    if(!enPeriodo(e.date, mesStr)) return;
+    if(sala){ const p = patients.find(x=>x.id===e.patientId); if(!p || p.sala!==sala) return; }
+    let m = (e.humidMotivo || '').trim();
+    if(!m) m = '(sin motivo registrado)';
+    else if(m === 'Otro') m = (e.humidMotivoOtro || '').trim() ? 'Otro: ' + e.humidMotivoOtro.trim() : 'Otro';
+    const k = e.patientId + '|' + e.date + '|' + m;
+    if(vistos.has(k)) return;
+    vistos.add(k);
+    cont[m] = (cont[m] || 0) + 1;
+  });
+  return Object.entries(cont).sort((a,b)=>b[1]-a[1]);
+}
+
 // ── Extubaciones detalladas ──
 function extubDetalle(mesStr, sala, tipo){
   return contarDiasUnicos(e=>{
@@ -16995,6 +17263,13 @@ function renderIndMensual(mesStr){
     return `<tr><td style="font-weight:600">${label}</td>${celdas}<td style="font-weight:700;color:var(--blue-700)">${total}</td></tr>`;
   };
 
+  // v3_209: la humidificación se calcula una sola vez por sector, no una vez
+  // por celda: recorrer todas las evoluciones cuatro veces por sala no hace
+  // falta y en instituciones grandes se nota.
+  const _humidSalas = {};
+  [''].concat(SECTORES).forEach(s=>{ _humidSalas[s] = humidDiasEnMes(mesStr, s); });
+  const _humidMotivos = motivosHumidActivaEnMes(mesStr, '');
+
   body.innerHTML = `
   <!-- KPIs del mes -->
   <div class="kpi-row" style="margin-bottom:16px">
@@ -17003,6 +17278,7 @@ function renderIndMensual(mesStr){
     <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-plug-x"></i></div><div class="kpi-content"><div class="label">TQT espontáneo</div><div class="value">${totalTQTesp}</div><div class="sub">Días sin ARM</div></div></div>
     <div class="kpi-card"><div class="kpi-icon purple"><i class="ti ti-activity"></i></div><div class="kpi-content"><div class="label">PVE realizadas</div><div class="value">${totalPVE}</div><div class="sub">Pruebas de vent. espontánea</div></div></div>
     <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-gauge"></i></div><div class="kpi-content"><div class="label">Controles de cuff</div><div class="value">${totalCuff}</div><div class="sub">Registros con presión</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-droplet-filled"></i></div><div class="kpi-content"><div class="label">Humidificación activa</div><div class="value">${pctTxt(_humidSalas[''].activa, _humidSalas[''].total)}</div><div class="sub">${_humidSalas[''].activa} de ${_humidSalas[''].total} días con VAA</div></div></div>
   </div>
 
   <div class="card" style="margin-bottom:12px;overflow-x:auto">
@@ -17067,11 +17343,20 @@ function renderIndMensual(mesStr){
         ${filaARM('PVE exitosas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.pveResult==='Exitosa'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
         <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Vía aérea artificial</td></tr>
         ${filaARM('Controles de cuff', s=>controlCuffEnMes(s,mesStr))}
+        ${filaARM('Días con humidificación registrada', s=>_humidSalas[s].total)}
+        ${filaARM('— Humidificación pasiva (HME)', s=>_humidSalas[s].pasiva)}
+        ${filaARM('— Humidificación activa', s=>_humidSalas[s].activa)}
+        <tr><td style="font-weight:600">% de días en humidificación activa</td>${SECTORES.map(s=>`<td>${pctTxt(_humidSalas[s].activa, _humidSalas[s].total)}</td>`).join('')}<td style="font-weight:700;color:var(--blue-700)">${pctTxt(_humidSalas[''].activa, _humidSalas[''].total)}</td></tr>
         ${filaARM('Evaluaciones de deglución', s=>deglucionEnMes(s,mesStr))}
       </tbody>
     </table>
     </div>
-  </div>`;
+  </div>
+
+  ${_humidMotivos.length ? indTabla('Motivos del pase a humidificación activa — '+etiquetaPeriodo(mesStr),'ti-droplet-filled',
+    _humidMotivos.map(([m,n])=>indFila2(escapeHTML(m), n, pctTxt(n, _humidSalas[''].activa))).join('') +
+    indFila2('<strong>Días en humidificación activa</strong>', _humidSalas[''].activa, '100%'),
+    ['Motivo','Días','% sobre días en activa']) : ''}`;
 }
 
 // ── Vista por paciente ────────────────────────────────────
@@ -17092,6 +17377,7 @@ function renderIndPacientes(){
     const extub = diasU(e=>e.extubacion?.startsWith('Sí'));
     const deg = diasU(e=>e.deglusion && e.deglusion!=='No realizada');
     const cuff = diasU(e=>e.cuffM||e.cuffT||e.cuffN);
+    const humActiva = diasU(e=>e.humidificacion==='Activa');   // v3_209
     const diasHosp = p.fIHosp ? (daysBetween(p.fIHosp,p.fEUTI||today())||0)+1 : '—';
     return `<tr>
       <td style="font-weight:600;white-space:nowrap">${p.apellido}, ${p.nombre}</td>
@@ -17113,6 +17399,7 @@ function renderIndPacientes(){
       <td>${extub||'—'}</td>
       <td>${deg||'—'}</td>
       <td>${cuff||'—'}</td>
+      <td>${humActiva||'—'}</td>
       <td>${diasU(e=>e.decDecanulado==='Si')?'Sí':'—'}</td>
       <td>${evos.length}</td>
     </tr>`;
@@ -17144,11 +17431,12 @@ function renderIndPacientes(){
           <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Extub.</th>
           <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Eval. deg.</th>
           <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Ctrl. cuff</th>
+          <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Humid. activa</th>
           <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Decanulado</th>
           <th style="padding:8px 6px;border-bottom:2px solid var(--blue-100)">Evol. total</th>
         </tr>
       </thead>
-      <tbody>${filas||'<tr><td colspan="21" style="text-align:center;padding:2rem;color:var(--text-muted)">Sin datos</td></tr>'}</tbody>
+      <tbody>${filas||'<tr><td colspan="22" style="text-align:center;padding:2rem;color:var(--text-muted)">Sin datos</td></tr>'}</tbody>
     </table>
     </div>
   </div>`;
@@ -17275,6 +17563,19 @@ async function exportarIndicadoresCompleto(mesStr){
   rows.push(calcFila('Decanulaciones exitosas', s=>decanulaciones('',s,mesStr)));
   rows.push(calcFila('Controles de cuff (días)', s=>controlCuffEnMes(s,mesStr)));
   rows.push(calcFila('Evaluaciones de deglución (días)', s=>deglucionEnMes(s,mesStr)));
+  // v3_209: humidificación de la vía aérea artificial
+  { const H = {}; [''].concat(SECTORES).forEach(s=>{ H[s] = humidDiasEnMes(mesStr, s); });
+    rows.push(calcFila('Días con humidificación registrada', s=>H[s].total));
+    rows.push(calcFila('  Humidificación pasiva (HME)', s=>H[s].pasiva));
+    rows.push(calcFila('  Humidificación activa', s=>H[s].activa));
+    rows.push(['% de días en humidificación activa', ...SECTORES.map(s=>pctTxt(H[s].activa, H[s].total)), pctTxt(H[''].activa, H[''].total)]);
+    const mot = motivosHumidActivaEnMes(mesStr, '');
+    if(mot.length){
+      rows.push([]);
+      rows.push(['Motivo del pase a humidificación activa','Días','% sobre días en activa']);
+      mot.forEach(([m,n])=>rows.push([m, n, pctTxt(n, H[''].activa)]));
+    }
+  }
 
   // ── 7. MOVIMIENTOS ──
   seccion('MOVIMIENTOS DEL MES (por sector)');
@@ -17297,7 +17598,7 @@ async function exportarIndicadoresCompleto(mesStr){
 
   // ── 8. DETALLE POR PACIENTE ──
   seccion('DETALLE POR PACIENTE (todos los registros)');
-  rows.push(['Paciente','DNI','Sala','Cama','Estado','Sexo','Edad','Grupo','IMC','Días hosp.','Días ARM','Días TET','Días TQT ARM','Días TQT esp.','PVE','PVE exitosas','Extubaciones','Eval. deglución','Ctrl. cuff','Decanulado','Evoluciones','Mecanismo del óbito','Donante']);
+  rows.push(['Paciente','DNI','Sala','Cama','Estado','Sexo','Edad','Grupo','IMC','Días hosp.','Días ARM','Días TET','Días TQT ARM','Días TQT esp.','PVE','PVE exitosas','Extubaciones','Eval. deglución','Ctrl. cuff','Días humid. activa','Decanulado','Evoluciones','Mecanismo del óbito','Donante']);
   patients.forEach(p=>{
     const evos = evoluciones.filter(e=>e.patientId===p.id&&!e.tipo);
     const diasU = filtro => new Set(evos.filter(e=>e.date && filtro(e)).map(e=>e.date)).size;
@@ -17314,6 +17615,7 @@ async function exportarIndicadoresCompleto(mesStr){
       diasU(e=>esEvoConExtubacion(e))||'',
       diasU(e=>e.deglusion&&e.deglusion!=='No realizada')||'',
       diasU(e=>e.cuffM||e.cuffT||e.cuffN)||'',
+      diasU(e=>e.humidificacion==='Activa')||'',   // v3_209
       diasU(e=>e.decDecanulado==='Si')?'Sí':'',
       evos.length,
       p.causaObito||'', p.donanteObito||''       // v3_183
@@ -17367,6 +17669,12 @@ async function exportarIndicadores(vista, mesStr){
     rows.push(calcFila('No programadas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&(e.extubacion==='Sí — no planificada'||e.extubacion==='autoextubacion'||e.extubacion==='accidental')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
     rows.push(['VÍA AÉREA / CUFF']);
     rows.push(calcFila('Controles de cuff', s=>controlCuffEnMes(s,mesStr)));
+    { const H = {}; [''].concat(SECTORES).forEach(s=>{ H[s] = humidDiasEnMes(mesStr, s); });   // v3_209
+      rows.push(calcFila('Días con humidificación registrada', s=>H[s].total));
+      rows.push(calcFila('  Humidificación pasiva (HME)', s=>H[s].pasiva));
+      rows.push(calcFila('  Humidificación activa', s=>H[s].activa));
+      motivosHumidActivaEnMes(mesStr, '').forEach(([m,n])=>rows.push(['    Motivo: '+m, n]));
+    }
     rows.push(calcFila('Evaluaciones de deglución', s=>deglucionEnMes(s,mesStr)));
   } else {
     rows.push(['Paciente','DNI','Sala','Cama','Estado','Días hosp.','Días ARM','Días TET','Días TQT ARM','Días TQT esp.','PVE','PVE exitosas','Extubaciones','Eval. deglución','Ctrl. cuff','Evoluciones']);
