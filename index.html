@@ -5801,7 +5801,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_209';
+const APP_VERSION = 'v3_210';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -5932,16 +5932,47 @@ function camasDeSector(nombre){
   return s ? normalizarCamas(s.camas) : [];
 }
 // Poblar el selector de institución en el login (al cargar la app)
+// ── v3_210: nombre de la institución de la sesión ────────────────
+// El RPC de login no devuelve inst_nombre, así que currentUser.instNombre
+// quedaba SIEMPRE vacío. Como institucionSinCargo() compara contra ese campo,
+// la lista de cortesía nunca se aplicaba y hasta el Bicentenario veía el aviso
+// de prueba. Ahora el nombre se recuerda por id, desde cualquiera de las
+// listas que la app ya lee, y se resuelve con respaldo.
+const INST_NOMBRES = {};
+function recordarNombreInst(id, nombre){
+  if(id === undefined || id === null || !nombre) return;
+  INST_NOMBRES[String(id)] = String(nombre);
+}
+function nombreInstPorId(id){
+  return (id === undefined || id === null) ? '' : (INST_NOMBRES[String(id)] || '');
+}
+// Nombre a usar en toda la app: lo que trajo el login o, si vino vacío, el del listado
+function instNombreActual(){
+  return currentUser?.instNombre || nombreInstPorId(currentUser?.institucion_id) || '';
+}
+
 async function cargarInstitucionesKinexa(){
   try {
     const insts = await rpc('kinexa_instituciones', {});
+    const arr = Array.isArray(insts) ? insts : [];
+    arr.forEach(i => recordarNombreInst(i.id, i.nombre));
     const sel = document.getElementById('loginInst');
     if(sel){
-      const arr = Array.isArray(insts) ? insts : [];
       sel.innerHTML = '<option value="">Elegí tu institución</option>' +
         arr.map(i => `<option value="${i.id}">${i.nombre}</option>`).join('');
     }
+    completarNombreInstSesion();
   } catch(e){ console.error('No se pudieron cargar las instituciones', e); }
+}
+
+// Sesión ya abierta sin nombre cargado: se completa y se repinta lo que dependa
+function completarNombreInstSesion(){
+  if(!currentUser || currentUser.instNombre) return;
+  const n = nombreInstPorId(currentUser.institucion_id);
+  if(!n) return;
+  currentUser.instNombre = n;
+  if(USER) USER.instNombre = n;
+  try { renderAvisoSuscripcion(); } catch(e){}
 }
 
 // ── Navegación entre pantallas de acceso ──────────────────
@@ -6229,7 +6260,7 @@ async function enviarSugerencia(){
     autor: currentUser?.name || '—',
     autorUser: currentUser?.user || '',
     institucion_id: currentUser?.institucion_id || null,
-    institucion: currentUser?.instNombre || '',
+    institucion: instNombreActual() || '',
     sector: currentSector || '',
     version: APP_VERSION,
     dispositivo: (navigator.userAgent || '').slice(0, 160),
@@ -7357,6 +7388,7 @@ async function doLogin(){
     }
     if(btn0){ btn0.disabled = false; btn0.innerHTML = '<i class="ti ti-login"></i> Ingresar'; }
     if(!lista.length){ showToast('DNI o clave incorrectos','error'); return; }
+    lista.forEach(x => recordarNombreInst(x.institucion_id, x.institucion_nombre));   // v3_210
     if(lista.length === 1){
       inst = lista[0].institucion_id;
     } else {
@@ -7379,7 +7411,7 @@ async function doLogin(){
           const sm = Array.isArray(rm) ? rm[0] : rm;
           if(sm && sm.token){
             const nombreM = ((sm.nombre||'') + ' ' + (sm.apellido||'')).trim() || u;
-            guardarSesionKx({ token:sm.token, user:u, name:nombreM, role:'admin', institucion_id:Number(inst), esMaestro:true, instNombre: sm.inst_nombre||'' });
+            guardarSesionKx({ token:sm.token, user:u, name:nombreM, role:'admin', institucion_id:Number(inst), esMaestro:true, instNombre: sm.inst_nombre || nombreInstPorId(inst) || '' });   // v3_210
             try { const sects = await rpc('kinexa_sectores', { p_token:TOKEN }); aplicarSectoresKinexa(sects); }
             catch(eS){ aplicarSectoresKinexa([]); }
             await startSession(USER);
@@ -7390,7 +7422,7 @@ async function doLogin(){
       showToast('DNI o clave incorrectos','error'); return;
     }
     const nombre = ((s.nombre||'') + ' ' + (s.apellido||'')).trim() || u;
-    guardarSesionKx({ token: s.token, user: u, name: nombre, role: s.es_admin ? 'admin' : 'kine', institucion_id: Number(inst), instNombre: s.inst_nombre||'' });
+    guardarSesionKx({ token: s.token, user: u, name: nombre, role: s.es_admin ? 'admin' : 'kine', institucion_id: Number(inst), instNombre: s.inst_nombre || nombreInstPorId(inst) || '' });   // v3_210
     // Traer los sectores de la institución y armar la UI
     try {
       const sects = await rpc('kinexa_sectores', { p_token: TOKEN });
@@ -7500,7 +7532,8 @@ async function startSession(user){
     }
   } catch(err){ console.error('Términos:', err); }
   // Todos eligen en qué sector van a trabajar hoy (el admin además puede elegir "ver todos")
-  document.getElementById('sectorGreeting').textContent = `Bienvenido/a, ${user.name}` + (user.instNombre ? ` — ${user.instNombre}` : '');
+  { const _in = user.instNombre || nombreInstPorId(user.institucion_id);   // v3_210
+    document.getElementById('sectorGreeting').textContent = `Bienvenido/a, ${user.name}` + (_in ? ` — ${_in}` : ''); }
   { const sg=document.getElementById('sectorGreeting'); if(sg) sg.title = 'Kinexa '+APP_VERSION; }
   document.getElementById('sectorScreen').style.display = 'flex';
 }
@@ -8096,7 +8129,7 @@ async function construirPDFPase(datos){
   let y = 0, pagina = 1;
   const VIOLETA = [124, 58, 237], GRIS = [110, 110, 120], NEGRO = [25, 25, 30];
 
-  const inst = currentUser?.instNombre || 'Institución';
+  const inst = instNombreActual() || 'Institución';
   const sectorLbl = SALA_LABEL[datos.sector] || datos.sector;
   const f = datos.generado;
   const sello = `${String(f.getDate()).padStart(2,'0')}/${String(f.getMonth()+1).padStart(2,'0')}/${f.getFullYear()} ${String(f.getHours()).padStart(2,'0')}:${String(f.getMinutes()).padStart(2,'0')}`;
@@ -8486,9 +8519,9 @@ const SUSC_ESTADOS = {
 // para que aguante variantes del nombre completo ("Hospital de Alta Complejidad
 // del Bicentenario Esteban Echeverría", "HBEE", etc.). Es una red de seguridad:
 // aunque nadie les cargue el estado 'cortesia', nunca van a ver un cobro.
-const INST_SIN_CARGO = ['bicentenario', 'cuenca alta', 'grierson', 'argerich'];
+const INST_SIN_CARGO = ['bicentenario', 'hbee', 'cuenca alta', 'grierson', 'argerich'];
 function institucionSinCargo(){
-  const n = _normTxt(currentUser?.instNombre || '');
+  const n = _normTxt(instNombreActual());   // v3_210: antes leía un campo siempre vacío
   if(!n) return false;
   return INST_SIN_CARGO.some(k => n.includes(k));
 }
@@ -8532,7 +8565,12 @@ async function cargarSuscripcion(){
     SUSCRIPCION = (r && (r.data || r)) || null;
     // v3_207: instituciones creadas antes de que existiera la prueba automática.
     // Se les abre la prueba ahora; las de la lista sin cargo quedan afuera.
-    if(!SUSCRIPCION && !institucionSinCargo() && currentUser?.role === 'admin'){
+    // v3_210: sólo si la lectura fue realmente exitosa Y no devolvió NINGÚN
+    // registro de suscripción. Antes bastaba con que 'actual' no apareciera para
+    // que se regenerara una prueba nueva, así que cualquier lectura rara volvía
+    // a poner el cartel aunque se hubiera cargado la cortesía a mano.
+    const huboRegistros = Array.isArray(regs) && regs.length > 0;
+    if(!SUSCRIPCION && !huboRegistros && !institucionSinCargo() && currentUser?.role === 'admin'){
       await crearSuscripcionPrueba();
     }
   } catch(err){
@@ -8742,7 +8780,7 @@ function pagarPlan(id){
     showToast('Cuando el pago se acredite, activamos la suscripción. Guardá el comprobante.','info');
     return;
   }
-  const inst = currentUser?.instNombre || '';
+  const inst = instNombreActual() || '';
   const asunto = encodeURIComponent(`Suscripción Kinexa — plan ${pl.nombre}`);
   const cuerpo = encodeURIComponent(
     `Institución: ${inst}\nPlan solicitado: ${pl.nombre} (${fmtPesos(pl.precio)})\n\n` +
@@ -9063,8 +9101,10 @@ async function entrarComoInstitucion(id){
     const sm = Array.isArray(rm) ? rm[0] : rm;
     if(!sm?.token) throw new Error('la base rechazó el ingreso (clave incorrecta)');
     const nombreM = ((sm.nombre||'') + ' ' + (sm.apellido||'')).trim() || currentUser.user;
+    recordarNombreInst(id, sm.inst_nombre || f?.nombre);   // v3_210
     guardarSesionKx({ token:sm.token, user:currentUser.user, name:nombreM, role:'admin',
-                      institucion_id:Number(id), esMaestro:true, instNombre: sm.inst_nombre || f?.nombre || '' }, false);
+                      institucion_id:Number(id), esMaestro:true,
+                      instNombre: sm.inst_nombre || f?.nombre || nombreInstPorId(id) || '' }, false);
     try { const sects = await rpc('kinexa_sectores', { p_token:TOKEN }); aplicarSectoresKinexa(sects); }
     catch(e){ aplicarSectoresKinexa([]); }
     closeModal('modalInstituciones', true);
