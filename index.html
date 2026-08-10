@@ -2674,6 +2674,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <!-- v3_211: volumen minuto = FR real (o seteada) × Vt -->
         <div class="form-group"><label>Vol. minuto (L/min)</label><input class="f-auto" type="text" id="eVM" readonly><div class="form-hint" id="eVMHint">FR real × Vt</div></div>
       </div>
+      <!-- v3_212: la presión control encabeza los modos presométricos -->
+      <div class="form-row four" id="ePCRow">
+        <div class="form-group"><label>PC (cmH₂O)</label><input type="number" id="ePC" inputmode="decimal"></div>
+      </div>
       <!-- v3_143: curva de flujo inspiratorio — solo en VC-CMV -->
       <div id="eCurvaFlujoBox" style="display:none;margin-top:8px;padding:10px 12px;background:var(--blue-50);border:1px solid var(--blue-200);border-radius:8px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--blue-700);margin-bottom:8px">Curva de flujo inspiratorio</div>
@@ -2700,18 +2704,19 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <input type="hidden" id="eCurvaFlujo">
       </div>
       <div class="form-row four">
-        <div class="form-group"><label>FR seteada (rpm)</label><input type="number" id="eFR" inputmode="numeric" oninput="autoCalculate()"></div>
+        <div class="form-group" id="eFRGroup"><label>FR seteada (rpm)</label><input type="number" id="eFR" inputmode="numeric" oninput="autoCalculate()"></div>
         <div class="form-group"><label>FR real (rpm)</label><input type="number" id="eFRreal" inputmode="numeric" oninput="autoCalculate()"></div>
         <div class="form-group"><label>PEEP (cmH₂O)</label><input type="number" id="ePEEP" inputmode="decimal" step="0.5" oninput="autoCalculate()"></div>
         <div class="form-group"><label>FiO₂ (%)</label><input type="text" id="eFiO2" inputmode="numeric" maxlength="3" placeholder="21–100" oninput="filtrarFiO2(this); calcIndicesOxigenacion()" onblur="normalizarFiO2(this); calcIndicesOxigenacion(); autoCalculate()"><div class="form-hint">% entero (ej: 40, no 0.40)</div></div>
-        <div class="form-group"><label>Ti total (seg)</label><input type="number" id="eTi" inputmode="decimal" step="0.1"></div>
-        <div class="form-group"><label>Pausa insp. (seg)</label><input type="text" id="ePausaInsp" inputmode="decimal" placeholder="Ej: 0.2" onblur="normalizarDecimal(this)"></div>
+        <!-- v3_212: el flujo pico se programa, va con el resto del seteo -->
+        <div class="form-group" id="eFlujoGroup"><label>Flujo pico (L/min)</label><input type="number" id="eFlujo" inputmode="decimal" oninput="autoCalculate()"></div>
+        <div class="form-group" id="eTiGroup"><label>Ti total (seg)</label><input type="number" id="eTi" inputmode="decimal" step="0.1"></div>
+        <div class="form-group" id="ePausaGroup"><label>Pausa insp. (seg)</label><input type="text" id="ePausaInsp" inputmode="decimal" placeholder="Ej: 0.2" onblur="normalizarDecimal(this)"></div>
       </div>
-      <div class="form-row four">
+      <div class="form-row three">
         <div class="form-group"><label>Ppico (cmH₂O)</label><input type="number" id="ePpico" inputmode="decimal" oninput="autoCalculate()"></div>
         <div class="form-group"><label>Pplat (cmH₂O)</label><input type="number" id="ePplat" inputmode="decimal" oninput="autoCalculate()"></div>
-        <div class="form-group"><label>PEEPt (cmH₂O)</label><input type="number" id="ePEEPt" inputmode="decimal" oninput="autoCalculate()"></div>
-        <div class="form-group"><label>PC (cmH₂O)</label><input type="number" id="ePC" inputmode="decimal"></div>
+        <div class="form-group" id="ePEEPtGroup"><label>PEEPt (cmH₂O)</label><input type="number" id="ePEEPt" inputmode="decimal" oninput="autoCalculate()"></div>
       </div>
       <!-- v3_133: presión media en vía aérea (pediátricos) -->
       <div class="form-row" id="eMAPRow" style="display:none">
@@ -2721,11 +2726,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <div class="form-hint">Necesaria para calcular el IO y el OSI</div>
         </div>
       </div>
-      <div class="form-row four">
+      <div class="form-row three">
         <div class="form-group"><label>DP (cmH₂O)</label><input class="f-auto" type="number" id="eDP" inputmode="decimal" oninput="autoCalculate()"><div class="form-hint">Pplat − PEEPt</div></div>
         <div class="form-group"><label>Crs (ml/cmH₂O)</label><input class="f-auto" type="number" id="eCrs" inputmode="decimal"><div class="form-hint">Compliance resp.</div></div>
         <div class="form-group" id="eRinspGroup"><label>Rinsp (cmH₂O/L/s)</label><input class="f-auto" type="number" id="eRinsp" inputmode="decimal" oninput="autoCalculate()"></div>
-        <div class="form-group" id="eFlujoGroup"><label>Flujo pico (L/min)</label><input type="number" id="eFlujo" inputmode="decimal" oninput="autoCalculate()"></div>
       </div>
       <div class="form-row three">
         <div class="form-group"><label>Mec. Power (J/min)</label><input class="f-auto" type="text" id="eMP" readonly><div class="form-hint">Auto: 0.098 × VT × FR × (Ppico + PEEP + DP/2)</div></div>
@@ -2794,6 +2798,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <!-- v3_211: volumen minuto = FR × Vt -->
         <div class="form-group"><label>Vol. minuto (L/min)</label><input class="f-auto" type="text" id="eVM2" readonly><div class="form-hint" id="eVMHint2">FR × Vt</div></div>
       </div>
+      <!-- v3_212: la presión control encabeza los modos presométricos -->
+      <div class="form-row four" id="ePCRow2">
+        <div class="form-group"><label>PC (cmH₂O)</label><input type="number" id="ePC2" inputmode="decimal"></div>
+      </div>
       <!-- v3_143: curva de flujo inspiratorio — solo en VC-CMV -->
       <div id="eCurvaFlujoBox2" style="display:none;margin-top:8px;padding:10px 12px;background:var(--blue-50);border:1px solid var(--blue-200);border-radius:8px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--blue-700);margin-bottom:8px">Curva de flujo inspiratorio</div>
@@ -2820,23 +2828,23 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <input type="hidden" id="eCurvaFlujo2">
       </div>
       <div class="form-row four">
-        <div class="form-group"><label>FR (rpm)</label><input type="number" id="eFR2" inputmode="numeric" oninput="autoCalculate2()"></div>
+        <div class="form-group" id="eFRGroup2"><label id="eFRLabel2">FR (rpm)</label><input type="number" id="eFR2" inputmode="numeric" oninput="autoCalculate2()"></div>
         <div class="form-group"><label>PEEP (cmH₂O)</label><input type="number" id="ePEEP2" inputmode="decimal" step="0.5" oninput="autoCalculate2()"></div>
         <div class="form-group"><label>FiO₂ (%)</label><input type="text" id="eFiO22" inputmode="numeric" maxlength="3" placeholder="21–100" oninput="filtrarFiO2(this)" onblur="normalizarFiO2(this)"></div>
-        <div class="form-group"><label>Ti total (seg)</label><input type="number" id="eTi2" inputmode="decimal" step="0.1"></div>
-        <div class="form-group"><label>Pausa insp. (seg)</label><input type="text" id="ePausaInsp2" inputmode="decimal" placeholder="Ej: 0.2" onblur="normalizarDecimal(this)"></div>
+        <!-- v3_212: el flujo pico se programa, va con el resto del seteo -->
+        <div class="form-group" id="eFlujoGroup2"><label>Flujo pico (L/min)</label><input type="number" id="eFlujo2" inputmode="decimal" oninput="autoCalculate2()"></div>
+        <div class="form-group" id="eTiGroup2"><label>Ti total (seg)</label><input type="number" id="eTi2" inputmode="decimal" step="0.1"></div>
+        <div class="form-group" id="ePausaGroup2"><label>Pausa insp. (seg)</label><input type="text" id="ePausaInsp2" inputmode="decimal" placeholder="Ej: 0.2" onblur="normalizarDecimal(this)"></div>
       </div>
-      <div class="form-row four">
+      <div class="form-row three">
         <div class="form-group"><label>Ppico (cmH₂O)</label><input type="number" id="ePpico2" inputmode="decimal" oninput="autoCalculate2()"></div>
         <div class="form-group"><label>Pplat (cmH₂O)</label><input type="number" id="ePplat2" inputmode="decimal" oninput="autoCalculate2()"></div>
-        <div class="form-group"><label>PEEPt (cmH₂O)</label><input type="number" id="ePEEPt2" inputmode="decimal" oninput="autoCalculate2()"></div>
-        <div class="form-group"><label>PC (cmH₂O)</label><input type="number" id="ePC2" inputmode="decimal"></div>
+        <div class="form-group" id="ePEEPtGroup2"><label>PEEPt (cmH₂O)</label><input type="number" id="ePEEPt2" inputmode="decimal" oninput="autoCalculate2()"></div>
       </div>
-      <div class="form-row four">
+      <div class="form-row three">
         <div class="form-group"><label>DP (cmH₂O)</label><input class="f-auto" type="number" id="eDP2" inputmode="decimal" oninput="autoCalculate2()"><div class="form-hint">Pplat − PEEPt</div></div>
         <div class="form-group"><label>Crs (ml/cmH₂O)</label><input class="f-auto" type="number" id="eCrs2" inputmode="decimal"><div class="form-hint">Compliance resp.</div></div>
         <div class="form-group" id="eRinspGroup2"><label>Rinsp (cmH₂O/L/s)</label><input class="f-auto" type="number" id="eRinsp2" inputmode="decimal" oninput="autoCalculate2()"></div>
-        <div class="form-group" id="eFlujoGroup2"><label>Flujo pico (L/min)</label><input type="number" id="eFlujo2" inputmode="decimal" oninput="autoCalculate2()"></div>
       </div>
       <div class="form-row three">
         <div class="form-group"><label>Mec. Power (J/min)</label><input class="f-auto" type="text" id="eMP2" readonly><div class="form-hint">Auto: 0.098 × VT × FR × (Ppico + PEEP + DP/2)</div></div>
@@ -5857,7 +5865,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_211';
+const APP_VERSION = 'v3_212';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -10092,7 +10100,8 @@ function autoCalculate(){
   }
 
   // ── Elastic Ratio = (4 × DP) + FR ──────────────────
-  const fr = get('eFR');
+  // v3_212: en PC-CSV no hay FR seteada, así que se usa la FR real
+  const fr = get('eFR') ?? get('eFRreal');
   if(dp !== null && fr !== null){
     setF('eER', ((4 * dp) + fr).toFixed(1));
   }
@@ -10888,40 +10897,70 @@ function actualizarCurvaFlujo(pref, modo){
   pintarCurvaFlujo(pref);
 }
 
-// ── v3_211: qué corresponde mostrar según el modo ventilatorio ──────
+// ── v3_211 / v3_212: qué corresponde mostrar según el modo ventilatorio ──
 // pref = '' (setting inicial) o '2' (setting post-modificación).
-// En los modos presométricos (PC-CMV y PC-CSV) el ventilador no entrega flujo
-// pico constante, así que no se pueden calcular ni la resistencia inspiratoria
-// ni la constante de tiempo: esos campos se sacan de pantalla.
+// Cada modo deja en pantalla solo lo que el ventilador realmente entrega:
+//   · VC-CMV  → sin PC; el flujo pico se programa y va con el resto del seteo.
+//   · PC-CMV  → la PC encabeza; sin pausa inspiratoria, sin flujo pico, sin
+//               Rinsp ni constante de tiempo (no se calculan en presometría).
+//   · PC-CSV  → igual que PC-CMV y además sin FR seteada, sin Ti y sin PEEPt,
+//               porque en ventilación espontánea los marca el paciente.
 // limpiar = true cuando el cambio lo hizo el usuario (se vacía lo que ya no
 // corresponde); false al precargar una evolución existente para editarla.
 function aplicarModoVent(pref, modo, limpiar){
-  const esPC = (modo === 'PC-CMV' || modo === 'PC-CSV');
+  const esVC  = (modo === 'VC-CMV');
+  const esPC  = (modo === 'PC-CMV' || modo === 'PC-CSV');
+  const esCSV = (modo === 'PC-CSV');
+
+  // Muestra u oculta un grupo de campos; al ocultarlo vacía su input.
+  const grupo = (idGrupo, visible, idInput) => {
+    const box = document.getElementById(idGrupo + pref);
+    if(box) box.style.display = visible ? '' : 'none';
+    if(!visible && limpiar && idInput){
+      const el = document.getElementById(idInput + pref); if(el) el.value = '';
+    }
+  };
 
   // Etiqueta del volumen corriente: seteado en volumen, exhalado en presión
   const lbl = document.getElementById('eVTLabel' + pref);
-  if(lbl) lbl.textContent = modo === 'VC-CMV' ? 'Vt seteado (ml)'
+  if(lbl) lbl.textContent = esVC ? 'Vt seteado (ml)'
                           : (esPC ? 'Vt exhalado (ml)' : 'VT (ml)');
-  const hVM = document.getElementById('eVMHint' + pref);
-  if(hVM) hVM.textContent = (pref === '2' ? 'FR × ' : 'FR real × ') +
-                            (modo === 'VC-CMV' ? 'Vt seteado'
-                             : (esPC ? 'Vt exhalado' : 'Vt'));
 
-  // Rinsp, flujo pico y constante de tiempo: no aplican en modos presométricos
-  [['eRinspGroup','eRinsp'], ['eFlujoGroup','eFlujo'], ['eCTGroup','eCT']].forEach(([g, inp])=>{
-    const box = document.getElementById(g + pref);
-    if(box) box.style.display = esPC ? 'none' : '';
-    if(esPC && limpiar){ const el = document.getElementById(inp + pref); if(el) el.value = ''; }
-  });
+  // Presión control: no existe en VC-CMV y encabeza los modos presométricos
+  grupo('ePCRow', !esVC, 'ePC');
+
+  // Pausa inspiratoria: solo se programa en los modos controlados por volumen
+  grupo('ePausaGroup', !esPC, 'ePausaInsp');
+
+  // Flujo pico, Rinsp y constante de tiempo: no se calculan en presometría
+  grupo('eFlujoGroup', !esPC, 'eFlujo');
+  grupo('eRinspGroup', !esPC, 'eRinsp');
+  grupo('eCTGroup',    !esPC, 'eCT');
   if(esPC){
     const ctBox = document.getElementById('ctMultiplesBox' + pref);
     if(ctBox){ ctBox.style.display = 'none'; ctBox.innerHTML = ''; }
   }
 
+  // En PC-CSV el paciente marca su propio ritmo: no hay FR seteada, ni Ti, ni PEEPt
+  grupo('eTiGroup',    !esCSV, 'eTi');
+  grupo('ePEEPtGroup', !esCSV, 'ePEEPt');
+  if(pref === '2'){
+    // El bloque post-modificación tiene una sola FR: en PC-CSV pasa a ser la real
+    const l = document.getElementById('eFRLabel2');
+    if(l) l.textContent = esCSV ? 'FR real (rpm)' : 'FR (rpm)';
+  } else {
+    grupo('eFRGroup', !esCSV, 'eFR');
+  }
+
+  // De qué FR y qué Vt sale el volumen minuto
+  const hVM = document.getElementById('eVMHint' + pref);
+  if(hVM) hVM.textContent = ((pref === '2' && !esCSV) ? 'FR × ' : 'FR real × ') +
+                            (esVC ? 'Vt seteado' : (esPC ? 'Vt exhalado' : 'Vt'));
+
   // Parámetros PC-CSV (P0.1, ΔPocc y PMI)
   const box = document.getElementById('ePCCSVBox' + pref);
-  if(box) box.style.display = modo === 'PC-CSV' ? 'block' : 'none';
-  if(modo !== 'PC-CSV' && limpiar){
+  if(box) box.style.display = esCSV ? 'block' : 'none';
+  if(!esCSV && limpiar){
     ['eP01','eDeltaPocc','ePMI'].forEach(id=>{
       const el = document.getElementById(id + pref); if(el) el.value = '';
     });
