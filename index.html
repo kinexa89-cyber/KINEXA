@@ -85,6 +85,36 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); font-si
   display:flex; align-items:center; gap:6px; }
 .form-hint{ font-size:11px; color:var(--text-light); margin-top:3px; }
 
+/* ─── v3_211: carga manual vs. cálculo automático ───────────────────────
+   En los modales de evolución los campos que completa el kinesiólogo quedan
+   en blanco con borde violeta; los que calcula la app sola quedan con fondo
+   verde suave. La diferencia es sutil a propósito: se nota de un vistazo sin
+   ensuciar el formulario. */
+#modalEvo .form-group input:not(.f-auto),
+#modalEvo .form-group select,
+#modalEvo .form-group textarea,
+#modalEvoMin .form-group input:not(.f-auto),
+#modalEvoMin .form-group select,
+#modalEvoMin .form-group textarea{ border-color:var(--blue-200); }
+/* la marca de campo obligatorio sin completar sigue mandando sobre el color base */
+#modalEvo .form-group input.field-error,
+#modalEvo .form-group select.field-error,
+#modalEvo .form-group textarea.field-error,
+#modalEvoMin .form-group input.field-error,
+#modalEvoMin .form-group select.field-error,
+#modalEvoMin .form-group textarea.field-error{ border-color:var(--red-400); background:var(--red-50); }
+.form-group input.f-auto, input.f-auto{
+  background:var(--teal-50); border-color:var(--teal-100);
+  color:var(--teal-800); font-weight:600; }
+.form-group input.f-auto:focus, input.f-auto:focus{
+  border-color:var(--teal-400); box-shadow:0 0 0 3px rgba(15,110,86,.12); }
+.leyenda-campos{ display:flex; flex-wrap:wrap; gap:14px; align-items:center;
+  font-size:11px; color:var(--text-muted); margin:0 0 12px; }
+.leyenda-campos .lc-sw{ display:inline-block; width:11px; height:11px; border-radius:3px;
+  border:1px solid var(--border); vertical-align:-1px; margin-right:5px; }
+.leyenda-campos .lc-man{ background:#fff; border-color:var(--blue-200); }
+.leyenda-campos .lc-auto{ background:var(--teal-50); border-color:var(--teal-100); }
+
 /* ─── BUTTONS ─── */
 .btn{ display:inline-flex; align-items:center; gap:6px; padding:9px 16px; border-radius:var(--radius);
   font-size:14px; font-weight:500; cursor:pointer; border:none; transition:all .15s; font-family:var(--font); }
@@ -1967,13 +1997,19 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     <!-- v3_191: aviso de modo edición -->
     <div id="evoBannerEdicion" class="evo-banner-edit" style="display:none"></div>
 
+    <!-- v3_211: referencia de colores de los campos -->
+    <div class="leyenda-campos">
+      <span><span class="lc-sw lc-man"></span>Carga manual</span>
+      <span><span class="lc-sw lc-auto"></span>Cálculo automático</span>
+    </div>
+
     <!-- Datos básicos de la guardia -->
     <div class="form-section">
       <div class="form-section-title"><i class="ti ti-calendar"></i> Guardia</div>
       <div class="form-row">
         <div class="form-group"><label>Fecha</label><input type="date" id="eDate"></div>
         <div class="form-group"><label>Hora</label><input type="time" id="eHora" style="background:var(--gray-50);color:var(--blue-800);font-weight:600"></div>
-        <div class="form-group"><label>Kinesiólogo</label><input type="text" id="eKine" readonly style="background:var(--gray-50)"></div>
+        <div class="form-group"><label>Kinesiólogo</label><input class="f-auto" type="text" id="eKine" readonly></div>
       </div>
       <input type="hidden" id="eTurno">
       <!-- Banner de traslado reciente -->
@@ -2014,8 +2050,8 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         </div>
         </div>
       </div>
-      <!-- Botón acceso rápido a evaluación de deglución -->
-      <div style="margin-bottom:12px">
+      <!-- Botón acceso rápido a evaluación de deglución (v3_211: oculto en ARM) -->
+      <div id="degAccesoBox" style="margin-bottom:12px">
         <button type="button" class="btn btn-ghost" style="width:100%;border:1.5px dashed var(--teal-300);color:var(--teal-700);background:var(--teal-50)" onclick="abrirEvalDeglusion()">
           <i class="ti ti-mouth"></i> Realizar / ver evaluación de deglución
         </button>
@@ -2038,7 +2074,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-group"><label>FC (lpm)</label><input type="number" id="eFC" inputmode="numeric"></div>
         <div class="form-group"><label>TA sistólica</label><input type="number" id="eTAS" inputmode="numeric" placeholder="120"></div>
         <div class="form-group"><label>TA diastólica</label><input type="number" id="eTAD" inputmode="numeric" placeholder="80"></div>
-        <div class="form-group"><label>TAM (calculada)</label><input type="text" id="eTAM" readonly style="background:var(--blue-50);color:var(--blue-800);font-weight:600"></div>
+        <div class="form-group"><label>TAM (calculada)</label><input class="f-auto" type="text" id="eTAM" readonly></div>
       </div>
       <div class="form-row three">
         <div class="form-group"><label>SpO₂ monitor (%)</label><input type="number" id="eSpO2Mon" inputmode="numeric" max="100" oninput="calcROX()"></div>
@@ -2231,7 +2267,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             <div class="form-row">
               <div class="form-group">
                 <label>Total Score de Tal</label>
-                <input type="text" id="eTal" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:700" placeholder="—">
+                <input class="f-auto" type="text" id="eTal" readonly placeholder="—">
                 <div class="form-hint" id="eTalHint">0–4 leve · 5–8 moderado · 9–12 grave</div>
                 <div class="form-hint" id="avanceTal" style="color:var(--blue-700);font-weight:600"></div>
               </div>
@@ -2243,7 +2279,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             <div class="form-row">
               <div class="form-group">
                 <label>Total Wood-Downes modificado</label>
-                <input type="text" id="eWoodDownes" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:700" placeholder="—">
+                <input class="f-auto" type="text" id="eWoodDownes" readonly placeholder="—">
                 <div class="form-hint" id="eWoodDownesHint">0–3 leve · 4–5 moderado · ≥6 grave</div>
                 <div class="form-hint" id="avanceWoodDownes" style="color:var(--blue-700);font-weight:600"></div>
               </div>
@@ -2419,7 +2455,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <div class="form-row">
             <div class="form-group">
               <label>Total COMFORT-B</label>
-              <input type="text" id="eComfortB" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:700" placeholder="—">
+              <input class="f-auto" type="text" id="eComfortB" readonly placeholder="—">
               <div class="form-hint" id="eComfortBHint">11–22 = sedación adecuada</div>
               <div class="form-hint" id="avanceComfortB" style="color:var(--blue-700);font-weight:600"></div>
             </div>
@@ -2470,7 +2506,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <div class="form-row">
             <div class="form-group">
               <label>Total OPS</label>
-              <input type="text" id="eOPS" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:700" placeholder="—">
+              <input class="f-auto" type="text" id="eOPS" readonly placeholder="—">
               <div class="form-hint" id="eOPSHint">Observacional</div>
               <div class="form-hint" id="avanceOPS" style="color:var(--blue-700);font-weight:600"></div>
             </div>
@@ -2482,7 +2518,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <div class="form-row">
             <div class="form-group">
               <label>Total FLACC</label>
-              <input type="text" id="eFLACC" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:700" placeholder="—">
+              <input class="f-auto" type="text" id="eFLACC" readonly placeholder="—">
               <div class="form-hint" id="eFLACCHint">Observacional</div>
               <div class="form-hint" id="avanceFLACC" style="color:var(--blue-700);font-weight:600"></div>
             </div>
@@ -2506,7 +2542,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <div class="form-row">
             <div class="form-group">
               <label>Total CAPD</label>
-              <input type="text" id="eCAPD" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:700" placeholder="—">
+              <input class="f-auto" type="text" id="eCAPD" readonly placeholder="—">
               <div class="form-hint" id="eCAPDHint">≥9 compatible con delirium</div>
               <div class="form-hint" id="avanceCAPD" style="color:var(--blue-700);font-weight:600"></div>
             </div>
@@ -2518,7 +2554,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <div class="form-row">
             <div class="form-group">
               <label>Total SOPHIA / SOS</label>
-              <input type="text" id="eSOPHIA" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:700" placeholder="—">
+              <input class="f-auto" type="text" id="eSOPHIA" readonly placeholder="—">
               <div class="form-hint" id="eSOPHIAHint">≥4 sugiere abstinencia</div>
               <div class="form-hint" id="avanceSOPHIA" style="color:var(--blue-700);font-weight:600"></div>
             </div>
@@ -2624,7 +2660,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <i class="ti ti-chevron-down accordion-arrow" id="arrVent"></i>
     </div>
     <div class="accordion-body" id="accVent">
-      <div class="form-row three" style="margin-top:8px">
+      <div class="form-row four" style="margin-top:8px">
         <div class="form-group"><label>Modo ventilatorio</label>
           <select id="eModo" onchange="onModoChange(this.value)">
             <option value="">-</option>
@@ -2633,8 +2669,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             <option>PC-CSV</option>
           </select>
         </div>
-        <div class="form-group"><label>VT (ml)</label><input type="number" id="eVT" inputmode="decimal" oninput="autoCalculate()" placeholder="ml"></div>
-        <div class="form-group"><label>VT ml/kg PCP</label><input type="text" id="eVTkg" readonly style="background:var(--gray-50);color:var(--blue-800);font-weight:600"><div class="form-hint">VT / PCP del paciente</div></div>
+        <div class="form-group"><label id="eVTLabel">VT (ml)</label><input type="number" id="eVT" inputmode="decimal" oninput="autoCalculate()" placeholder="ml"></div>
+        <div class="form-group"><label>VT ml/kg PCP</label><input class="f-auto" type="text" id="eVTkg" readonly><div class="form-hint">VT / PCP del paciente</div></div>
+        <!-- v3_211: volumen minuto = FR real (o seteada) × Vt -->
+        <div class="form-group"><label>Vol. minuto (L/min)</label><input class="f-auto" type="text" id="eVM" readonly><div class="form-hint" id="eVMHint">FR real × Vt</div></div>
       </div>
       <!-- v3_143: curva de flujo inspiratorio — solo en VC-CMV -->
       <div id="eCurvaFlujoBox" style="display:none;margin-top:8px;padding:10px 12px;background:var(--blue-50);border:1px solid var(--blue-200);border-radius:8px">
@@ -2663,7 +2701,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       </div>
       <div class="form-row four">
         <div class="form-group"><label>FR seteada (rpm)</label><input type="number" id="eFR" inputmode="numeric" oninput="autoCalculate()"></div>
-        <div class="form-group"><label>FR real (rpm)</label><input type="number" id="eFRreal" inputmode="numeric"></div>
+        <div class="form-group"><label>FR real (rpm)</label><input type="number" id="eFRreal" inputmode="numeric" oninput="autoCalculate()"></div>
         <div class="form-group"><label>PEEP (cmH₂O)</label><input type="number" id="ePEEP" inputmode="decimal" step="0.5" oninput="autoCalculate()"></div>
         <div class="form-group"><label>FiO₂ (%)</label><input type="text" id="eFiO2" inputmode="numeric" maxlength="3" placeholder="21–100" oninput="filtrarFiO2(this); calcIndicesOxigenacion()" onblur="normalizarFiO2(this); calcIndicesOxigenacion(); autoCalculate()"><div class="form-hint">% entero (ej: 40, no 0.40)</div></div>
         <div class="form-group"><label>Ti total (seg)</label><input type="number" id="eTi" inputmode="decimal" step="0.1"></div>
@@ -2684,22 +2722,22 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         </div>
       </div>
       <div class="form-row four">
-        <div class="form-group"><label>DP (cmH₂O)</label><input type="number" id="eDP" inputmode="decimal" oninput="autoCalculate()"><div class="form-hint">Pplat − PEEPt</div></div>
-        <div class="form-group"><label>Crs (ml/cmH₂O)</label><input type="number" id="eCrs" inputmode="decimal"><div class="form-hint">Compliance resp.</div></div>
-        <div class="form-group"><label>Rinsp (cmH₂O/L/s)</label><input type="number" id="eRinsp" inputmode="decimal" oninput="autoCalculate()"></div>
-        <div class="form-group"><label>Flujo pico (L/min)</label><input type="number" id="eFlujo" inputmode="decimal" oninput="autoCalculate()"></div>
+        <div class="form-group"><label>DP (cmH₂O)</label><input class="f-auto" type="number" id="eDP" inputmode="decimal" oninput="autoCalculate()"><div class="form-hint">Pplat − PEEPt</div></div>
+        <div class="form-group"><label>Crs (ml/cmH₂O)</label><input class="f-auto" type="number" id="eCrs" inputmode="decimal"><div class="form-hint">Compliance resp.</div></div>
+        <div class="form-group" id="eRinspGroup"><label>Rinsp (cmH₂O/L/s)</label><input class="f-auto" type="number" id="eRinsp" inputmode="decimal" oninput="autoCalculate()"></div>
+        <div class="form-group" id="eFlujoGroup"><label>Flujo pico (L/min)</label><input type="number" id="eFlujo" inputmode="decimal" oninput="autoCalculate()"></div>
       </div>
       <div class="form-row three">
-        <div class="form-group"><label>Mec. Power (J/min)</label><input type="text" id="eMP" readonly style="background:var(--teal-50);color:var(--teal-800);font-weight:600"><div class="form-hint">Auto: 0.098 × VT × FR × (Ppico + PEEP + DP/2)</div></div>
-        <div class="form-group"><label>Elastic Ratio</label><input type="number" id="eER" inputmode="decimal" step="0.1" oninput="autoCalculate()"><div class="form-hint">(4×DP) + FR</div></div>
-        <div class="form-group"><label>Cte. tiempo (seg)</label><input type="number" id="eCT" inputmode="decimal" step="0.01"><div class="form-hint">Crs × Rinsp / 1000</div></div>
+        <div class="form-group"><label>Mec. Power (J/min)</label><input class="f-auto" type="text" id="eMP" readonly><div class="form-hint">Auto: 0.098 × VT × FR × (Ppico + PEEP + DP/2)</div></div>
+        <div class="form-group"><label>Elastic Ratio</label><input class="f-auto" type="number" id="eER" inputmode="decimal" step="0.1" oninput="autoCalculate()"><div class="form-hint">(4×DP) + FR</div></div>
+        <div class="form-group" id="eCTGroup"><label>Cte. tiempo (seg)</label><input class="f-auto" type="number" id="eCT" inputmode="decimal" step="0.01"><div class="form-hint">Crs × Rinsp / 1000</div></div>
       </div>
       <div id="ctMultiplesBox" style="display:none;gap:8px;margin-top:8px;flex-wrap:wrap"></div>
       <!-- Ventilatory Ratio -->
       <div class="form-row" style="margin-top:8px">
         <div class="form-group">
           <label>Ventilatory Ratio (VR)</label>
-          <input type="text" id="eVR" readonly style="background:var(--amber-50);color:var(--amber-800);font-weight:600">
+          <input class="f-auto" type="text" id="eVR" readonly>
           <div class="form-hint" id="eVRInterp">FR × VT × PaCO₂ / (PCP × 100 × 37.5)</div>
         </div>
       </div>
@@ -2709,13 +2747,21 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-row">
           <div class="form-group">
             <label>P0.1 (cmH₂O)</label>
-            <input type="number" id="eP01" inputmode="decimal" step="0.1" placeholder="Ej: 2.5 → se guarda -2.5">
-            <div class="form-hint">Presión de oclusión 0.1 seg</div>
+            <input type="number" id="eP01" inputmode="decimal" step="0.1" placeholder="Ej: 2.5" oninput="interpretarPCCSV('')">
+            <div class="form-hint" id="eP01Hint">Presión de oclusión 0.1 seg</div>
           </div>
           <div class="form-group">
             <label>ΔPocc (cmH₂O)</label>
-            <input type="number" id="eDeltaPocc" inputmode="decimal" placeholder="Ej: 15 → se guarda -15">
+            <input type="number" id="eDeltaPocc" inputmode="decimal" placeholder="Ej: 15">
             <div class="form-hint">Delta de presión de oclusión</div>
+          </div>
+        </div>
+        <!-- v3_211: índice de presión muscular -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>PMI — Índice de presión muscular (cmH₂O)</label>
+            <input class="f-auto" type="text" id="ePMI" readonly>
+            <div class="form-hint" id="ePMIHint">Pplat − Ppico</div>
           </div>
         </div>
       </div>
@@ -2734,7 +2780,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <span><i class="ti ti-lungs" style="margin-right:6px;color:var(--amber-500)"></i>Mecánica ventilatoria — Setting post-modificación</span>
       </div>
       <div style="padding:10px 14px;border:1px solid var(--amber-200);border-radius:0 0 8px 8px;background:#fff">
-      <div class="form-row three" style="margin-top:8px">
+      <div class="form-row four" style="margin-top:8px">
         <div class="form-group"><label>Modo ventilatorio</label>
           <select id="eModo2" onchange="onModoChange2(this.value)">
             <option value="">-</option>
@@ -2743,8 +2789,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             <option>PC-CSV</option>
           </select>
         </div>
-        <div class="form-group"><label>VT (ml)</label><input type="number" id="eVT2" inputmode="decimal" oninput="autoCalculate2()" placeholder="ml"></div>
-        <div class="form-group"><label>VT ml/kg PCP</label><input type="text" id="eVTkg2" readonly style="background:var(--gray-50);color:var(--blue-800);font-weight:600"><div class="form-hint">VT / PCP del paciente</div></div>
+        <div class="form-group"><label id="eVTLabel2">VT (ml)</label><input type="number" id="eVT2" inputmode="decimal" oninput="autoCalculate2()" placeholder="ml"></div>
+        <div class="form-group"><label>VT ml/kg PCP</label><input class="f-auto" type="text" id="eVTkg2" readonly><div class="form-hint">VT / PCP del paciente</div></div>
+        <!-- v3_211: volumen minuto = FR × Vt -->
+        <div class="form-group"><label>Vol. minuto (L/min)</label><input class="f-auto" type="text" id="eVM2" readonly><div class="form-hint" id="eVMHint2">FR × Vt</div></div>
       </div>
       <!-- v3_143: curva de flujo inspiratorio — solo en VC-CMV -->
       <div id="eCurvaFlujoBox2" style="display:none;margin-top:8px;padding:10px 12px;background:var(--blue-50);border:1px solid var(--blue-200);border-radius:8px">
@@ -2785,15 +2833,15 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-group"><label>PC (cmH₂O)</label><input type="number" id="ePC2" inputmode="decimal"></div>
       </div>
       <div class="form-row four">
-        <div class="form-group"><label>DP (cmH₂O)</label><input type="number" id="eDP2" inputmode="decimal" oninput="autoCalculate2()"><div class="form-hint">Pplat − PEEPt</div></div>
-        <div class="form-group"><label>Crs (ml/cmH₂O)</label><input type="number" id="eCrs2" inputmode="decimal"><div class="form-hint">Compliance resp.</div></div>
-        <div class="form-group"><label>Rinsp (cmH₂O/L/s)</label><input type="number" id="eRinsp2" inputmode="decimal" oninput="autoCalculate2()"></div>
-        <div class="form-group"><label>Flujo pico (L/min)</label><input type="number" id="eFlujo2" inputmode="decimal" oninput="autoCalculate2()"></div>
+        <div class="form-group"><label>DP (cmH₂O)</label><input class="f-auto" type="number" id="eDP2" inputmode="decimal" oninput="autoCalculate2()"><div class="form-hint">Pplat − PEEPt</div></div>
+        <div class="form-group"><label>Crs (ml/cmH₂O)</label><input class="f-auto" type="number" id="eCrs2" inputmode="decimal"><div class="form-hint">Compliance resp.</div></div>
+        <div class="form-group" id="eRinspGroup2"><label>Rinsp (cmH₂O/L/s)</label><input class="f-auto" type="number" id="eRinsp2" inputmode="decimal" oninput="autoCalculate2()"></div>
+        <div class="form-group" id="eFlujoGroup2"><label>Flujo pico (L/min)</label><input type="number" id="eFlujo2" inputmode="decimal" oninput="autoCalculate2()"></div>
       </div>
       <div class="form-row three">
-        <div class="form-group"><label>Mec. Power (J/min)</label><input type="text" id="eMP2" readonly style="background:var(--teal-50);color:var(--teal-800);font-weight:600"><div class="form-hint">Auto: 0.098 × VT × FR × (Ppico + PEEP + DP/2)</div></div>
-        <div class="form-group"><label>Elastic Ratio</label><input type="number" id="eER2" inputmode="decimal" step="0.1" oninput="autoCalculate2()"><div class="form-hint">(4×DP) + FR</div></div>
-        <div class="form-group"><label>Cte. tiempo (seg)</label><input type="number" id="eCT2" inputmode="decimal" step="0.01"><div class="form-hint">Crs × Rinsp / 1000</div></div>
+        <div class="form-group"><label>Mec. Power (J/min)</label><input class="f-auto" type="text" id="eMP2" readonly><div class="form-hint">Auto: 0.098 × VT × FR × (Ppico + PEEP + DP/2)</div></div>
+        <div class="form-group"><label>Elastic Ratio</label><input class="f-auto" type="number" id="eER2" inputmode="decimal" step="0.1" oninput="autoCalculate2()"><div class="form-hint">(4×DP) + FR</div></div>
+        <div class="form-group" id="eCTGroup2"><label>Cte. tiempo (seg)</label><input class="f-auto" type="number" id="eCT2" inputmode="decimal" step="0.01"><div class="form-hint">Crs × Rinsp / 1000</div></div>
       </div>
       <div id="ctMultiplesBox2" style="display:none;gap:8px;margin-top:8px;flex-wrap:wrap"></div>
       <!-- P0.1 y DeltaPocc: solo cuando modo = PC-CSV -->
@@ -2802,13 +2850,21 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-row">
           <div class="form-group">
             <label>P0.1 (cmH₂O)</label>
-            <input type="number" id="eP012" inputmode="decimal" step="0.1" placeholder="Ej: 2.5 → se guarda -2.5">
-            <div class="form-hint">Presión de oclusión 0.1 seg</div>
+            <input type="number" id="eP012" inputmode="decimal" step="0.1" placeholder="Ej: 2.5" oninput="interpretarPCCSV('2')">
+            <div class="form-hint" id="eP01Hint2">Presión de oclusión 0.1 seg</div>
           </div>
           <div class="form-group">
             <label>ΔPocc (cmH₂O)</label>
-            <input type="number" id="eDeltaPocc2" inputmode="decimal" placeholder="Ej: 15 → se guarda -15">
+            <input type="number" id="eDeltaPocc2" inputmode="decimal" placeholder="Ej: 15">
             <div class="form-hint">Delta de presión de oclusión</div>
+          </div>
+        </div>
+        <!-- v3_211: índice de presión muscular -->
+        <div class="form-row">
+          <div class="form-group">
+            <label>PMI — Índice de presión muscular (cmH₂O)</label>
+            <input class="f-auto" type="text" id="ePMI2" readonly>
+            <div class="form-hint" id="ePMIHint2">Pplat − Ppico</div>
           </div>
         </div>
       </div>
@@ -2844,7 +2900,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         </div>
         <div class="form-group">
           <label>N° PVEs acumuladas</label>
-          <input type="text" id="eNPVEDisplay" readonly style="background:var(--gray-50);color:var(--blue-800);font-weight:600">
+          <input class="f-auto" type="text" id="eNPVEDisplay" readonly>
           <div class="form-hint">Calculado automáticamente</div>
         </div>
       </div>
@@ -3135,30 +3191,30 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       </div>
       <div class="form-row">
         <div class="form-group"><label>SpO₂ (%)</label><input type="number" id="eSpO2" inputmode="numeric" max="100" oninput="calcIndicesOxigenacion()"></div>
-        <div class="form-group"><label>PAFI</label><input type="number" id="ePAFI" inputmode="decimal"><div class="form-hint">PO₂ / FiO₂</div></div>
+        <div class="form-group"><label>PAFI</label><input class="f-auto" type="number" id="ePAFI" inputmode="decimal"><div class="form-hint">PO₂ / FiO₂</div></div>
       </div>
       <!-- v3_133: índices de oxigenación pediátricos -->
       <div class="form-row" id="eIOOSIRow" style="display:none">
         <div class="form-group">
           <label>IO — Índice de oxigenación</label>
-          <input type="text" id="eIO" readonly style="background:var(--amber-50);color:var(--amber-800);font-weight:600">
+          <input class="f-auto" type="text" id="eIO" readonly>
           <div class="form-hint" id="eIOHint">(FiO₂ × MAP × 100) / PaO₂</div>
         </div>
         <div class="form-group">
           <label>OSI — Índice de saturación de oxígeno</label>
-          <input type="text" id="eOSI" readonly style="background:var(--amber-50);color:var(--amber-800);font-weight:600">
+          <input class="f-auto" type="text" id="eOSI" readonly>
           <div class="form-hint" id="eOSIHint">(FiO₂ × MAP × 100) / SpO₂</div>
         </div>
       </div>
       <div class="form-row four">
         <div class="form-group">
           <label>Gradiente A-a (mmHg)</label>
-          <input type="text" id="eAAGrad" readonly style="background:var(--amber-50);color:var(--amber-800);font-weight:600">
+          <input class="f-auto" type="text" id="eAAGrad" readonly>
           <div class="form-hint">PAO₂ − PaO₂</div>
         </div>
         <div class="form-group">
           <label>Relación a/A</label>
-          <input type="text" id="eAaRatio" readonly style="background:var(--amber-50);color:var(--amber-800);font-weight:600">
+          <input class="f-auto" type="text" id="eAaRatio" readonly>
           <div class="form-hint">PaO₂ / PAO₂</div>
         </div>
         <div class="form-group">
@@ -3690,7 +3746,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           </div>
           <div class="form-group">
             <label>CV / kg PCP (mL/kg)</label>
-            <input type="text" id="eMusCVpcp" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:600">
+            <input class="f-auto" type="text" id="eMusCVpcp" readonly>
             <div class="form-hint" id="eMusCVpcpHint">Calculado automáticamente</div>
           </div>
         </div>
@@ -3734,7 +3790,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             </div>
             <div class="form-group">
               <label>Fracción de engrosamiento (TFdi %)</label>
-              <input type="text" id="eEcoTFdi" readonly style="background:var(--blue-100);color:var(--blue-800);font-weight:600">
+              <input class="f-auto" type="text" id="eEcoTFdi" readonly>
               <div class="form-hint" id="eEcoTFdiHint">(Esp. insp − Esp. esp) / Esp. esp × 100</div>
             </div>
           </div>
@@ -5031,7 +5087,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <div class="form-row three">
         <div class="form-group"><label>Fecha</label><input type="date" id="emDate"></div>
         <div class="form-group"><label>Turno</label><select id="emTurno"><option>Mañana</option><option>Tarde</option><option>Noche</option></select></div>
-        <div class="form-group"><label>Kinesiólogo</label><input type="text" id="emKine" readonly style="background:var(--gray-50)"></div>
+        <div class="form-group"><label>Kinesiólogo</label><input class="f-auto" type="text" id="emKine" readonly></div>
       </div>
       <div id="emDayCounters" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:.5rem"></div>
       <div class="form-row">
@@ -5801,7 +5857,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_210';
+const APP_VERSION = 'v3_211';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -9737,12 +9793,14 @@ function construirTextoEvo(evo, p){
     add('VNI modo', evo.vniModo); add('VNI Pi', evo.vniPi); add('VNI Vt', evo.vniVt);
     add('VNI FR', evo.vniFr); add('VNI PEEP', evo.vniPeep); add('VNI FiO2 (%)', evo.vniFio2); add('VNI máscara', evo.vniMascara);
     add('Modo ventilatorio', evo.modo); add('VT (ml)', evo.vt); add('VT/kg PBW (ml/kg)', evo.vtkg);
+    add('Volumen minuto (L/min)', evo.vm);
     add('FR seteada', evo.fr); add('FR real', evo.frReal);
     add('PEEP (cmH2O)', evo.peep); add('FiO2 (%)', evo.fio2); add('Ti (s)', evo.ti); add('Pausa inspiratoria (s)', evo.pausaInsp); add('Presión control (cmH2O)', evo.pc);
     add('P pico (cmH2O)', evo.ppico); add('P plateau (cmH2O)', evo.pplat); add('PEEP total (cmH2O)', evo.peept);
     add('Driving pressure (cmH2O)', evo.dp); add('Compliance Crs (ml/cmH2O)', evo.crs);
     add('Resistencia inspiratoria', evo.rinsp); add('Flujo (L/min)', evo.flujo);
     add('Poder mecánico (J/min)', evo.mp); add('P0.1 (cmH2O)', evo.p01); add('Delta Pocc (cmH2O)', evo.deltaPocc);
+    add('PMI - indice de presion muscular (cmH2O)', evo.pmi);
     add('pH', evo.ph); add('pCO2 (mmHg)', evo.pco2); add('pO2 (mmHg)', evo.po2); add('HCO3', evo.hco3);
     add('SpO2 (%)', evo.spo2); add('PAFI', evo.pafi); add('Lactato', evo.lactato);
     add('FC (lpm)', evo.fc);
@@ -9807,6 +9865,7 @@ function construirTextoEvo(evo, p){
     if(evo.modSetting){
       L.push('— Se modificó el seteo del ventilador durante la sesión. Parámetros post-modificación:');
       add('Modo (post)', evo.modo2); add('VT (post, ml)', evo.vt2); add('FR (post)', evo.fr2);
+      add('Volumen minuto (post, L/min)', evo.vm2); add('PMI (post, cmH2O)', evo.pmi2);
       add('PEEP (post)', evo.peep2); add('FiO2 (post, %)', evo.fio22);
       add('P pico (post)', evo.ppico2); add('P plateau (post)', evo.pplat2);
       add('Driving pressure (post)', evo.dp2); add('Compliance (post)', evo.crs2);
@@ -9965,6 +10024,9 @@ function autoCalculate(){
   const pplat  = get('ePplat');
   const peept  = get('ePEEPt') ?? get('ePEEP');  // si no hay PEEPt usa PEEP
   const ppico  = get('ePpico');
+  // v3_211: en PC-CMV y PC-CSV no se calculan Rinsp ni constante de tiempo
+  const modoVent = document.getElementById('eModo')?.value || '';
+  const esPC = (modoVent === 'PC-CMV' || modoVent === 'PC-CSV');
   const vt     = get('eVT');
   const flujo  = get('eFlujo');   // L/min
   const fio2   = get('eFiO2');
@@ -9984,7 +10046,7 @@ function autoCalculate(){
 
   // ── Rinsp = (Ppico − Pplat) / flujo(L/seg) ──────────
   // Flujo viene en L/min → dividir por 60 para L/seg
-  if(ppico !== null && pplat !== null && flujo !== null && flujo > 0){
+  if(!esPC && ppico !== null && pplat !== null && flujo !== null && flujo > 0){
     const flujoLseg = flujo / 60;
     setF('eRinsp', ((ppico - pplat) / flujoLseg).toFixed(2));
   }
@@ -9996,10 +10058,22 @@ function autoCalculate(){
     setF('eVTkg', (vt / pcpVal).toFixed(1));
   }
 
+  // ── v3_211: volumen minuto = FR real (o seteada) × Vt ────
+  const frVM = get('eFRreal') ?? get('eFR');
+  setF('eVM', (vt !== null && frVM !== null) ? (vt * frVM / 1000).toFixed(1) : '');
+
+  // ── v3_211: PMI = Pplat − Ppico (solo PC-CSV) ────────────
+  if(modoVent === 'PC-CSV' && pplat !== null && ppico !== null){
+    setF('ePMI', String(+(pplat - ppico).toFixed(1)));
+  } else {
+    setF('ePMI', '');
+  }
+  interpretarPCCSV('');
+
   // ── Cte. tiempo = Crs × Rinsp / 1000 ────────────────
   const crs   = get('eCrs');
   const rinsp = get('eRinsp');
-  if(crs !== null && rinsp !== null){
+  if(!esPC && crs !== null && rinsp !== null){
     const ct = crs * rinsp / 1000;
     setF('eCT', ct.toFixed(3));
     // 3, 4 y 5 constantes de tiempo (segundos)
@@ -10063,7 +10137,7 @@ function autoCalculate(){
 }
 
 // Disparar auto-cálculo al cambiar cualquier campo base
-['ePplat','ePEEPt','ePEEP','ePpico','eFlujo','eCrs','eRinsp','eVT','eFR','ePO2','eFiO2'].forEach(id=>{
+['ePplat','ePEEPt','ePEEP','ePpico','eFlujo','eCrs','eRinsp','eVT','eFR','eFRreal','ePO2','eFiO2'].forEach(id=>{
   document.getElementById(id)?.addEventListener('change', autoCalculate);
 });
 
@@ -10814,19 +10888,82 @@ function actualizarCurvaFlujo(pref, modo){
   pintarCurvaFlujo(pref);
 }
 
+// ── v3_211: qué corresponde mostrar según el modo ventilatorio ──────
+// pref = '' (setting inicial) o '2' (setting post-modificación).
+// En los modos presométricos (PC-CMV y PC-CSV) el ventilador no entrega flujo
+// pico constante, así que no se pueden calcular ni la resistencia inspiratoria
+// ni la constante de tiempo: esos campos se sacan de pantalla.
+// limpiar = true cuando el cambio lo hizo el usuario (se vacía lo que ya no
+// corresponde); false al precargar una evolución existente para editarla.
+function aplicarModoVent(pref, modo, limpiar){
+  const esPC = (modo === 'PC-CMV' || modo === 'PC-CSV');
+
+  // Etiqueta del volumen corriente: seteado en volumen, exhalado en presión
+  const lbl = document.getElementById('eVTLabel' + pref);
+  if(lbl) lbl.textContent = modo === 'VC-CMV' ? 'Vt seteado (ml)'
+                          : (esPC ? 'Vt exhalado (ml)' : 'VT (ml)');
+  const hVM = document.getElementById('eVMHint' + pref);
+  if(hVM) hVM.textContent = (pref === '2' ? 'FR × ' : 'FR real × ') +
+                            (modo === 'VC-CMV' ? 'Vt seteado'
+                             : (esPC ? 'Vt exhalado' : 'Vt'));
+
+  // Rinsp, flujo pico y constante de tiempo: no aplican en modos presométricos
+  [['eRinspGroup','eRinsp'], ['eFlujoGroup','eFlujo'], ['eCTGroup','eCT']].forEach(([g, inp])=>{
+    const box = document.getElementById(g + pref);
+    if(box) box.style.display = esPC ? 'none' : '';
+    if(esPC && limpiar){ const el = document.getElementById(inp + pref); if(el) el.value = ''; }
+  });
+  if(esPC){
+    const ctBox = document.getElementById('ctMultiplesBox' + pref);
+    if(ctBox){ ctBox.style.display = 'none'; ctBox.innerHTML = ''; }
+  }
+
+  // Parámetros PC-CSV (P0.1, ΔPocc y PMI)
+  const box = document.getElementById('ePCCSVBox' + pref);
+  if(box) box.style.display = modo === 'PC-CSV' ? 'block' : 'none';
+  if(modo !== 'PC-CSV' && limpiar){
+    ['eP01','eDeltaPocc','ePMI'].forEach(id=>{
+      const el = document.getElementById(id + pref); if(el) el.value = '';
+    });
+  }
+
+  actualizarCurvaFlujo(pref, modo);
+  interpretarPCCSV(pref);
+}
+
+// ── v3_211: lectura del esfuerzo inspiratorio en PC-CSV ─────────────
+// PMI = Pplat − Ppico (con pausa inspiratoria): 0 o menos habla de
+// sobreasistencia, de 1 a 5 de asistencia adecuada y 6 o más de subasistencia.
+// P0.1: menos de 1.5 sobreasistencia, de 1.5 a 3.5 adecuada, más de 3.5
+// subasistencia.
+function interpretarPCCSV(pref){
+  const num = id => { const v = parseFloat(document.getElementById(id + pref)?.value); return isNaN(v) ? null : v; };
+  const setH = (id, txt, color) => {
+    const el = document.getElementById(id + pref);
+    if(el){ el.textContent = txt; el.style.color = color || ''; el.style.fontWeight = color ? '600' : ''; }
+  };
+
+  const pmi = num('ePMI');
+  if(pmi === null)      setH('ePMIHint', 'Pplat − Ppico', '');
+  else if(pmi <= 0)     setH('ePMIHint', '≤ 0 → sugiere sobreasistencia', 'var(--amber-600)');
+  else if(pmi < 6)      setH('ePMIHint', '1 a 5 → asistencia adecuada', 'var(--teal-600)');
+  else                  setH('ePMIHint', '≥ 6 → sugiere subasistencia', 'var(--red-600)');
+
+  const p01 = num('eP01');
+  const v01 = p01 === null ? null : Math.abs(p01);
+  if(v01 === null)      setH('eP01Hint', 'Presión de oclusión 0.1 seg', '');
+  else if(v01 < 1.5)    setH('eP01Hint', '< 1,5 → sugiere sobreasistencia', 'var(--amber-600)');
+  else if(v01 <= 3.5)   setH('eP01Hint', '1,5 a 3,5 → asistencia adecuada', 'var(--teal-600)');
+  else                  setH('eP01Hint', '> 3,5 → sugiere subasistencia', 'var(--red-600)');
+}
+
 function onModoChange(val){
-  const box = document.getElementById('ePCCSVBox');
-  if(box) box.style.display = val==='PC-CSV' ? 'block' : 'none';
-  if(val!=='PC-CSV'){['eP01','eDeltaPocc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});}
-  actualizarCurvaFlujo('', val);
+  aplicarModoVent('', val, true);
   autoCalculate();
 }
 
 function onModoChange2(val){
-  const box = document.getElementById('ePCCSVBox2');
-  if(box) box.style.display = val==='PC-CSV' ? 'block' : 'none';
-  if(val!=='PC-CSV'){['eP012','eDeltaPocc2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});}
-  actualizarCurvaFlujo('2', val);
+  aplicarModoVent('2', val, true);
   autoCalculate2();
 }
 
@@ -10835,10 +10972,11 @@ function toggleModSetting(el){
   const box = document.getElementById('accVent2Box');
   box.style.display = el.classList.contains('active') ? 'block' : 'none';
   if(!el.classList.contains('active')){
-    ['eModo2','eVT2','eVTkg2','eFR2','ePEEP2','eFiO22','eTi2','ePausaInsp2','ePpico2','ePplat2','ePEEPt2',
-     'ePC2','eDP2','eCrs2','eRinsp2','eFlujo2','eMP2','eER2','eCT2','eP012','eDeltaPocc2'].forEach(id=>{
+    ['eModo2','eVT2','eVTkg2','eVM2','eFR2','ePEEP2','eFiO22','eTi2','ePausaInsp2','ePpico2','ePplat2','ePEEPt2',
+     'ePC2','eDP2','eCrs2','eRinsp2','eFlujo2','eMP2','eER2','eCT2','eP012','eDeltaPocc2','ePMI2'].forEach(id=>{
       const el=document.getElementById(id); if(el) el.value='';
     });
+    aplicarModoVent('2','',true);   // v3_211: vuelve a mostrar todos los campos
     const b=document.getElementById('ePCCSVBox2'); if(b) b.style.display='none';
     const cb=document.getElementById('eCurvaFlujoBox2'); if(cb) cb.style.display='none';
     const ch=document.getElementById('eCurvaFlujo2'); if(ch) ch.value='';
@@ -10852,15 +10990,23 @@ function autoCalculate2(){
   const setF = (id,v) => { const el=document.getElementById(id); if(el) el.value=v; };
   const pplat=get('ePplat2'), peept=get('ePEEPt2')??get('ePEEP2'), ppico=get('ePpico2');
   const vt=get('eVT2'), flujo=get('eFlujo2'), fr=get('eFR2'), peep=get('ePEEP2');
+  // v3_211: en PC-CMV y PC-CSV no se calculan Rinsp ni constante de tiempo
+  const modoVent2 = document.getElementById('eModo2')?.value || '';
+  const esPC2 = (modoVent2 === 'PC-CMV' || modoVent2 === 'PC-CSV');
   let dp=get('eDP2');
   if(pplat!==null&&peept!==null){ dp=+(pplat-peept).toFixed(1); setF('eDP2',dp); }
   if(vt!==null&&dp!==null&&dp>0) setF('eCrs2',(vt/dp).toFixed(1));
-  if(ppico!==null&&pplat!==null&&flujo!==null&&flujo>0) setF('eRinsp2',((ppico-pplat)/(flujo/60)).toFixed(2));
+  if(!esPC2&&ppico!==null&&pplat!==null&&flujo!==null&&flujo>0) setF('eRinsp2',((ppico-pplat)/(flujo/60)).toFixed(2));
   const p=patients.find(x=>x.id===currentEvoPacId);
   const pcpVal=pcpDePaciente(p);
   if(vt!==null&&pcpVal) setF('eVTkg2',(vt/pcpVal).toFixed(1));
+  // v3_211: volumen minuto y PMI
+  setF('eVM2', (vt!==null&&fr!==null) ? (vt*fr/1000).toFixed(1) : '');
+  if(modoVent2==='PC-CSV'&&pplat!==null&&ppico!==null) setF('ePMI2', String(+(pplat-ppico).toFixed(1)));
+  else setF('ePMI2','');
+  interpretarPCCSV('2');
   const crs=get('eCrs2'), rinsp=get('eRinsp2');
-  if(crs!==null&&rinsp!==null){
+  if(!esPC2&&crs!==null&&rinsp!==null){
     const ct=crs*rinsp/1000; setF('eCT2',ct.toFixed(3));
     const ctBox=document.getElementById('ctMultiplesBox2');
     if(ctBox){ ctBox.innerHTML=`<div class="pcp-card"><div class="pv">${(ct*3).toFixed(2)}s</div><div class="pl">3τ</div></div><div class="pcp-card"><div class="pv">${(ct*4).toFixed(2)}s</div><div class="pl">4τ</div></div><div class="pcp-card"><div class="pv">${(ct*5).toFixed(2)}s</div><div class="pl">5τ</div></div>`; ctBox.style.display='flex'; }
@@ -12208,6 +12354,18 @@ function mostrarMusRespPrevia(patientId){
 // ── v3_171: qué bloques respiratorios corresponden en cada situación ──
 // El EAB hace falta en ARM, pero también con CAFO y con VNI. Las secreciones
 // hacen falta en ARM y también en el TQT sin ARM (respirando espontáneamente).
+// ── v3_211: la evaluación de deglución no corresponde en ARM ────────
+// Con TET no se puede deglutir, y en TQT conectado a ARM tampoco se evalúa.
+// El acceso vuelve a aparecer apenas el paciente sale de ARM (incluido el TQT
+// respirando espontáneamente).
+function actualizarAccesoDeglusion(){
+  const enARM = document.getElementById('eBtnArmSi')?.classList.contains('dec-arm-si');
+  const box = document.getElementById('degAccesoBox');
+  if(box) box.style.display = enARM ? 'none' : 'block';
+  const ban = document.getElementById('evoBannerDeglusion');
+  if(ban) ban.style.display = (!enARM && ban.dataset.hay === '1') ? 'block' : 'none';
+}
+
 function actualizarBloquesRespiratorios(){
   const enARM = document.getElementById('eBtnArmSi')?.classList.contains('dec-arm-si');
   const esp = String(document.getElementById('eInterfazEsp')?.value || '');
@@ -12216,6 +12374,7 @@ function actualizarBloquesRespiratorios(){
   const sec = document.getElementById('secrecionesWrap');
   if(sec) sec.style.display = (enARM || esp.startsWith('TQT')) ? 'block' : 'none';
   actualizarCuffLeak();   // v3_207
+  actualizarAccesoDeglusion();   // v3_211
 }
 
 // v3_207: el cuff leak test evalúa el edema de vía aérea antes de extubar, así
@@ -13600,6 +13759,8 @@ const EVO_LABELS = {
   vniModo:'VNI modo', vniPi:'VNI Pi', vniVt:'VNI Vt', vniFr:'VNI FR', vniPeep:'VNI PEEP', vniFio2:'VNI FiO₂ (%)', vniMascara:'VNI máscara',
   aerosolVia:'Aerosolterapia — vía', ti:'Ti (s)', pausaInsp:'Pausa inspiratoria (s)', pausaInsp2:'Pausa inspiratoria (s) (post-mod.)', pc:'Presión control', peept:'PEEP total', rinsp:'Resistencia insp.', flujo:'Flujo (L/min)',
   mp:'Poder mecánico', p01:'P0.1', deltaPocc:'ΔPocc', hco3:'HCO₃', lactato:'Lactato',
+  vm:'Volumen minuto (L/min)', pmi:'PMI (Pplat − Ppico)',
+  vm2:'Volumen minuto (L/min) (post-mod.)', pmi2:'PMI (post-mod.)',
   curvaFlujo:'Curva de flujo insp.', curvaFlujo2:'Curva de flujo insp. (post-mod.)',
   fc:'FC (lpm)', tam:'TAM (mmHg)', pic:'PIC (mmHg)', etco2:'EtCO₂ (mmHg)', spo2Mon:'SpO₂ monitor (%)', frMon:'FR monitor',
   ventSed:'Ventana de sedación', dolorAuto:'Dolor (autorreporte)', dolorEscala:'Escala de dolor',
@@ -13650,7 +13811,7 @@ const EVO_SKIP_CAMPOS = new Set([
   'mrcFlexCadD','mrcExtRodD','mrcDorsiTobD','mrcFlexCadI','mrcExtRodI','mrcDorsiTobI',
   // parámetros post-modificación (poco frecuentes, se omiten del resumen)
   'modo2','vt2','vtkg2','fr2','peep2','fio22','ti2','pc2','ppico2','pplat2','peept2','dp2','crs2',
-  'rinsp2','flujo2','mp2','er2','ct2','p012','deltaPocc2',
+  'rinsp2','flujo2','mp2','er2','ct2','p012','deltaPocc2','vm2','pmi2',
   // sin uso o duplicados
   'vr','aaGrad','aaRatio','er','ct','tas','tad',
   // ── v3_113: campos ahora mostrados en secciones ordenadas dedicadas ──
@@ -13667,7 +13828,7 @@ const EVO_SKIP_CAMPOS = new Set([
   // Neurológico / Sedoanalgesia
   'ventSed','dolorAuto','dolorEscala','sedacion','analgesia','bnm','vasoact','otrosFarmacos',
   // Mecánica ventilatoria (setting inicial)
-  'ti','pc','peept','rinsp','flujo','mp','p01','deltaPocc',
+  'ti','pc','peept','rinsp','flujo','mp','p01','deltaPocc','vm','pmi',
   // EAB
   'hco3','lactato',
   // Secreciones
@@ -13860,17 +14021,17 @@ function evoCardHTML(e, i){
   ]);
   // 4) Mecánica ventilatoria — setting inicial
   const secVM = evoSeccionGrid('Mecánica ventilatoria', [
-    [e.modo,'Modo'], [e.curvaFlujo,'Curva de flujo'], [e.vt,'VT (ml)'], [e.vtkg,'ml/kg'], [e.fr,'FR set'], [e.frReal,'FR real'],
+    [e.modo,'Modo'], [e.curvaFlujo,'Curva de flujo'], [e.vt,'VT (ml)'], [e.vtkg,'ml/kg'], [e.vm,'VM (L/min)'], [e.fr,'FR set'], [e.frReal,'FR real'],
     [e.peep,'PEEP'], [e.fio2,'FiO₂ %'], [e.map,'MAP'], [e.ti,'Ti (s)'], [e.pausaInsp,'Pausa insp. (s)'], [e.pc,'PC'], [e.ppico,'Ppico'],
     [e.pplat,'Pplat'], [e.peept,'PEEP total'], [e.dp,'DP'], [e.crs,'Crs'], [e.rinsp,'R insp.'],
-    [e.flujo,'Flujo'], [e.mp,'Poder mec.'], [e.er,'Er'], [e.ct,'Ct'], [e.p01,'P0.1'], [e.deltaPocc,'ΔPocc']
+    [e.flujo,'Flujo'], [e.mp,'Poder mec.'], [e.er,'Er'], [e.ct,'Ct'], [e.p01,'P0.1'], [e.deltaPocc,'ΔPocc'], [e.pmi,'PMI']
   ]);
   // 4b) Mecánica — post modificación (solo si se marcó el cambio de setting)
   const secVM2 = e.modSetting ? evoSeccionGrid('Mecánica — post modificación', [
-    [e.modo2,'Modo'], [e.curvaFlujo2,'Curva de flujo'], [e.vt2,'VT (ml)'], [e.vtkg2,'ml/kg'], [e.fr2,'FR set'], [e.peep2,'PEEP'],
+    [e.modo2,'Modo'], [e.curvaFlujo2,'Curva de flujo'], [e.vt2,'VT (ml)'], [e.vtkg2,'ml/kg'], [e.vm2,'VM (L/min)'], [e.fr2,'FR set'], [e.peep2,'PEEP'],
     [e.fio22,'FiO₂ %'], [e.ti2,'Ti (s)'], [e.pausaInsp2,'Pausa insp. (s)'], [e.pc2,'PC'], [e.ppico2,'Ppico'], [e.pplat2,'Pplat'],
     [e.peept2,'PEEP total'], [e.dp2,'DP'], [e.crs2,'Crs'], [e.rinsp2,'R insp.'], [e.flujo2,'Flujo'],
-    [e.mp2,'Poder mec.'], [e.er2,'Er'], [e.ct2,'Ct'], [e.p012,'P0.1'], [e.deltaPocc2,'ΔPocc']
+    [e.mp2,'Poder mec.'], [e.er2,'Er'], [e.ct2,'Ct'], [e.p012,'P0.1'], [e.deltaPocc2,'ΔPocc'], [e.pmi2,'PMI']
   ]) : '';
   // 5) EAB
   const secEAB = evoSeccionGrid('EAB', [
@@ -15407,8 +15568,8 @@ function openEvolucion(patientId){
   document.getElementById('eHora').value = ahora.getHours().toString().padStart(2,'0') + ':' + ahora.getMinutes().toString().padStart(2,'0');
   document.getElementById('eTurno').value = currentShift();
   document.getElementById('eKine').value = currentUser.name;
-  const nFields = ['eModo','eVT','eVTkg','eFR','eFRreal','ePEEP','eFiO2','eTi','ePausaInsp','ePC',
-    'ePpico','ePplat','ePEEPt','eDP','eCrs','eRinsp','eFlujo','eMP','eER','eCT',
+  const nFields = ['eModo','eVT','eVTkg','eVM','eFR','eFRreal','ePEEP','eFiO2','eTi','ePausaInsp','ePC',
+    'ePpico','ePplat','ePEEPt','eDP','eCrs','eRinsp','eFlujo','eMP','eER','eCT','ePMI','ePMI2','eVM2',
     'ePH','ePCO2','ePO2','eHCO3','eSpO2','ePAFI','eInterfaz',
     'eFC','eTAS','eTAD','eTAM','eSpO2Mon','eFRMon','ePIC','eEtCO2','eTemp',
     'eBalon','eMAP','eIO','eOSI','eComfortB','eSBS','eNRS','eOPS','eFLACC','eCAPD','eSOPHIA','eTal','eWoodDownes',
@@ -15440,11 +15601,9 @@ function openEvolucion(patientId){
     'ePC2','eDP2','eCrs2','eRinsp2','eFlujo2','eMP2','eER2','eCT2','eP012','eDeltaPocc2',
     'eCurvaFlujo','eCurvaFlujo2'];
   nFields.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
-  // v3_143: reiniciar los selectores de curva de flujo inspiratorio
-  ['','2'].forEach(pref=>{
-    const box=document.getElementById('eCurvaFlujoBox'+pref); if(box) box.style.display='none';
-    pintarCurvaFlujo(pref);
-  });
+  // v3_143 / v3_211: dejar la mecánica ventilatoria como si no hubiera modo
+  // elegido (curva de flujo oculta, todos los campos visibles otra vez).
+  ['','2'].forEach(pref=> aplicarModoVent(pref, '', true));
   pintarTodosLosSignos();   // v3_165
   actualizarAerosol();      // v3_171
   { const c=document.getElementById('eabExtraContainer'); if(c) c.innerHTML=''; }
@@ -15609,6 +15768,7 @@ function openEvolucion(patientId){
 
   // ── Banner evaluación de deglución ──
   renderBannerDeglusion(patientId);
+  actualizarAccesoDeglusion();   // v3_211
 
   // ── Banner ALERTA IMPORTANTE (v3_111) ─────────────────────
   { const ba = document.getElementById('evoBannerAlerta');
@@ -15868,7 +16028,7 @@ const EVO_FIELD_MAP = {
   ops:'eOPS', flacc:'eFLACC', capd:'eCAPD', sophia:'eSOPHIA',
   tal:'eTal', woodDownes:'eWoodDownes',
   vr:'eVR', aaGrad:'eAAGrad', aaRatio:'eAaRatio', lactato:'eLactato',
-  p01:'eP01', deltaPocc:'eDeltaPocc',
+  p01:'eP01', deltaPocc:'eDeltaPocc', vm:'eVM', pmi:'ePMI',   // v3_211
   ppico:'ePpico', pplat:'ePplat', peept:'ePEEPt', dp:'eDP', crs:'eCrs',
   rinsp:'eRinsp', flujo:'eFlujo', mp:'eMP', er:'eER', ct:'eCT',
   ph:'ePH', pco2:'ePCO2', po2:'ePO2', hco3:'eHCO3', spo2:'eSpO2', pafi:'ePAFI',
@@ -15880,6 +16040,7 @@ const EVO_FIELD_MAP = {
   fio22:'eFiO22', ti2:'eTi2', pausaInsp2:'ePausaInsp2', pc2:'ePC2', ppico2:'ePpico2', pplat2:'ePplat2',
   peept2:'ePEEPt2', dp2:'eDP2', crs2:'eCrs2', rinsp2:'eRinsp2', flujo2:'eFlujo2',
   mp2:'eMP2', er2:'eER2', ct2:'eCT2', p012:'eP012', deltaPocc2:'eDeltaPocc2',
+  vm2:'eVM2', pmi2:'ePMI2',   // v3_211
   pve:'ePVE', pveTipo:'ePVETipo', pveMin:'ePVEtmin', pveResult:'ePVEresult',
   pveNoExtubTipo:'ePVENoExtubTipo', pveNoInterfaz:'ePVENoInterfaz',
   pveNoReIOT:'ePVENoReIOT', pveNoReIOTMotivo:'ePVENoReIOTMotivo',
@@ -16042,11 +16203,7 @@ function precargarCamposEvolucion(evo){
   // (parámetros PC-CSV y curva de flujo en VC-CMV), sin borrar lo cargado.
   [['','eModo'], ['2','eModo2']].forEach(([pref, idModo])=>{
     const m = document.getElementById(idModo)?.value || '';
-    const bp = document.getElementById('ePCCSVBox'+pref);
-    if(bp) bp.style.display = (m === 'PC-CSV') ? 'block' : 'none';
-    const bc = document.getElementById('eCurvaFlujoBox'+pref);
-    if(bc) bc.style.display = (m === 'VC-CMV') ? 'block' : 'none';
-    pintarCurvaFlujo(pref);
+    aplicarModoVent(pref, m, false);   // v3_211: sin limpiar lo ya cargado
   });
   pintarTodosLosSignos();   // v3_165
   actualizarAerosol();      // v3_171
@@ -16240,6 +16397,7 @@ async function guardarEvolucion(){
     fio2:GN('eFiO2'), ti:GN('eTi'), pausaInsp:GN('ePausaInsp'), pc:GN('ePC'),
     vr:GN('eVR'), aaGrad:GN('eAAGrad'), aaRatio:GN('eAaRatio'), lactato:GN('eLactato'),
     p01:GN('eP01'), deltaPocc:GN('eDeltaPocc'),
+    vm:GN('eVM'), pmi:GN('ePMI'),   // v3_211
     ppico:GN('ePpico'), pplat:GN('ePplat'), peept:GN('ePEEPt'),
     dp:GN('eDP'), crs:GN('eCrs'), rinsp:GN('eRinsp'), flujo:GN('eFlujo'),
     mp:GN('eMP'), er:GN('eER'), ct:GN('eCT'),
@@ -16259,6 +16417,7 @@ async function guardarEvolucion(){
     dp2:GN('eDP2'), crs2:GN('eCrs2'), rinsp2:GN('eRinsp2'), flujo2:GN('eFlujo2'),
     mp2:GN('eMP2'), er2:GN('eER2'), ct2:GN('eCT2'),
     p012:GN('eP012'), deltaPocc2:GN('eDeltaPocc2'),
+    vm2:GN('eVM2'), pmi2:GN('ePMI2'),   // v3_211
     pve:G('ePVE'), pveTipo:G('ePVETipo'), pveMin:GN('ePVEtmin'), pveResult:G('ePVEresult'),
     pveNoExtubTipo:G('ePVENoExtubTipo'), pveNoInterfaz:G('ePVENoInterfaz'),
     pveNoReIOT:G('ePVENoReIOT'), pveNoReIOTMotivo:G('ePVENoReIOTMotivo'),
@@ -16395,8 +16554,8 @@ async function guardarEvolucion(){
   addLog('evolve',`Evolución de ${p?.apellido}, ${p?.nombre} (${fmtDate(date)} — ${evo.turno})`);
   showToast('Evolución guardada','success');
   // Reset
-  const nFields = ['eVT','eVTkg','eFR','eFRreal','ePEEP','eFiO2','eTi','ePausaInsp','ePC','ePpico','ePplat','ePEEPt','eDP','eCrs','eRinsp','eFlujo',
-    'eMP','eER','eCT','ePH','ePCO2','ePO2','eHCO3','eSpO2','ePAFI',
+  const nFields = ['eVT','eVTkg','eVM','eFR','eFRreal','ePEEP','eFiO2','eTi','ePausaInsp','ePC','ePpico','ePplat','ePEEPt','eDP','eCrs','eRinsp','eFlujo',
+    'eMP','eER','eCT','ePMI','ePH','ePCO2','ePO2','eHCO3','eSpO2','ePAFI',
     'eOtrosFarmacos','ePVEtmin','eCuffM','eCuffT','eCuffN','eCanDI','eCanDE','eObs',
     'eFC','eTAS','eTAD','eTAM','eSpO2Mon','eFRMon','ePIC','eEtCO2','eTemp','eDolorEscala'];
   nFields.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
@@ -18030,7 +18189,7 @@ function renderBannerDeglusion(patientId){
   const el = document.getElementById('evoBannerDeglusion');
   if(!el) return;
   const ultima = evalDeglusion.find(e=>e.patientId===patientId);
-  if(!ultima){ el.style.display='none'; el.innerHTML=''; return; }
+  if(!ultima){ el.dataset.hay='0'; el.style.display='none'; el.innerHTML=''; return; }
   const totalEval = evalDeglusion.filter(e=>e.patientId===patientId).length;
   const colorMap = { no_apto:'var(--red-200)', semi:'var(--amber-200)', semi_liq:'var(--blue-200)', todo:'var(--teal-200)', derivar_fees:'var(--purple-200)' };
   const bgMap = { no_apto:'var(--red-50)', semi:'var(--amber-50)', semi_liq:'var(--blue-50)', todo:'var(--teal-50)', derivar_fees:'var(--purple-50)' };
@@ -18049,7 +18208,8 @@ function renderBannerDeglusion(patientId){
         <button onclick="abrirEvalDeglusion()" style="background:none;border:none;cursor:pointer;font-size:11px;color:var(--blue-600);white-space:nowrap">Nueva eval.</button>
       </div>
     </div>`;
-  el.style.display='block';
+  el.dataset.hay='1';
+  actualizarAccesoDeglusion();   // v3_211: en ARM no se muestra
 }
 
 
@@ -18091,7 +18251,7 @@ function exportarDatos(){
   // ── Hoja 2: Evoluciones ──
   const encEvo = ['Apellido','Nombre','Sala','Cama','Fecha','Turno','Kinesiologo',
     'Tipo Evo','Dia Hosp','Dia Sector','Dia ARM',
-    'Interfaz','Modo','VT ml','VT ml/kg PCP','FR','PEEP','FiO2','Ppico','Pplat','DP','Crs',
+    'Interfaz','Modo','VT ml','VT ml/kg PCP','VM L/min','FR','PEEP','FiO2','Ppico','Pplat','DP','Crs','PMI',
     'pH','pCO2','pO2','SpO2','PAFI',
     'FC','TAS','TAD','TAM','Temperatura','SpO2 Monitor','FR Monitor','PIC','EtCO2',
     'RASS','CPOT','CAM-ICU','Dolor Autopercibido','Escala Dolor',
@@ -18110,8 +18270,8 @@ function exportarDatos(){
       e.tipo_evo==='minimos'?'Minimos':(e.tipo||'UTI/Emerg'),
       e.diasHosp||'', e.utiDia||'', e.armDia||'',
       e.interfaz||e.interfazO2||'', e.modo||'',
-      e.vt||'', e.vtkg||'', e.fr||'', e.peep||'', e.fio2||'',
-      e.ppico||'', e.pplat||'', e.dp||'', e.crs||'',
+      e.vt||'', e.vtkg||'', e.vm||'', e.fr||'', e.peep||'', e.fio2||'',
+      e.ppico||'', e.pplat||'', e.dp||'', e.crs||'', e.pmi||'',
       e.ph||'', e.pco2||'', e.po2||'', e.spo2||'', e.pafi||'',
       e.fc||'', e.tas||'', e.tad||'', e.tam||'', e.temp||'', e.spo2Mon||'', e.frMon||'', e.pic||'', e.etco2||'',
       e.rass||'', e.cpot||'', e.camicu||'', e.dolorAuto||'', e.dolorEscala||'',
