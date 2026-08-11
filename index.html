@@ -5477,32 +5477,6 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
   </div>
 </div>
 
-<!-- ── ALERTA IMPORTANTE: editar desde la evolución (v3_213) ── -->
-<div class="modal-overlay" id="modalAlertaImp">
-  <div class="modal" style="max-width:460px">
-    <div class="modal-header">
-      <div>
-        <div class="modal-title"><i class="ti ti-alert-triangle" style="color:var(--red-600)"></i> Alerta importante</div>
-        <div class="modal-sub" id="alertaImpSub">—</div>
-      </div>
-      <button class="modal-close" onclick="closeModal('modalAlertaImp')">&times;</button>
-    </div>
-    <div class="modal-body">
-      <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px">
-        Lo ve todo el equipo al abrir la evolución y en la ficha del paciente. Usalo para lo que no se puede pasar por alto en ningún turno.
-      </p>
-      <textarea id="alertaImpTexto" rows="3"
-        placeholder="Ej: NO cargar peso en MID / Vía aérea dificultosa: Cormack III"
-        style="border:1.5px solid var(--red-200);background:var(--red-50);border-radius:8px;width:100%;padding:8px 10px;font-family:var(--font);font-size:13px;resize:vertical"></textarea>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Si lo dejás vacío, el alerta se saca.</div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-ghost" onclick="closeModal('modalAlertaImp')">Cancelar</button>
-      <button class="btn btn-primary" id="btnGuardarAlertaImp" onclick="guardarAlertaImportante()"><i class="ti ti-device-floppy"></i>Guardar</button>
-    </div>
-  </div>
-</div>
-
 <!-- ── ELEGIR INSTITUCIÓN AL INGRESAR (v3_206) ── -->
 <div class="modal-overlay" id="modalElegirInst">
   <div class="modal" style="max-width:440px">
@@ -5891,7 +5865,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_213';
+const APP_VERSION = 'v3_212';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -8016,10 +7990,7 @@ async function entrarDemo(){
   patients = pacs;
   evoluciones = evos;
   logs = [];
-  // v3_213: tiene que ser un ARRAY. Con {} rompía renderBannerDeglusion
-  // (evalDeglusion.find no es función) y por eso la demo no abría el modal
-  // de evolución: el error cortaba openEvolucion antes del openModal.
-  evalDeglusion = [];
+  evalDeglusion = {};
   aplicarSectoresKinexa(DEMO_SECTORES);
   DATOS_COMPLETOS = true;
   marcarTodoSincronizado();
@@ -9391,7 +9362,7 @@ async function generarResumenIA(){
   // Armar texto de datos de ingreso
   const tipoLabel = TIPO_KINE_LABEL[p.tipoKine] || '';
   const antTxt = antecedentesTexto(p);
-  const obGrado = gradoObesidad(imcDePaciente(p));
+  const obGrado = gradoObesidad(p.imc);
   const datosIngreso = [
     `Apellido y nombre: ${p.apellido}, ${p.nombre}`,
     `Edad: ${edadTextoPaciente(p)}, sexo: ${p.genero||'—'}`,
@@ -9402,7 +9373,7 @@ async function generarResumenIA(){
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
     antTxt ? `Antecedentes: ${antTxt}` : '',
-    obGrado ? `Estado nutricional: ${obGrado} (IMC ${imcDePaciente(p)})` : '',
+    obGrado ? `Estado nutricional: ${obGrado} (IMC ${p.imc})` : '',
     p.otrosAnt ? `Otros antecedentes: ${p.otrosAnt}` : '',
     p.causaVM ? `Causa de VM: ${p.causaVM}` : '',
     p.fIOT ? `Fecha IOT: ${fmtDate(p.fIOT)}` : '',
@@ -9527,7 +9498,7 @@ async function generarInformeAlta(patientId){
 
   const tipoLabel = TIPO_KINE_LABEL[p.tipoKine] || '';
   const antTxt2 = antecedentesTexto(p);
-  const obGrado2 = gradoObesidad(imcDePaciente(p));
+  const obGrado2 = gradoObesidad(p.imc);
   const datosIngreso = [
     `Apellido y nombre: ${p.apellido}, ${p.nombre}`,
     `DNI: ${p.dni||'—'}`,
@@ -9539,7 +9510,7 @@ async function generarInformeAlta(patientId){
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
     antTxt2 ? `Antecedentes: ${antTxt2}` : '',
-    obGrado2 ? `Estado nutricional: ${obGrado2} (IMC ${imcDePaciente(p)})` : '',
+    obGrado2 ? `Estado nutricional: ${obGrado2} (IMC ${p.imc})` : '',
     p.otrosAnt ? `Otros antecedentes: ${p.otrosAnt}` : '',
     p.causaVM ? `Causa de VM: ${p.causaVM}` : '',
     p.fIOT ? `Fecha IOT: ${fmtDate(p.fIOT)}` : '',
@@ -9653,7 +9624,7 @@ function _crc32(bytes){
   return (crc ^ 0xFFFFFFFF) >>> 0;
 }
 
-function _zipStore(files, mime){
+function _zipStore(files){
   const enc = new TextEncoder();
   const u16 = v => [v&0xFF,(v>>>8)&0xFF];
   const u32 = v => [v&0xFF,(v>>>8)&0xFF,(v>>>16)&0xFF,(v>>>24)&0xFF];
@@ -9675,119 +9646,7 @@ function _zipStore(files, mime){
   });
   const centralSize = central.reduce((a,c)=>a+c.length,0);
   const eocd = new Uint8Array([].concat(u32(0x06054b50),u16(0),u16(0),u16(files.length),u16(files.length),u32(centralSize),u32(offset),u16(0)));
-  return new Blob([...locals,...central,eocd],
-    {type: mime || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
-}
-
-// ════════════════════════════════════════════════════════
-//  v3_213 — GENERADOR DE .XLSX REAL (Excel moderno)
-// ════════════════════════════════════════════════════════
-// Antes se exportaba un CSV. Excel abre el CSV con la codificación regional
-// del sistema (ANSI/Windows-1252) y no con UTF-8, así que todo lo que llevaba
-// tilde o ñ salía como símbolos raros: "AtenciÃ³n", "KinesiÃ³logo", "NÃ©lida".
-// El BOM ayudaba en algunos casos, pero con la directiva "sep=;" Excel lo
-// ignora y vuelve a ANSI, que es justo lo que pasaba en los indicadores.
-//
-// Un .xlsx es un ZIP de XML declarado en UTF-8: la codificación viaja adentro
-// del archivo y no depende de cómo lo abra la máquina. Se reutiliza el mismo
-// armador de ZIP que ya genera los informes .docx, así que no hace falta
-// ninguna librería externa. De paso, cada bloque va en su propia hoja en vez
-// de amontonarse en una sola columna.
-
-const _XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-
-function _xmlEsc(v){
-  return String(v == null ? '' : v)
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;').replace(/'/g,'&apos;')
-    // Excel rechaza los caracteres de control: se limpian antes de escribir
-    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,'');
-}
-
-// Nombre de columna de Excel: 1 → A, 27 → AA
-function _colXlsx(n){
-  let s = '';
-  while(n > 0){ const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); }
-  return s;
-}
-
-// Excel no acepta : \ / ? * [ ] en el nombre de hoja, y corta en 31 caracteres
-function _nombreHoja(n, i){
-  let t = String(n || ('Hoja' + (i + 1))).replace(/[:\\\/?*\[\]]/g, ' ').trim().slice(0, 31);
-  return t || ('Hoja' + (i + 1));
-}
-
-// Una fila puede traer números o texto. Los números van como número real
-// (Excel los suma y grafica); el resto va como texto embebido (inlineStr),
-// que evita tener que armar la tabla de cadenas compartidas.
-function _filaXlsx(celdas, nFila){
-  let out = '<row r="' + nFila + '">';
-  celdas.forEach((c, i) => {
-    if(c === null || c === undefined || c === '') return;   // celda vacía: no se escribe
-    const ref = _colXlsx(i + 1) + nFila;
-    if(typeof c === 'number' && isFinite(c)){
-      out += '<c r="' + ref + '"><v>' + c + '</v></c>';
-    } else {
-      out += '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + _xmlEsc(c) + '</t></is></c>';
-    }
-  });
-  return out + '</row>';
-}
-
-// hojas = [{ nombre:'Pacientes', filas:[[...],[...]] }, ...]
-function _construirXLSX(hojas){
-  const hs = (hojas || []).filter(h => h && Array.isArray(h.filas));
-  if(!hs.length) hs.push({ nombre:'Hoja1', filas:[[]] });
-
-  const sheetsXml = hs.map(h => {
-    const filas = h.filas.map((f, i) => _filaXlsx(Array.isArray(f) ? f : [f], i + 1)).join('');
-    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
-      '<sheetData>' + filas + '</sheetData></worksheet>';
-  });
-
-  const files = [
-    { name:'[Content_Types].xml', str:
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
-      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
-      '<Default Extension="xml" ContentType="application/xml"/>' +
-      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
-      hs.map((h, i) => '<Override PartName="/xl/worksheets/sheet' + (i+1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('') +
-      '</Types>' },
-    { name:'_rels/.rels', str:
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
-      '</Relationships>' },
-    { name:'xl/workbook.xml', str:
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-      '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
-      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' +
-      hs.map((h, i) => '<sheet name="' + _xmlEsc(_nombreHoja(h.nombre, i)) + '" sheetId="' + (i+1) + '" r:id="rId' + (i+1) + '"/>').join('') +
-      '</sheets></workbook>' },
-    { name:'xl/_rels/workbook.xml.rels', str:
-      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
-      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
-      hs.map((h, i) => '<Relationship Id="rId' + (i+1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i+1) + '.xml"/>').join('') +
-      '</Relationships>' },
-  ];
-  sheetsXml.forEach((x, i) => files.push({ name:'xl/worksheets/sheet' + (i+1) + '.xml', str:x }));
-
-  return _zipStore(files, _XLSX_MIME);
-}
-
-// Arma el .xlsx y lo descarga
-function descargarXLSX(nombreArchivo, hojas){
-  const blob = _construirXLSX(hojas);
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = String(nombreArchivo || 'Kinexa').replace(/\.xlsx$/i,'') + '.xlsx';
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  return new Blob([...locals,...central,eocd],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
 }
 
 function descargarInformeWord(p, textoInforme, diasARM, diasTQT){
@@ -10645,61 +10504,6 @@ document.addEventListener('change', function(ev){
 });
 
 // ── Obesidad según IMC ──────────────────────────────────
-// ════════════════════════════════════════════════════════
-//  v3_213 — TALLA E IMC A PRUEBA DE CARGAS RARAS
-// ════════════════════════════════════════════════════════
-// El promedio de IMC del servicio daba 1806,9. La causa: alguna ficha con la
-// talla cargada en METROS (1,74) en vez de centímetros. Como el cálculo divide
-// por (talla/100)², un 1,74 se convierte en 0,0174 m y el IMC de ese paciente
-// da ~247.000, que solo, arrastra el promedio de todo el servicio.
-// Ahora la talla se normaliza (metros → cm) y el IMC se valida contra un rango
-// fisiológico antes de entrar a cualquier estadística.
-
-// Talla en cm. Acepta 1,74 (metros) y lo pasa a 174. Devuelve null si el valor
-// no puede ser una talla humana (un recién nacido mide ~48 cm).
-function tallaCm(v){
-  const t = parseFloat(String(v ?? '').replace(',', '.'));
-  if(!isFinite(t) || t <= 0) return null;
-  if(t <= 3) return +(t * 100).toFixed(1);   // vino en metros
-  if(t < 20 || t > 260) return null;         // fuera de todo rango posible
-  return +t.toFixed(1);
-}
-
-// Peso en kg, validado (desde un prematuro de 400 g hasta 400 kg)
-function pesoKg(v){
-  const k = parseFloat(String(v ?? '').replace(',', '.'));
-  if(!isFinite(k) || k < 0.3 || k > 400) return null;
-  return k;
-}
-
-// IMC fisiológicamente posible. Fuera de 5–90 hay un error de carga.
-const IMC_MIN = 5, IMC_MAX = 90;
-function calcularIMC(peso, talla){
-  const kg = pesoKg(peso), cm = tallaCm(talla);
-  if(kg === null || cm === null) return null;
-  const v = +(kg / Math.pow(cm / 100, 2)).toFixed(1);
-  return (v >= IMC_MIN && v <= IMC_MAX) ? v : null;
-}
-
-// IMC de un paciente: se recalcula desde peso y talla (así se corrigen solas
-// las fichas viejas que tienen guardado un IMC disparatado) y, si eso no se
-// puede, se usa el guardado siempre que sea plausible.
-function imcDePaciente(p){
-  if(!p) return null;
-  const calc = calcularIMC(p.peso, p.talla);
-  if(calc !== null) return calc;
-  const g = parseFloat(p.imc);
-  return (isFinite(g) && g >= IMC_MIN && g <= IMC_MAX) ? +g.toFixed(1) : null;
-}
-
-// ¿La ficha tiene peso/talla cargados pero el IMC no da un valor posible?
-// Sirve para avisarle a la jefatura qué fichas hay que corregir.
-function imcSospechoso(p){
-  if(!p) return false;
-  const hayDatos = (p.peso !== '' && p.peso != null) || (p.talla !== '' && p.talla != null);
-  return hayDatos && imcDePaciente(p) === null;
-}
-
 function gradoObesidad(imc){
   const v = parseFloat(imc);
   if(!v || isNaN(v) || v < 25) return null;
@@ -15333,7 +15137,7 @@ function openEditPaciente(id){
     if(chk){ chk.checked = antActuales.includes(a.key); chk.closest('.ant-chip')?.classList.toggle('is-checked', chk.checked); }
   });
   M('fOtrosAnt',p.otrosAnt);
-  document.getElementById('fObesidadCalc').value = gradoObesidad(imcDePaciente(p)) || 'Sin sobrepeso';
+  document.getElementById('fObesidadCalc').value = gradoObesidad(p.imc) || 'Sin sobrepeso';
   // v3_143: la sección ARM/Ventilación quedó oculta (solo se pregunta si ingresa
   // en ARM y desde cuándo). Los campos siguen existiendo para conservar los datos.
   { const sA=document.getElementById('fSeccionARM'); if(sA) sA.style.display='none'; }
@@ -15469,12 +15273,9 @@ async function guardarPaciente(){
 
   _guardandoPac = true;
   try{
-  // v3_213: la talla se normaliza a cm (si la cargaron en metros, 1,74 → 174) y
-  // el IMC solo se guarda si da un valor posible. Antes una talla en metros
-  // guardaba un IMC de ~247.000 que después rompía los indicadores.
-  const peso = pesoKg(G('fPeso'));
-  const talla = tallaCm(G('fTalla'));
-  const imc = calcularIMC(peso, talla);
+  const peso = parseFloat(G('fPeso')) || null;
+  const talla = parseFloat(G('fTalla')) || null;
+  const imc = (peso && talla) ? +(peso/Math.pow(talla/100,2)).toFixed(1) : null;
   const genero = G('fGenero');
   const pcp = pcpSegunSala(talla, genero, G('fSala'));   // v3_156
   // v3_130: los antecedentes salen de la lista que corresponda a la sala
@@ -15647,34 +15448,17 @@ function calcPCP(tallaCm, genero){
 });
 
 function updateIMCyPCP(){
-  const elT = document.getElementById('fTalla');
-  const pRaw = document.getElementById('fPeso').value;
-  const tRaw = elT ? elT.value : '';
+  const p = parseFloat(document.getElementById('fPeso').value);
+  const t = parseFloat(document.getElementById('fTalla').value);
   const g = document.getElementById('fGenero').value;
-  // v3_213: si la talla vino en metros se corrige sola en el campo, así el
-  // kine ve enseguida qué quedó cargado y el IMC deja de dar disparates.
-  const tNum = parseFloat(String(tRaw).replace(',', '.'));
-  if(elT && isFinite(tNum) && tNum > 0 && tNum <= 3){
-    elT.value = String(+(tNum * 100).toFixed(1));
-    showToast('La talla se carga en centímetros: se corrigió a ' + elT.value + ' cm','info');
-  }
-  const p = pesoKg(document.getElementById('fPeso').value);
-  const t = tallaCm(elT ? elT.value : tRaw);
-  const imc = calcularIMC(p, t);
-  document.getElementById('fIMC').value = imc !== null ? imc.toFixed(1) : '';
-  // Aviso cuando hay datos cargados pero no dan un IMC posible
-  { const w = document.getElementById('fIMCWrap');
-    const hayDatos = String(pRaw).trim() !== '' && String(tRaw).trim() !== '';
-    if(w) w.style.opacity = (hayDatos && imc === null) ? '.6' : '';
-    if(hayDatos && imc === null && (p === null || t === null)){
-      document.getElementById('fIMC').value = 'revisar peso/talla';
-    } }
+  const imc = (p && t) ? (p/Math.pow(t/100,2)) : null;
+  document.getElementById('fIMC').value = imc!==null ? imc.toFixed(1) : '';
   // v3_131: en pediatría se usan percentilos, no IMC ni Devine
   if(esSalaPediatrica(document.getElementById('fSala')?.value)){
     calcPercentilosPed();
     return;
   }
-  const pcp = (t !== null) ? calcPCP(t, g) : null;
+  const pcp = calcPCP(t, g);
   document.getElementById('fPCP').value = pcp!==null ? pcp.toFixed(1)+' kg' : '';
   const obEl = document.getElementById('fObesidadCalc');
   if(obEl) obEl.value = imc!==null ? (gradoObesidad(imc) || 'Sin sobrepeso') : '';
@@ -16026,10 +15810,16 @@ function openEvolucion(patientId){
   actualizarAccesoDeglusion();   // v3_211
 
   // ── Banner ALERTA IMPORTANTE (v3_111) ─────────────────────
-  // v3_213: se puede editar acá mismo. Antes había que salir de la evolución,
-  // abrir la edición del paciente y buscar el campo; con el paciente delante
-  // eso no pasaba nunca y el alerta quedaba desactualizado.
-  renderBannerAlertaEvo(patientId);
+  { const ba = document.getElementById('evoBannerAlerta');
+    if(ba){
+      if(p.alertaImportante && p.alertaImportante.trim()){
+        ba.style.display = 'flex';
+        ba.innerHTML = `<i class="ti ti-alert-triangle" style="font-size:24px;color:var(--red-600);flex-shrink:0"></i>
+          <div><div style="font-size:12px;font-weight:800;color:var(--red-600);letter-spacing:.5px">⚠ IMPORTANTE — TODO EL EQUIPO</div>
+          <div style="font-size:13px;color:var(--red-800);font-weight:700">${escapeHTML(p.alertaImportante)}</div></div>`;
+      } else { ba.style.display = 'none'; ba.innerHTML = ''; }
+    }
+  }
 
   // ── Banner paciente POST UCI + evaluación MRC ──
   const postUCI = esPacientePostUCI(p);
@@ -16071,104 +15861,6 @@ function openEvolucion(patientId){
 
   actualizarContadorHistorial('evoHistCount', patientId);
   openModal('modalEvo');
-}
-
-// ════════════════════════════════════════════════════════
-//  v3_213 — ALERTA IMPORTANTE EDITABLE DESDE LA EVOLUCIÓN
-// ════════════════════════════════════════════════════════
-// El alerta se cargaba solo en el ingreso del paciente. Cuando cambiaba algo
-// (se autorizó la carga, se resolvió la vía aérea dificultosa, apareció una
-// contraindicación nueva), había que salir de la evolución y entrar a editar
-// la ficha, así que en la práctica nadie lo actualizaba. Ahora el lápiz está
-// en el mismo banner que se ve al evolucionar, y si el paciente no tiene
-// alerta aparece un botón para agregarlo.
-
-let _alertaImpPacId = null;
-
-function renderBannerAlertaEvo(patientId){
-  const ba = document.getElementById('evoBannerAlerta');
-  if(!ba) return;
-  const p = patients.find(x => x.id === patientId);
-  if(!p){ ba.style.display = 'none'; ba.innerHTML = ''; return; }
-
-  const txt = (p.alertaImportante || '').trim();
-  const lapiz = `<button type="button" onclick="openAlertaImportante(${p.id})"
-      title="${txt ? 'Editar el alerta' : 'Agregar un alerta'}"
-      style="background:none;border:none;cursor:pointer;color:var(--red-600);padding:2px 4px;flex-shrink:0;align-self:flex-start">
-      <i class="ti ti-pencil" style="font-size:18px"></i></button>`;
-
-  if(txt){
-    ba.style.display = 'flex';
-    ba.style.background = 'var(--red-50)';
-    ba.style.borderColor = 'var(--red-400)';
-    ba.innerHTML = `<i class="ti ti-alert-triangle" style="font-size:24px;color:var(--red-600);flex-shrink:0"></i>
-      <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800;color:var(--red-600);letter-spacing:.5px">⚠ IMPORTANTE — TODO EL EQUIPO</div>
-      <div style="font-size:13px;color:var(--red-800);font-weight:700">${escapeHTML(txt)}</div></div>${lapiz}`;
-  } else {
-    // Sin alerta cargado: se ofrece agregarlo, discreto para no competir con el formulario
-    ba.style.display = 'flex';
-    ba.style.background = 'transparent';
-    ba.style.borderColor = 'transparent';
-    ba.innerHTML = `<button type="button" onclick="openAlertaImportante(${p.id})"
-        style="background:none;border:1px dashed var(--red-200);border-radius:8px;cursor:pointer;
-               color:var(--red-600);font-size:11.5px;font-weight:600;font-family:var(--font);
-               padding:5px 10px;display:inline-flex;align-items:center;gap:5px">
-        <i class="ti ti-alert-triangle" style="font-size:14px"></i>Agregar alerta importante</button>`;
-  }
-}
-
-function openAlertaImportante(patientId){
-  const p = patients.find(x => x.id === patientId);
-  if(!p){ showToast('No se encontró el paciente','error'); return; }
-  _alertaImpPacId = patientId;
-  const sub = document.getElementById('alertaImpSub');
-  if(sub) sub.textContent = `${p.apellido}, ${p.nombre} · ${SALA_LABEL[p.sala]||p.sala||'—'} cama ${p.cama||'—'}`;
-  const ta = document.getElementById('alertaImpTexto');
-  if(ta) ta.value = p.alertaImportante || '';
-  openModal('modalAlertaImp');
-  setTimeout(() => { try { ta?.focus(); } catch(e){} }, 120);
-}
-
-async function guardarAlertaImportante(){
-  const p = patients.find(x => x.id === _alertaImpPacId);
-  if(!p){ closeModal('modalAlertaImp', true); return; }
-  if(frenarSiVencida()) return;
-
-  const nuevo = (document.getElementById('alertaImpTexto')?.value || '').trim();
-  const anterior = (p.alertaImportante || '').trim();
-  if(nuevo === anterior){ closeModal('modalAlertaImp', true); return; }
-
-  const btn = document.getElementById('btnGuardarAlertaImp');
-  const html = btn ? btn.innerHTML : '';
-  if(btn){ btn.disabled = true; btn.innerHTML = '<span class="ocr-spinner"></span>Guardando…'; }
-
-  const actualizado = { ...p, alertaImportante: nuevo };
-  try {
-    if(!DEMO){
-      await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'paciente', p_id:String(p.id), p_data:_limpiarObj(actualizado) });
-    }
-  } catch(err){
-    console.error('No se pudo guardar el alerta', err);
-    if(btn){ btn.disabled = false; btn.innerHTML = html; }
-    setSyncStatus('error');
-    showToast('No se pudo guardar el alerta. Revisá la conexión y probá de nuevo.','error');
-    return;   // no se toca nada local: lo que se ve es lo que hay en la base
-  }
-
-  const idx = patients.findIndex(x => x.id === p.id);
-  patients[idx] = actualizado;
-  _huellas['paciente:'+p.id] = _huella(JSON.stringify(_limpiarObj(actualizado)));
-  savePacientes();
-  addLog('edit', nuevo
-    ? `${anterior ? 'Editó' : 'Agregó'} el alerta importante de ${p.apellido}, ${p.nombre}: ${nuevo}`
-    : `Quitó el alerta importante de ${p.apellido}, ${p.nombre}`);
-  setSyncStatus('ok');
-  closeModal('modalAlertaImp', true);
-  showToast(nuevo ? 'Alerta actualizado ✓' : 'Alerta quitado','success');
-
-  // Se refresca el banner sin cerrar la evolución que está cargando el kine
-  if(currentEvoPacId === p.id) renderBannerAlertaEvo(p.id);
-  renderAll();
 }
 
 function setPosicionARM(pos){
@@ -17110,21 +16802,11 @@ function renderIndDemografia(mesStr){
     d.franjas.map(f=>indFila2('Franja '+f.label+' años', f.n, pctTxt(f.n,T))).join(''),
     ['Edad','Valor','%'])}
 
-  ${indTabla('Estado nutricional (IMC) — adultos','ti-scale',
+  ${indTabla('Estado nutricional (IMC)','ti-scale',
     indFila2('IMC promedio', d.imcStats.prom??'—','') +
     Object.entries(d.catIMC).map(([k,v])=>indFila2(k, v, pctTxt(v, d.imcStats.n))).join('') +
-    indFila2('Con IMC registrado', d.imcStats.n, pctTxt(d.imcStats.n, d.adultos)) +
-    (d.imcRevisar ? indFila2('<span style="color:var(--red-600);font-weight:700"><i class="ti ti-alert-triangle"></i> Con peso o talla mal cargados — revisar la ficha</span>', d.imcRevisar, '') : '') +
-    (d.pediatricos ? indFila2('<em style="color:var(--text-muted)">Pediátricos excluidos (van en el cuadro siguiente)</em>', d.pediatricos, '') : ''),
-    ['Categoría','Pacientes','% sobre adultos'])}
-
-  ${d.pediatricos ? indTabla('Estado nutricional (percentilo de IMC) — pediatría','ti-mood-kid',
-    Object.entries(d.pedIMC.cat).map(([k,v])=>indFila2(k, v, pctTxt(v, d.pedIMC.conPercentil))).join('') +
-    indFila2('Con percentilo calculado', d.pedIMC.conPercentil, pctTxt(d.pedIMC.conPercentil, d.pediatricos)) +
-    (d.pedIMC.menores2a ? indFila2('Menores de 2 años (se evalúan por peso/talla)', d.pedIMC.menores2a, '') : '') +
-    (d.pedIMC.sinPercentil ? indFila2('Sin datos suficientes (falta peso, talla o fecha de nacimiento)', d.pedIMC.sinPercentil, '') : '') +
-    (d.pedIMC.revisar ? indFila2('<span style="color:var(--red-600);font-weight:700"><i class="ti ti-alert-triangle"></i> Con peso o talla mal cargados — revisar la ficha</span>', d.pedIMC.revisar, '') : ''),
-    ['Categoría','Pacientes','% sobre calculados']) : ''}
+    indFila2('Con IMC registrado', d.imcStats.n, pctTxt(d.imcStats.n,T)),
+    ['Categoría','Pacientes','%'])}
 
   ${indTabla('Antecedentes (% sobre pacientes del mes)','ti-clipboard-list',
     d.antecedentes.filter(a=>a.n>0).sort((a,b)=>b.n-a.n).map(a=>indFila2(a.label, a.n, pctTxt(a.n,T))).join('') || indFila2('Sin antecedentes registrados','—',''),
@@ -17463,23 +17145,13 @@ function prestacionesEspTotalEnMes(sala, mesStr){
     .reduce((tot, e) => tot + tecList(e).filter(esTecnicaEsp).length, 0);
 }
 
-// v3_213: el TQT espontáneo hoy se guarda en `interfazEsp` ('TQT_O2' / 'TQT_AA'),
-// no en `interfaz`. La condición vieja solo miraba `interfaz`, así que todos los
-// pacientes traqueostomizados sin ARM se contaban ×2 en vez de ×6: el paciente
-// con vía aérea artificial requiere la misma carga de trabajo esté en ARM o no.
-// Se usa el mismo criterio que `diasInterfazEnMes(..., 'TQT_ESP')`.
-const evoConVAA = e => {
-  const esp = e?.interfazEsp || '';
-  const itf = e?.interfaz || '';
-  if(esp) return esp === 'TQT_O2' || esp === 'TQT_AA';
-  return itf === 'TET' || itf === 'TQT' || itf.includes('TQT espontáneo');
-};
-
 function prestacionesGeneralesEnMes(sala, mesStr){
-  // Vía aérea artificial (TET / TQT, en ARM o espontáneo) → 6 prestaciones por
-  // evolución; el resto → 2
+  // ARM/TQT → 6 prestaciones por evolución; resto → 2
   return _evosDelMes(sala, mesStr)
-    .reduce((total, e) => total + (evoConVAA(e) ? 6 : 2), 0);
+    .reduce((total, e)=>{
+      const enARMoTQT = e.interfaz==='TET' || e.interfaz==='TQT' || (e.interfaz||'').includes('TQT espontáneo');
+      return total + (enARMoTQT ? 6 : 2);
+    }, 0);
 }
 
 // v3_152: procedimientos que el equipo ya deja asentados en la evolución pero
@@ -17639,45 +17311,12 @@ function calcDemografia(mesStr){
   ps.forEach(p=>{ if(p.genero==='Masculino')sexo.Masculino++; else if(p.genero==='Femenino')sexo.Femenino++; else if(p.genero==='Otro')sexo.Otro++; else sexo.SinDato++; });
   const edadStats = statsNum(ps.map(p=>p.edad));
   const franjas = FRANJAS_EDAD.map(f=>({ label:f.label, n: ps.filter(p=>p.edad!=null && p.edad!=='' && f.test(Number(p.edad))).length }));
-  // ── v3_213: el IMC de los pediátricos no se interpreta con cortes de adulto ──
-  // Antes entraban todos juntos en la misma tabla: un lactante de 7,4 kg y 68 cm
-  // tiene IMC 16 y quedaba clasificado como "bajo peso", y además arrastraba el
-  // promedio del servicio hacia abajo. En pediatría el IMC se lee por percentilo
-  // para la edad y el sexo, así que se calculan por separado.
-  const esPed = p => !!(p.esPediatrico || esSalaPediatrica(p.sala));
-  const psAdultos = ps.filter(p => !esPed(p));
-  const psPed     = ps.filter(esPed);
-
-  // v3_213: el IMC se recalcula desde peso y talla y se descarta si no es un
-  // valor posible. Antes bastaba UNA ficha con la talla en metros para que el
-  // promedio del servicio diera 1806,9.
-  const imcStats = statsNum(psAdultos.map(imcDePaciente));
-  const imcRevisar = psAdultos.filter(imcSospechoso).length;
+  const imcStats = statsNum(ps.map(p=>p.imc));
   const catIMC = { 'Bajo peso (<18.5)':0, 'Normopeso (18.5-24.9)':0, 'Sobrepeso (25-29.9)':0, 'Obesidad I (30-34.9)':0, 'Obesidad II (35-39.9)':0, 'Obesidad III (40 o más)':0 };
-  psAdultos.forEach(p=>{ const v=imcDePaciente(p); if(v===null)return;
+  ps.forEach(p=>{ const v=parseFloat(p.imc); if(isNaN(v))return;
     if(v<18.5)catIMC['Bajo peso (<18.5)']++; else if(v<25)catIMC['Normopeso (18.5-24.9)']++;
     else if(v<30)catIMC['Sobrepeso (25-29.9)']++; else if(v<35)catIMC['Obesidad I (30-34.9)']++;
     else if(v<40)catIMC['Obesidad II (35-39.9)']++; else catIMC['Obesidad III (40 o más)']++; });
-
-  // Percentilos de IMC pediátricos (CDC, válidos desde los 2 años).
-  // Categorías estándar: <P3 bajo peso · P3–P84 normal · P85–P96 sobrepeso · ≥P97 obesidad.
-  const pedIMC = { total: psPed.length, conPercentil:0, sinPercentil:0, menores2a:0,
-    cat: { 'Bajo peso (< P3)':0, 'Normopeso (P3 - P84)':0, 'Sobrepeso (P85 - P96)':0, 'Obesidad (P97 o más)':0 } };
-  pedIMC.revisar = psPed.filter(imcSospechoso).length;
-  psPed.forEach(p => {
-    const imc = imcDePaciente(p);
-    const e = p.fechaNac ? edadDesdeFechaNac(p.fechaNac) : null;
-    const meses = e ? e.meses : (p.edad != null && p.edad !== '' ? Number(p.edad)*12 : null);
-    if(imc === null || meses === null || !isFinite(meses)){ pedIMC.sinPercentil++; return; }
-    if(meses < 24){ pedIMC.menores2a++; return; }   // debajo de los 2 años se usa peso/talla, no IMC
-    const r = percentilIMCPed(imc, meses, p.genero);
-    if(!r){ pedIMC.sinPercentil++; return; }
-    pedIMC.conPercentil++;
-    if(r.p < 3)       pedIMC.cat['Bajo peso (< P3)']++;
-    else if(r.p < 85) pedIMC.cat['Normopeso (P3 - P84)']++;
-    else if(r.p < 97) pedIMC.cat['Sobrepeso (P85 - P96)']++;
-    else              pedIMC.cat['Obesidad (P97 o más)']++;
-  });
   // v3_130: se cuentan los de adultos y los pediátricos (sin repetir claves)
   const listaAnt = [...ANTECEDENTES_LIST];
   ANTECEDENTES_PED_LIST.forEach(a=>{ if(!listaAnt.some(x=>x.key===a.key)) listaAnt.push(a); });
@@ -17706,9 +17345,7 @@ function calcDemografia(mesStr){
   // correcto son los egresos reales del servicio: altas + óbitos.
   const egresosReales = altas + obitos;
   const estancias = ps.filter(p=>p.fIHosp).map(p=>(daysBetween(p.fIHosp, p.fEUTI||today())||0)+1);
-  return { total, porSector, sexo, edadStats, franjas, imcStats, catIMC, pedIMC, imcRevisar,
-           adultos: psAdultos.length, pediatricos: psPed.length,
-           antecedentes, grupos, sinGrupo,
+  return { total, porSector, sexo, edadStats, franjas, imcStats, catIMC, antecedentes, grupos, sinGrupo,
            causasTop, altas, obitos, traslados, egresosTot, egresosReales,
            mortalidad: egresosReales ? pctTxt(obitos, egresosReales) : '—',
            mortalidadDetalle: egresosReales ? `${obitos} de ${egresosReales} egresos` : 'sin egresos registrados',
@@ -17844,13 +17481,7 @@ function renderIndMensual(mesStr){
   const totalEvo = evolucionesEnMes('', mesStr);
   const totalPrestGen = prestacionesGeneralesEnMes('', mesStr);
   const totalPrestEsp = prestacionesEspTotalEnMes('', mesStr);
-  // v3_213: el total tiene que ser el MISMO número que la fila "Prestaciones
-  // totales del servicio" de la tabla de abajo. Antes el KPI sumaba solo
-  // generales + específicas y la tabla usaba prestacionesTotalesEnMes(), que
-  // además incluye procedimientos y fichas neurológicas: los dos números no
-  // cerraban y la suma parecía mal hecha.
-  const totalPrestProc = procedimientosTotalEnMes('', mesStr) + fichasNeuroEnMes('', mesStr);
-  const totalPrestTot = prestacionesTotalesEnMes('', mesStr);
+  const totalPrestTot = totalPrestGen + totalPrestEsp;
   const totalARM = patients.reduce((s,p)=>s+diasARMenMes(p,mesStr),0);
   const totalTET = diasTETenMes(mesStr);
   const totalTQTarm = diasTQTarmEnMes(mesStr);
@@ -17880,7 +17511,7 @@ function renderIndMensual(mesStr){
   body.innerHTML = `
   <!-- KPIs del mes -->
   <div class="kpi-row" style="margin-bottom:16px">
-    <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-clipboard-check"></i></div><div class="kpi-content"><div class="label">Prestaciones totales</div><div class="value">${totalPrestTot}</div><div class="sub">Gen ${totalPrestGen} + Esp ${totalPrestEsp} + Proc ${totalPrestProc}</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-clipboard-check"></i></div><div class="kpi-content"><div class="label">Prestaciones totales</div><div class="value">${totalPrestTot}</div><div class="sub">Gen: ${totalPrestGen} + Esp: ${totalPrestEsp}</div></div></div>
     <div class="kpi-card"><div class="kpi-icon amber"><i class="ti ti-lungs"></i></div><div class="kpi-content"><div class="label">Días de ARM</div><div class="value">${totalARM}</div><div class="sub">TET: ${totalTET} / TQT ARM: ${totalTQTarm}</div></div></div>
     <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-plug-x"></i></div><div class="kpi-content"><div class="label">TQT espontáneo</div><div class="value">${totalTQTesp}</div><div class="sub">Días sin ARM</div></div></div>
     <div class="kpi-card"><div class="kpi-icon purple"><i class="ti ti-activity"></i></div><div class="kpi-content"><div class="label">PVE realizadas</div><div class="value">${totalPVE}</div><div class="sub">Pruebas de vent. espontánea</div></div></div>
@@ -17995,7 +17626,7 @@ function renderIndPacientes(){
       <td>${p.genero?p.genero[0]:'—'}</td>
       <td>${p.edad||'—'}</td>
       <td style="white-space:nowrap">${p.tipoKine?(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine).replace(/^[^ ]+ /,''):'—'}</td>
-      <td>${imcDePaciente(p) ?? '—'}</td>
+      <td>${p.imc||'—'}</td>
       <td>${diasHosp}</td>
       <td style="font-weight:${diasArm>0?'700':'400'};color:${diasArm>0?'var(--red-600)':'inherit'}">${diasArm||'—'}</td>
       <td>${diasTET||'—'}</td>
@@ -18094,19 +17725,10 @@ async function exportarIndicadoresCompleto(mesStr){
   rows.push(['Máxima', d.edadStats.max??'']);
   d.franjas.forEach(f=>rows.push(['Franja '+f.label+' años', f.n, pctN(f.n)]));
   rows.push([]);
-  rows.push(['IMC (adultos)','Cantidad','%']);
+  rows.push(['IMC','Cantidad','%']);
   rows.push(['IMC promedio', d.imcStats.prom??'']);
   Object.entries(d.catIMC).forEach(([k,v])=>rows.push([k, v, d.imcStats.n?Math.round(v/d.imcStats.n*1000)/10:0]));
-  rows.push(['Con IMC registrado', d.imcStats.n, d.adultos?Math.round(d.imcStats.n/d.adultos*1000)/10:0]);
-  if(d.imcRevisar) rows.push(['Con peso o talla mal cargados (revisar ficha)', d.imcRevisar, '']);
-  if(d.pediatricos){
-    rows.push([]);
-    rows.push(['Percentilo de IMC (pediatría)','Cantidad','%']);
-    Object.entries(d.pedIMC.cat).forEach(([k,v])=>rows.push([k, v, d.pedIMC.conPercentil?Math.round(v/d.pedIMC.conPercentil*1000)/10:0]));
-    rows.push(['Con percentilo calculado', d.pedIMC.conPercentil, d.pediatricos?Math.round(d.pedIMC.conPercentil/d.pediatricos*1000)/10:0]);
-    if(d.pedIMC.menores2a) rows.push(['Menores de 2 años (se evalúan por peso/talla)', d.pedIMC.menores2a, '']);
-    if(d.pedIMC.sinPercentil) rows.push(['Sin datos suficientes', d.pedIMC.sinPercentil, '']);
-  }
+  rows.push(['Con IMC registrado', d.imcStats.n, pctN(d.imcStats.n)]);
   rows.push([]);
   rows.push(['Antecedente','Pacientes','%']);
   d.antecedentes.filter(a=>a.n>0).sort((a,b)=>b.n-a.n).forEach(a=>rows.push([a.label, a.n, pctN(a.n)]));
@@ -18221,7 +17843,7 @@ async function exportarIndicadoresCompleto(mesStr){
     const diasArm = p.inicioARM ? (daysBetween(p.inicioARM,p.finARM||today())||0)+1 : 0;
     rows.push([
       `${p.apellido}, ${p.nombre}`, p.dni||'', SALA_LABEL[p.sala]||p.sala||'', p.cama||'', p.estado||'',
-      p.genero||'', p.edad||'', p.tipoKine?(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine).replace(/^[^ ]+ /,''):'', imcDePaciente(p)||'',
+      p.genero||'', p.edad||'', p.tipoKine?(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine).replace(/^[^ ]+ /,''):'', p.imc||'',
       p.fIHosp ? (daysBetween(p.fIHosp,p.fEUTI||today())||0)+1 : '',
       diasArm||'', diasU(e=>e.interfaz==='TET'&&!e.interfazEsp)||'',
       diasU(e=>e.interfaz==='TQT'&&!e.interfazEsp)||'',
@@ -18238,13 +17860,19 @@ async function exportarIndicadoresCompleto(mesStr){
     ]);
   });
 
-  // v3_213: .xlsx real. Antes era un CSV con la directiva "sep=;" al principio;
-  // con esa directiva Excel ignora el BOM y lee el archivo en ANSI, así que
-  // todas las tildes y las ñ salían rotas. En un .xlsx la codificación va
-  // declarada adentro del XML y no depende de la configuración de la máquina.
-  descargarXLSX(`Kinexa_indicadores_completos_${String(mesStr).replace('..','_a_')}`, [
-    { nombre:'Indicadores', filas: rows.map(r => (r||[]).map(c => (c === null || c === undefined) ? '' : c)) },
-  ]);
+  // v3_123: separador ';' + decimales con coma + directiva sep=; para que
+  // Excel en configuración regional argentina/española abra las columnas bien.
+  const celda = c => {
+    if(typeof c==='number' && !Number.isInteger(c)) return String(c).replace('.',',');
+    const v = String(c===null||c===undefined?'':c).replace(/\n/g,' ');
+    return (v.includes(';')||v.includes('"')) ? '"'+v.replace(/"/g,'""')+'"' : v;
+  };
+  const csv = 'sep=;\n' + rows.map(r=>r.map(celda).join(';')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Kinexa_indicadores_completos_${String(mesStr).replace('..','_a_')}.csv`;
+  a.click();
   addLog('export','Exportó indicadores completos: '+mesStr);
   showToast('Indicadores completos exportados ✓','success');
 }
@@ -18308,10 +17936,14 @@ async function exportarIndicadores(vista, mesStr){
     });
   }
 
-  // v3_213: .xlsx real, por el mismo problema de codificación del CSV
-  descargarXLSX(`Kinexa_indicadores_${vista}_${mesStr||today().slice(0,7)}`, [
-    { nombre: String(vista||'Indicadores'), filas: rows.map(r => (r||[]).map(c => (c === null || c === undefined) ? '' : c)) },
-  ]);
+  const csv = rows.map(r=>r.map(c=>
+    typeof c==='string' && c.includes(',') ? `"${c}"` : c
+  ).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `indicadores_HBEE_kine_${vista}_${mesStr||today().slice(0,7)}.csv`;
+  a.click();
   addLog('export','Exportó indicadores: '+vista);
 }
 
@@ -18623,19 +18255,14 @@ function renderBannerDeglusion(patientId){
 // ════════════════════════════════════════════════════════
 function exportarDatos(){
   try {
-  // v3_213: se exporta un .xlsx real en vez de un CSV. El CSV lo abría Excel
-  // con la codificación del sistema y las tildes salían como símbolos raros.
-  // Además, ahora Pacientes y Evoluciones van en hojas separadas.
-  const fila = arr => arr.map(v => {
-    if(typeof v === 'number' && isFinite(v)) return v;
-    const t = String(v === null || v === undefined ? '' : v).replace(/\n/g,' ');
-    if(t === '') return '';
-    // Los valores que ya vienen como número en texto se pasan a número real,
-    // salvo los que arrancan con cero (DNI 06771290, cama 03): ahí el cero es
-    // parte del dato y Excel se lo comería.
-    if(/^0\d/.test(t)) return t;
-    return /^-?\d+([.,]\d+)?$/.test(t) ? Number(t.replace(',','.')) : t;
-  });
+  const NL = "\n";
+  const BOM = "\uFEFF";
+
+  const esc = v => {
+    const s = String(v===null||v===undefined?'':v).replace(/\n/g,' ');
+    return (s.includes(',') || s.includes('"')) ? '"' + s.replace(/"/g,'""') + '"' : s;
+  };
+  const fila = arr => arr.map(esc).join(',');
   const joinArr = v => Array.isArray(v) ? v.join(' | ') : (v || '');
 
   // ── Hoja 1: Pacientes ──
@@ -18649,7 +18276,7 @@ function exportarDatos(){
 
   const filasPac = patients.map(p => fila([
     p.apellido||'', p.nombre||'', p.dni||'', p.edad||'', p.genero||'',
-    p.peso||'', tallaCm(p.talla)||p.talla||'', imcDePaciente(p)||'', gradoObesidad(imcDePaciente(p))||'',
+    p.peso||'', p.talla||'', p.imc||'', gradoObesidad(p.imc)||'',
     SALA_LABEL[p.sala]||p.sala||'', p.cama||'', p.estado||'',
     fmtDate(p.fIHosp), fmtDate(p.fIUTI),
     p.diagnostico||'', antecedentesTexto(p), p.otrosAnt||'',
@@ -18701,11 +18328,21 @@ function exportarDatos(){
     ]);
   });
 
-  descargarXLSX('Kinexa_datos_' + today(), [
-    { nombre:'Pacientes',   filas:[encPac].concat(filasPac) },
-    { nombre:'Evoluciones', filas:[encEvo].concat(filasEvo) },
-  ]);
-  addLog('export','Exportación Excel (' + patients.length + ' pacientes, ' + evoluciones.length + ' evoluciones)');
+  const csv = BOM
+    + "PACIENTES" + NL
+    + fila(encPac) + NL
+    + filasPac.join(NL)
+    + NL + NL
+    + "EVOLUCIONES" + NL
+    + fila(encEvo) + NL
+    + filasEvo.join(NL);
+
+  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'HBEE_Kine_' + today() + '.csv';
+  a.click();
+  addLog('export','Exportacion Excel (' + patients.length + ' pacientes, ' + evoluciones.length + ' evoluciones)');
   showToast('Exportado: ' + patients.length + ' pacientes, ' + evoluciones.length + ' evoluciones', 'success');
   } catch(err){
     console.error('Error exportando:', err);
