@@ -1978,6 +1978,44 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       </div>
     </div>
 
+    <!-- ══ v3_219: FRAGILIDAD CLÍNICA (CFS) ══ -->
+    <div class="form-section" id="fFragilidadBlock">
+      <div class="form-section-title"><i class="ti ti-accessible"></i> Fragilidad clínica</div>
+      <div class="form-hint" style="margin-bottom:8px;line-height:1.5">
+        Escala de Fragilidad Clínica (Rockwood). Se puntúa el estado <strong>habitual del paciente en las 2 semanas previas</strong> a
+        enfermarse, no cómo está ahora: alguien que caminaba solo y hoy está en ARM por una neumonía se puntúa por cómo caminaba antes.
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nivel de fragilidad (opcional)</label>
+          <select id="fFragilidad" onchange="onFragilidadChange()">
+            <option value="">Sin evaluar</option>
+            <option value="1">1 — En muy buena forma</option>
+            <option value="2">2 — En buena forma</option>
+            <option value="3">3 — Se maneja bien</option>
+            <option value="4">4 — Fragilidad muy leve</option>
+            <option value="5">5 — Fragilidad leve</option>
+            <option value="6">6 — Fragilidad moderada</option>
+            <option value="7">7 — Fragilidad severa</option>
+            <option value="8">8 — Fragilidad muy severa</option>
+            <option value="9">9 — Enfermedad terminal</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>¿Quién aportó el dato?</label>
+          <select id="fFragilidadFuente">
+            <option value="">-</option>
+            <option>El propio paciente</option>
+            <option>Familiar o cuidador</option>
+            <option>Historia clínica</option>
+            <option>Estimación del equipo</option>
+          </select>
+        </div>
+      </div>
+      <div id="fFragilidadDesc" style="display:none;font-size:12px;line-height:1.5;border-radius:8px;padding:9px 12px;margin-top:2px"></div>
+      <div id="fFragilidadAviso" style="display:none;font-size:11.5px;color:var(--amber-600);margin-top:6px;line-height:1.45"></div>
+    </div>
+
     <!-- v3_128: ARM al ingreso — aplica a TODOS los grupos de patología -->
     <div class="form-section" id="fARMIngresoBlock">
       <div class="form-section-title"><i class="ti ti-lungs"></i> ARM al ingreso</div>
@@ -2624,6 +2662,100 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     <!-- ══ Bloques solo cuando está en ARM ══ -->
     <div id="armOnlyBlock" style="display:none">
     <hr class="sep">
+
+    <!-- ══ v3_219: SOFA ══ -->
+    <div style="margin:8px 0">
+      <span class="tag" id="tagSOFA" onclick="toggleSOFA(this)" style="font-weight:600;border-color:var(--purple-400);color:var(--purple-800);background:var(--purple-50)">
+        <i class="ti ti-calculator"></i> Calcular SOFA (disfunción orgánica)
+      </span>
+    </div>
+    <div id="eSOFAPanel" style="display:none;margin-bottom:12px;border:1px solid var(--purple-400);border-radius:10px;padding:11px 13px;background:#fff">
+      <div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-bottom:10px">
+        Sequential Organ Failure Assessment (Vincent, 1996). Se puntúan los <strong>peores valores del día</strong>.
+        Los datos de laboratorio y las dosis de vasopresores los tenés en la historia clínica: cargalos a mano, no se toman de otros campos.
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Respiratorio — PaO₂/FiO₂</label>
+          <select id="eSOFAResp" onchange="calcSOFA()">
+            <option value="">-</option>
+            <option value="0">≥ 400 — 0 pts</option>
+            <option value="1">300 – 399 — 1 pt</option>
+            <option value="2">200 – 299 — 2 pts</option>
+            <option value="3">100 – 199 con soporte ventilatorio — 3 pts</option>
+            <option value="4">&lt; 100 con soporte ventilatorio — 4 pts</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Coagulación — Plaquetas (×10³/µL)</label>
+          <select id="eSOFACoag" onchange="calcSOFA()">
+            <option value="">-</option>
+            <option value="0">≥ 150 — 0 pts</option>
+            <option value="1">100 – 149 — 1 pt</option>
+            <option value="2">50 – 99 — 2 pts</option>
+            <option value="3">20 – 49 — 3 pts</option>
+            <option value="4">&lt; 20 — 4 pts</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Hepático — Bilirrubina (mg/dL)</label>
+          <select id="eSOFAHep" onchange="calcSOFA()">
+            <option value="">-</option>
+            <option value="0">&lt; 1,2 — 0 pts</option>
+            <option value="1">1,2 – 1,9 — 1 pt</option>
+            <option value="2">2,0 – 5,9 — 2 pts</option>
+            <option value="3">6,0 – 11,9 — 3 pts</option>
+            <option value="4">≥ 12,0 — 4 pts</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Cardiovascular — TAM y vasopresores</label>
+          <select id="eSOFACardio" onchange="calcSOFA()">
+            <option value="">-</option>
+            <option value="0">TAM ≥ 70 mmHg, sin vasopresores — 0 pts</option>
+            <option value="1">TAM &lt; 70 mmHg, sin vasopresores — 1 pt</option>
+            <option value="2">Dopamina ≤ 5 o dobutamina (cualquier dosis) — 2 pts</option>
+            <option value="3">Dopamina &gt; 5 · adrenalina ≤ 0,1 · noradrenalina ≤ 0,1 — 3 pts</option>
+            <option value="4">Dopamina &gt; 15 · adrenalina &gt; 0,1 · noradrenalina &gt; 0,1 — 4 pts</option>
+          </select>
+          <div class="form-hint">Dosis en µg/kg/min, sostenidas al menos 1 hora</div>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Neurológico — Glasgow</label>
+          <select id="eSOFANeuro" onchange="calcSOFA()">
+            <option value="">-</option>
+            <option value="0">15 — 0 pts</option>
+            <option value="1">13 – 14 — 1 pt</option>
+            <option value="2">10 – 12 — 2 pts</option>
+            <option value="3">6 – 9 — 3 pts</option>
+            <option value="4">&lt; 6 — 4 pts</option>
+          </select>
+          <div class="form-hint">Si está sedado, usar el Glasgow estimado sin sedación</div>
+        </div>
+        <div class="form-group"><label>Renal — Creatinina o diuresis</label>
+          <select id="eSOFARenal" onchange="calcSOFA()">
+            <option value="">-</option>
+            <option value="0">Creatinina &lt; 1,2 mg/dL — 0 pts</option>
+            <option value="1">Creatinina 1,2 – 1,9 — 1 pt</option>
+            <option value="2">Creatinina 2,0 – 3,4 — 2 pts</option>
+            <option value="3">Creatinina 3,5 – 4,9 o diuresis &lt; 500 mL/día — 3 pts</option>
+            <option value="4">Creatinina ≥ 5,0 o diuresis &lt; 200 mL/día — 4 pts</option>
+          </select>
+          <div class="form-hint">Si los dos criterios aplican, vale el que puntúe más alto</div>
+        </div>
+      </div>
+      <div style="margin-top:6px;background:var(--gray-50);border-radius:8px;padding:9px 12px">
+        <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
+          <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">SOFA</span>
+          <span style="font-size:22px;font-weight:800" id="eSOFAValor">—</span>
+          <span style="font-size:12px;color:var(--text-muted)">/ 24</span>
+          <span style="font-size:12.5px;font-weight:700" id="eSOFACat"></span>
+        </div>
+        <div style="font-size:11px;color:var(--text-muted);margin-top:3px" id="eSOFADetalle"></div>
+        <div id="eSOFAFaltan" style="font-size:11px;color:var(--amber-600);display:none;margin-top:3px"></div>
+        <div id="eSOFADelta" style="font-size:11.5px;font-weight:600;margin-top:5px;display:none"></div>
+      </div>
+      <input type="hidden" id="eSOFATotal">
+    </div>
 
     <div class="accordion-header" onclick="toggleAccordion('accSed')">
       <span><i class="ti ti-brain" style="margin-right:6px;color:var(--purple-400)"></i>Neurológico / Sedoanalgesia</span>
@@ -3945,6 +4077,8 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <span class="tag" id="tagAspLOFresp" onclick="toggleTag(this)" style="display:none">Aspiración del LOF</span>
           <span class="tag" id="tagAspNasofaringea" onclick="toggleTag(this)" style="display:none">Aspiración nasofaríngea</span>
           <span class="tag" id="tagTitulacionPEEP" onclick="toggleTag(this)" style="display:none">Titulación de PEEP</span>
+          <!-- v3_219 -->
+          <span class="tag" onclick="toggleTag(this)">Monitoreo de la mecánica ventilatoria</span>
           <span class="tag" onclick="toggleTag(this)">Aceleración del flujo espiratorio</span>
           <span class="tag" onclick="toggleTag(this)">Tos asistida</span>
           <span class="tag" onclick="toggleTag(this)">Tos dirigida</span>
@@ -6118,7 +6252,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_218';
+const APP_VERSION = 'v3_219';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -8636,6 +8770,7 @@ async function construirPDFPase(datos){
     dato('Diagnóstico', p.diagnostico);
     parrafo(`Internación: día ${dHosp || '—'} · En el sector: día ${dSector || '—'}`, 8.5, 'normal', NEGRO, 3);
     dato('Antecedentes', antecedentesTexto(p) || 'sin antecedentes cargados');
+    if(p.fragilidad) dato('Fragilidad clínica previa', fmtFragilidad(p.fragilidad));   // v3_219
     dato('Ventilación', vent.detalle);
     if(p.alertaImportante) parrafo(`⚠ ${p.alertaImportante}`, 8.5, 'bold', [180, 30, 40], 3);
 
@@ -9754,6 +9889,7 @@ async function generarResumenIA(){
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
     antTxt ? `Antecedentes: ${antTxt}` : '',
+    p.fragilidad ? `Fragilidad clínica previa: ${fmtFragilidad(p.fragilidad)}` : '',   // v3_219
     obGrado ? `Estado nutricional: ${obGrado} (IMC ${imcDePaciente(p)})` : '',
     p.otrosAnt ? `Otros antecedentes: ${p.otrosAnt}` : '',
     p.causaVM ? `Causa de VM: ${p.causaVM}` : '',
@@ -9891,6 +10027,7 @@ async function generarInformeAlta(patientId){
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
     antTxt2 ? `Antecedentes: ${antTxt2}` : '',
+    p.fragilidad ? `Fragilidad clínica previa: ${fmtFragilidad(p.fragilidad)}` : '',   // v3_219
     obGrado2 ? `Estado nutricional: ${obGrado2} (IMC ${imcDePaciente(p)})` : '',
     p.otrosAnt ? `Otros antecedentes: ${p.otrosAnt}` : '',
     p.causaVM ? `Causa de VM: ${p.causaVM}` : '',
@@ -10283,6 +10420,7 @@ function construirTextoEvo(evo, p){
     // v3_216: indicación/horas de VNI, HACOR y cambio de soporte en la sesión
     add('Indicación de la VNI', VNI_MOTIVO_LABEL[evo.vniMotivo] || '');
     add('Horas de VNI', evo.vniHoras);
+    add('SOFA (disfunción orgánica)', fmtSOFA(evo));
     add('HACOR (riesgo de fracaso de VNI)', fmtHACOR(evo));
     add('Índice ROX (con CNAF)', fmtROX(evo));
     if(evo.soporteFinal && evo.soporteFinal.tipo){
@@ -14539,6 +14677,9 @@ let histRapPacId = null;
 const EVO_LABELS = {
   utiDia:'Día en el sector', diasHosp:'Días de internación',
   vniMotivo:'Indicación de VNI', vniHoras:'Horas de VNI', hacor:'HACOR',
+  sofa:'SOFA', sofaResp:'SOFA — respiratorio', sofaCoag:'SOFA — coagulación',
+  sofaHep:'SOFA — hepático', sofaCardio:'SOFA — cardiovascular',
+  sofaNeuro:'SOFA — neurológico', sofaRenal:'SOFA — renal',
   hacorMomento:'HACOR — momento', hacorGcs:'HACOR — Glasgow', hacorFc:'HACOR — FC',
   hacorPh:'HACOR — pH', hacorPafi:'HACOR — PaO₂/FiO₂', hacorFr:'HACOR — FR',
   soporteFinal:'Soporte al finalizar la sesión',
@@ -14866,6 +15007,12 @@ function evoCardHTML(e, i){
     [textoSoporteFinal(e.soporteFinal), 'Terminó con'],
     [e.soporteFinal.motivo, 'Motivo del cambio'],
   ]) : '';
+  // v3_219: SOFA (solo pacientes en ARM)
+  const secSOFA = fmtSOFA(e) ? evoSeccionGrid('SOFA — disfunción orgánica', [
+    [fmtSOFA(e), 'Total'],
+    [e.sofaResp, 'Respiratorio'], [e.sofaCoag, 'Coagulación'], [e.sofaHep, 'Hepático'],
+    [e.sofaCardio, 'Cardiovascular'], [e.sofaNeuro, 'Neurológico'], [e.sofaRenal, 'Renal'],
+  ]) : '';
   // 3) Neurológico / Sedoanalgesia
   const secNeuro = evoSeccionGrid('Neurológico / Sedoanalgesia', [
     [e.rass,'RASS'], [e.cpot,'CPOT'], [e.camicu,'CAM-ICU'],
@@ -14953,6 +15100,7 @@ function evoCardHTML(e, i){
       ${secVitales}
       ${secVent}
       ${secSoporteFinal}
+      ${secSOFA}
       ${secNeuro}
       ${secVM}
       ${secVM2}
@@ -15838,11 +15986,13 @@ function openNuevoPaciente(){
   document.querySelectorAll('#modalPaciente .field-error-label').forEach(el=>el.classList.remove('field-error-label'));
   const campos = ['fApellido','fNombre','fDNI','fEdad','fGenero','fPeso','fTalla','fIMC','fPCP',
     'fFIHosp','fFIUTI','fDiag','fAlertaImportante','fOtrosAnt','fObesidadCalc',
+    'fFragilidad','fFragilidadFuente',   // v3_219
     'fCausaVM','fFIOT','fInicioARM','fVMNI','fProno','fTQT','fFinARM','fReintubado'];
   campos.forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   document.getElementById('fTipoKine').value = '';
   document.getElementById('fFrecAtencion').value = '1'; // v3_140: default todos los días
   resetGrupoFields();
+  onFragilidadChange();   // v3_219: limpia la descripción del nivel
   document.getElementById('fEstFx').value = '';
   document.getElementById('fTQTMin').value = '';
   document.getElementById('fTQTMinTipo').value = '';
@@ -15892,6 +16042,8 @@ function openEditPaciente(id){
   M('fFIHosp',p.fIHosp); M('fFIUTI',p.fIUTI);
   M('fDiag',p.diagnostico);
   M('fAlertaImportante',p.alertaImportante);
+  M('fFragilidad', p.fragilidad); M('fFragilidadFuente', p.fragilidadFuente);   // v3_219
+  onFragilidadChange();
   // v3_184: primero se arma el menú que corresponde a la sala; si no, al cargar
   // un paciente pediátrico el grupo no existiría todavía entre las opciones y
   // se perdería en silencio.
@@ -16199,6 +16351,9 @@ async function guardarPaciente(){
     diagnostico:G('fDiag'),
     frecAtencion: parseInt(G('fFrecAtencion'))||1, // v3_140
     alertaImportante:G('fAlertaImportante'),
+    // v3_219: fragilidad clínica al ingreso
+    fragilidad: G('fFragilidad') ? parseInt(G('fFragilidad')) : null,
+    fragilidadFuente: G('fFragilidadFuente') || null,
     antecedentes, otrosAnt:G('fOtrosAnt'),
     causaVM:G('fCausaVM'), causaVMOtro:G('fCausaVMOtro'), fIOT:G('fFIOT'), inicioARM:G('fInicioARM'), vmni:G('fVMNI'),
     prono:parseInt(G('fProno'))||0, tqt:G('fTQT'), finARM:G('fFinARM'), reintubado:G('fReintubado'),
@@ -16611,7 +16766,11 @@ function openEvolucion(patientId){
   { const t=document.getElementById('tagHACOR'); if(t) t.classList.remove('active'); }
   { const pnl=document.getElementById('eHACORPanel'); if(pnl) pnl.style.display='none'; }
   ['eHACORMomento','eHACORGcs','eHACORFc','eHACORPh','eHACORPafi','eHACORFr','eHACORTotal',
-   'eVNIMotivo','eVNIHoras'].forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
+   'eVNIMotivo','eVNIHoras',
+   'eSOFAResp','eSOFACoag','eSOFAHep','eSOFACardio','eSOFANeuro','eSOFARenal','eSOFATotal'
+  ].forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
+  { const t=document.getElementById('tagSOFA'); if(t) t.classList.remove('active'); }
+  { const pnl=document.getElementById('eSOFAPanel'); if(pnl) pnl.style.display='none'; }
   { const h=document.getElementById('eVNIMotivoHint'); if(h) h.textContent=''; }
   { const b=document.getElementById('accVent2Box'); if(b) b.style.display='none'; }
   { const ct=document.getElementById('ctMultiplesBox2'); if(ct){ct.style.display='none';ct.innerHTML='';} }
@@ -17242,6 +17401,194 @@ function actualizarHintMotivoVNI(){
 }
 document.getElementById('eVNIMotivo')?.addEventListener('change', actualizarHintMotivoVNI);
 
+
+// ════════════════════════════════════════════════════════
+//  v3_219 — FRAGILIDAD CLÍNICA (Clinical Frailty Scale)
+// ════════════════════════════════════════════════════════
+// Escala de 9 niveles de Rockwood (Dalhousie University). Mide el estado
+// HABITUAL previo a la enfermedad aguda, no el momento actual: es el error de
+// uso más frecuente y el que más distorsiona el resultado. Un paciente que
+// caminaba solo y hoy está en ARM sigue siendo un CFS 2 o 3, no un 7.
+//
+// Las descripciones de abajo están redactadas para esta app; no reproducen el
+// texto de los descriptores originales.
+const CFS_NIVELES = {
+  1: { nom:'En muy buena forma', desc:'Activo, con energía y motivación. Hace ejercicio con regularidad y está entre los más en forma de su edad.', color:'teal' },
+  2: { nom:'En buena forma',     desc:'Sin enfermedad activa que lo limite, pero menos entrenado que el nivel 1. Hace actividad física de vez en cuando o por temporadas.', color:'teal' },
+  3: { nom:'Se maneja bien',     desc:'Tiene problemas de salud controlados. Fuera de la caminata habitual, no hace actividad física regular.', color:'teal' },
+  4: { nom:'Fragilidad muy leve',desc:'Independiente, pero los síntomas le limitan la actividad. Suele referir lentitud o cansancio durante el día.', color:'amber' },
+  5: { nom:'Fragilidad leve',    desc:'Necesita ayuda para tareas instrumentales: manejar el dinero, los traslados, las tareas pesadas de la casa o la medicación.', color:'amber' },
+  6: { nom:'Fragilidad moderada',desc:'Necesita ayuda para todas las actividades fuera de casa y con las tareas domésticas. Suele necesitar ayuda para subir escaleras y para bañarse.', color:'amber' },
+  7: { nom:'Fragilidad severa',  desc:'Dependiente para el cuidado personal, por causa física o cognitiva, pero clínicamente estable.', color:'red' },
+  8: { nom:'Fragilidad muy severa', desc:'Totalmente dependiente y cerca del final de la vida. No suele recuperarse ni de una enfermedad leve.', color:'red' },
+  9: { nom:'Enfermedad terminal',desc:'Expectativa de vida menor a 6 meses, sin que haya otros signos de fragilidad.', color:'red' },
+};
+
+const CFS_COLORES = {
+  teal:  { bg:'var(--teal-50)',  bd:'var(--teal-100)',  tx:'var(--teal-800)' },
+  amber: { bg:'var(--amber-50)', bd:'var(--amber-100)', tx:'var(--amber-800)' },
+  red:   { bg:'var(--red-50)',   bd:'var(--red-100)',   tx:'var(--red-800)' },
+};
+
+// Lectura corta para tarjetas e informes
+function fmtFragilidad(v){
+  const n = parseInt(v);
+  if(!CFS_NIVELES[n]) return '';
+  return `CFS ${n} — ${CFS_NIVELES[n].nom}`;
+}
+const esFragil = v => parseInt(v) >= 5;
+
+function onFragilidadChange(){
+  const sel = document.getElementById('fFragilidad');
+  const box = document.getElementById('fFragilidadDesc');
+  const avisoEl = document.getElementById('fFragilidadAviso');
+  if(!sel || !box) return;
+  const n = parseInt(sel.value);
+  const info = CFS_NIVELES[n];
+  if(!info){ box.style.display = 'none'; if(avisoEl) avisoEl.style.display = 'none'; return; }
+  const c = CFS_COLORES[info.color];
+  box.style.display = 'block';
+  box.style.background = c.bg; box.style.border = '1px solid ' + c.bd; box.style.color = c.tx;
+  box.innerHTML = `<strong>CFS ${n} — ${escapeHTML(info.nom)}.</strong> ${escapeHTML(info.desc)}`
+    + (n >= 5 ? '<br><span style="font-weight:600">Fragilidad establecida: conviene planificar la rehabilitación y el destino al alta desde el ingreso.</span>' : '');
+
+  // Avisos de uso: la escala no está validada fuera de estos supuestos
+  if(avisoEl){
+    const avisos = [];
+    const edad = parseInt(document.getElementById('fEdad')?.value);
+    if(isFinite(edad) && edad < 65){
+      avisos.push('La escala se validó en adultos mayores: en menores de 65 años el resultado es orientativo.');
+    }
+    if(esSalaPediatrica(document.getElementById('fSala')?.value)){
+      avisos.push('No corresponde usarla en pediatría.');
+    }
+    avisos.push('Recordá que se puntúa el estado previo a esta internación, no el actual.');
+    avisoEl.style.display = 'block';
+    avisoEl.innerHTML = '<i class="ti ti-info-circle"></i> ' + avisos.join(' ');
+  }
+}
+
+
+// ════════════════════════════════════════════════════════
+//  v3_219 — SOFA (Sequential Organ Failure Assessment)
+// ════════════════════════════════════════════════════════
+// Vincent y col., Intensive Care Med 1996; base de la definición Sepsis-3.
+// Seis sistemas de 0 a 4 puntos, total 0 a 24. Se puntúan los PEORES valores
+// del día. Los datos se cargan a mano: la creatinina, la bilirrubina, las
+// plaquetas y las dosis de vasopresores están en la historia clínica y no en
+// ningún campo de la evolución kinésica, y la PAFI del EAB puede ser de otro
+// momento del día que el peor valor.
+const SOFA_CAMPOS = [
+  ['eSOFAResp',  'Respiratorio'],
+  ['eSOFACoag',  'Coagulación'],
+  ['eSOFAHep',   'Hepático'],
+  ['eSOFACardio','Cardiovascular'],
+  ['eSOFANeuro', 'Neurológico'],
+  ['eSOFARenal', 'Renal'],
+];
+
+// Mortalidad aproximada en UCI según el total (estudios de validación originales)
+function categoriaSOFA(n){
+  if(n <= 6)  return { txt:'Disfunción leve',     mort:'mortalidad en UCI por debajo del 10%', color:'var(--teal-700)' };
+  if(n <= 9)  return { txt:'Disfunción moderada', mort:'mortalidad aproximada del 15 al 20%',  color:'var(--amber-600)' };
+  if(n <= 12) return { txt:'Disfunción grave',    mort:'mortalidad aproximada del 40 al 50%',  color:'var(--red-600)' };
+  if(n <= 14) return { txt:'Disfunción muy grave',mort:'mortalidad aproximada del 50 al 60%',  color:'var(--red-600)' };
+  return        { txt:'Disfunción extrema',       mort:'mortalidad por encima del 80%',        color:'var(--red-800)' };
+}
+
+function toggleSOFA(el){
+  const panel = document.getElementById('eSOFAPanel');
+  if(!panel) return;
+  const abierto = panel.style.display !== 'none';
+  panel.style.display = abierto ? 'none' : 'block';
+  if(el) el.classList.toggle('active', !abierto);
+  if(abierto){
+    SOFA_CAMPOS.forEach(([id]) => { const e = document.getElementById(id); if(e) e.value = ''; });
+    const t = document.getElementById('eSOFATotal'); if(t) t.value = '';
+  }
+  calcSOFA();
+}
+
+// SOFA previo del paciente, para mostrar la variación (el delta-SOFA es lo que
+// más informa: una suba de 2 puntos o más marca deterioro)
+function sofaPrevio(pacId, excluirEvoId){
+  const prev = evoluciones
+    .filter(e => e.patientId === pacId && !e.tipo && e.sofa !== '' && e.sofa !== null && e.sofa !== undefined
+                 && isFinite(Number(e.sofa)) && String(e.id) !== String(excluirEvoId))
+    .sort((a,b) => String(b.date||'').localeCompare(String(a.date||'')) || (b.id - a.id))[0];
+  return prev ? { valor: Number(prev.sofa), fecha: prev.date } : null;
+}
+
+function calcSOFA(){
+  const valEl = document.getElementById('eSOFAValor');
+  if(!valEl) return;
+  const catEl = document.getElementById('eSOFACat');
+  const detEl = document.getElementById('eSOFADetalle');
+  const falEl = document.getElementById('eSOFAFaltan');
+  const delEl = document.getElementById('eSOFADelta');
+  const totEl = document.getElementById('eSOFATotal');
+
+  let total = 0;
+  const partes = [], faltan = [];
+  SOFA_CAMPOS.forEach(([id, nom]) => {
+    const v = document.getElementById(id)?.value;
+    if(v === '' || v === undefined || v === null){ faltan.push(nom); return; }
+    const n = parseInt(v);
+    total += n;
+    partes.push(`${nom} ${n}`);
+  });
+
+  if(faltan.length === SOFA_CAMPOS.length){
+    valEl.textContent = '—'; valEl.style.color = '';
+    if(catEl) catEl.textContent = '';
+    if(detEl) detEl.textContent = 'Completá al menos un sistema.';
+    if(falEl) falEl.style.display = 'none';
+    if(delEl) delEl.style.display = 'none';
+    if(totEl) totEl.value = '';
+    return;
+  }
+
+  const cat = categoriaSOFA(total);
+  valEl.textContent = total;
+  valEl.style.color = cat.color;
+  if(totEl) totEl.value = String(total);
+  if(catEl){ catEl.textContent = cat.txt; catEl.style.color = cat.color; }
+  if(detEl) detEl.textContent = partes.join(' · ') + ' — ' + cat.mort + '.';
+  if(falEl){
+    if(faltan.length){
+      falEl.style.display = 'block';
+      falEl.innerHTML = `<i class="ti ti-alert-triangle"></i> Sin cargar: ${faltan.join(', ')}. Esos sistemas suman 0 y el total queda por debajo del real.`;
+    } else falEl.style.display = 'none';
+  }
+
+  // Variación respecto de la última evaluación cargada
+  if(delEl){
+    const prev = sofaPrevio(currentEvoPacId, editingEvoId);
+    if(prev && faltan.length === 0){
+      const d = total - prev.valor;
+      delEl.style.display = 'block';
+      if(d >= 2){
+        delEl.style.color = 'var(--red-600)';
+        delEl.innerHTML = `<i class="ti ti-trending-up"></i> Subió ${d} puntos respecto del ${fmtDate(prev.fecha)} (era ${prev.valor}). Un aumento de 2 o más marca deterioro orgánico.`;
+      } else if(d <= -2){
+        delEl.style.color = 'var(--teal-700)';
+        delEl.innerHTML = `<i class="ti ti-trending-down"></i> Bajó ${Math.abs(d)} puntos respecto del ${fmtDate(prev.fecha)} (era ${prev.valor}).`;
+      } else {
+        delEl.style.color = 'var(--text-muted)';
+        delEl.innerHTML = `Sin cambios significativos respecto del ${fmtDate(prev.fecha)} (era ${prev.valor}).`;
+      }
+    } else delEl.style.display = 'none';
+  }
+}
+
+// Lectura corta para la tarjeta y los informes
+function fmtSOFA(e){
+  if(e?.sofa === '' || e?.sofa === null || e?.sofa === undefined) return '';
+  const n = Number(e.sofa);
+  if(!isFinite(n)) return '';
+  return `${n}/24 — ${categoriaSOFA(n).txt.toLowerCase()}`;
+}
+
 function setPosicionARM(pos){
   document.getElementById('ePosicionARM').value = pos;
   document.getElementById('eBtnSupino').className = 'dec-btn' + (pos==='supino'?' dec-sel':'');
@@ -17436,6 +17783,9 @@ const EVO_FIELD_MAP = {
   interfazEsp:'eInterfazEsp', armDiametro:'eARMdiametro', tetADS:'eTETads',
   // v3_216
   vniMotivo:'eVNIMotivo', vniHoras:'eVNIHoras',
+  // v3_219
+  sofa:'eSOFATotal', sofaResp:'eSOFAResp', sofaCoag:'eSOFACoag', sofaHep:'eSOFAHep',
+  sofaCardio:'eSOFACardio', sofaNeuro:'eSOFANeuro', sofaRenal:'eSOFARenal',
   hacorMomento:'eHACORMomento', hacorGcs:'eHACORGcs', hacorFc:'eHACORFc',
   hacorPh:'eHACORPh', hacorPafi:'eHACORPafi', hacorFr:'eHACORFr', hacor:'eHACORTotal',
   posicionARM:'ePosicionARM', pronoCiclo:'ePronoCiclo', cuffLeak:'eCuffLeak',
@@ -17547,6 +17897,13 @@ function precargarCamposEvolucion(evo){
   // porque hay que pintar botones y abrir paneles según lo guardado.
   precargarSoporteFinal(evo.soporteFinal);
   actualizarBotonModSoporte();
+  if(evo.sofa !== '' && evo.sofa !== null && evo.sofa !== undefined){
+    const pnl = document.getElementById('eSOFAPanel');
+    const tg = document.getElementById('tagSOFA');
+    if(pnl) pnl.style.display = 'block';
+    if(tg) tg.classList.add('active');
+    calcSOFA();
+  }
   if(evo.hacor !== '' && evo.hacor !== null && evo.hacor !== undefined){
     const panel = document.getElementById('eHACORPanel');
     const tag = document.getElementById('tagHACOR');
@@ -17583,7 +17940,7 @@ function precargarCamposEvolucion(evo){
 
   // Técnicas / prestaciones (tags .tag activables en toda la pestaña)
   if(evo.tecnicas && evo.tecnicas.length){
-    document.querySelectorAll('#modalEvo .tag:not(#tagModSetting):not(#tagModSoporte):not(#tagHACOR)').forEach(t=>{
+    document.querySelectorAll('#modalEvo .tag:not(#tagModSetting):not(#tagModSoporte):not(#tagHACOR):not(#tagSOFA)').forEach(t=>{
       if(evo.tecnicas.includes(t.textContent.trim())) t.classList.add('active');
     });
   }
@@ -17779,7 +18136,7 @@ async function guardarEvolucion(){
   try{
   const G = id => document.getElementById(id)?.value?.trim() || '';
   const GN = id => { const v=parseFloat(G(id)); return isNaN(v)?'':v; };
-  const tecnicas = [...document.querySelectorAll('#modalEvo .tag.active:not(#tagModSetting):not(#tagModSoporte):not(#tagHACOR)')].map(t=>t.textContent.trim());
+  const tecnicas = [...document.querySelectorAll('#modalEvo .tag.active:not(#tagModSetting):not(#tagModSoporte):not(#tagHACOR):not(#tagSOFA)')].map(t=>t.textContent.trim());
 
   // N° de PVEs acumuladas: cuenta evoluciones previas de este paciente con PVE registrado, + esta si aplica
   const pveActual = G('ePVE');
@@ -17799,6 +18156,10 @@ async function guardarEvolucion(){
     soporteFinal: leerSoporteFinal(),
     // v3_216: indicación, horas y HACOR de la VNI
     vniMotivo:G('eVNIMotivo'), vniHoras:GN('eVNIHoras'),
+    // v3_219: SOFA
+    sofa: G('eSOFATotal') !== '' ? Number(G('eSOFATotal')) : '',
+    sofaResp:G('eSOFAResp'), sofaCoag:G('eSOFACoag'), sofaHep:G('eSOFAHep'),
+    sofaCardio:G('eSOFACardio'), sofaNeuro:G('eSOFANeuro'), sofaRenal:G('eSOFARenal'),
     hacor: G('eHACORTotal') !== '' ? Number(G('eHACORTotal')) : '',
     hacorMomento:G('eHACORMomento'), hacorGcs:GN('eHACORGcs'), hacorFc:GN('eHACORFc'),
     hacorPh:GN('eHACORPh'), hacorPafi:GN('eHACORPafi'), hacorFr:GN('eHACORFr'),
@@ -18235,6 +18596,12 @@ function renderIndDemografia(mesStr){
     indFila2('Mínima / Máxima', (d.edadStats.min??'—')+' / '+(d.edadStats.max??'—'),'') +
     d.franjas.map(f=>indFila2('Franja '+f.label+' años', f.n, pctTxt(f.n,T))).join(''),
     ['Edad','Valor','%'])}
+
+  ${d.conFragilidad ? indTabla('Fragilidad clínica previa (CFS)','ti-accessible',
+    Object.entries(d.fragilidadCat).map(([k,v])=>indFila2(k, v, pctTxt(v, d.conFragilidad))).join('') +
+    indFila2('<strong>Con fragilidad establecida (CFS ≥ 5)</strong>', d.fragiles, pctTxt(d.fragiles, d.conFragilidad)) +
+    indFila2('Evaluados', d.conFragilidad, pctTxt(d.conFragilidad, T)),
+    ['Nivel','Pacientes','% sobre evaluados']) : ''}
 
   ${indTabla('Estado nutricional (IMC) — adultos','ti-scale',
     indFila2('IMC promedio', d.imcStats.prom??'—','') +
@@ -18853,6 +19220,39 @@ function ingresosDelMes(mesStr, sala){
   return n;
 }
 
+// ── v3_219: fragilidad clínica y SOFA ───────────────────
+// Fragilidad: se cuenta por PACIENTE del período (es un dato del ingreso, no
+// cambia día a día). CFS ≥5 se considera fragilidad establecida.
+function fragilidadDelMes(mesStr, sala, filtro){
+  return pacientesDelMes(mesStr, sala).filter(p => {
+    const n = parseInt(p.fragilidad);
+    if(!isFinite(n) || n < 1 || n > 9) return false;
+    return !filtro || filtro(n);
+  }).length;
+}
+
+// SOFA: se toma el PEOR valor de cada paciente en el período, que es el que
+// describe la gravedad de la estadía. Promediar todas las evoluciones daría un
+// número más bajo cuanto más se evolucione al paciente, que es al revés.
+function sofaDelMes(mesStr, sala, modo){
+  const peorPorPac = new Map();
+  evoluciones.forEach(e => {
+    if(e.tipo || !e.date || !enPeriodo(e.date, mesStr)) return;
+    if(!evoEnSala(e, sala)) return;
+    const n = Number(e.sofa);
+    if(e.sofa === '' || e.sofa === null || e.sofa === undefined || !isFinite(n)) return;
+    const prev = peorPorPac.get(e.patientId);
+    if(prev === undefined || n > prev) peorPorPac.set(e.patientId, n);
+  });
+  const vals = [...peorPorPac.values()];
+  if(modo === 'pacientes') return vals.length;
+  if(modo === 'graves')    return vals.filter(v => v >= 10).length;
+  if(modo === 'promedio')  return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0) / vals.length * 10) / 10 : 0;
+  // cantidad de evaluaciones cargadas
+  return evoluciones.filter(e => !e.tipo && e.date && enPeriodo(e.date, mesStr) && evoEnSala(e, sala)
+    && e.sofa !== '' && e.sofa !== null && e.sofa !== undefined && isFinite(Number(e.sofa))).length;
+}
+
 // ── v3_215: reingresos ──────────────────────────────────
 // Un reingreso es una internación nueva de alguien que ya había egresado.
 // Se cuenta en el mes en que empezó la internación en curso.
@@ -18970,6 +19370,16 @@ function calcDemografia(mesStr, sala){
            mortalidadDetalle: egresosReales ? `${obitos} de ${egresosReales} egresos` : 'sin egresos registrados',
            estanciaStats: statsNum(estancias),
            ingresos: ingresosDelMes(mesStr, sala),
+           // v3_219: fragilidad clínica
+           conFragilidad: fragilidadDelMes(mesStr, sala),
+           fragiles: fragilidadDelMes(mesStr, sala, n => n >= 5),
+           fragilidadCat: {
+             'CFS 1-3 — Sin fragilidad':   fragilidadDelMes(mesStr, sala, n => n <= 3),
+             'CFS 4 — Fragilidad muy leve':fragilidadDelMes(mesStr, sala, n => n === 4),
+             'CFS 5-6 — Leve a moderada':  fragilidadDelMes(mesStr, sala, n => n === 5 || n === 6),
+             'CFS 7-8 — Severa':           fragilidadDelMes(mesStr, sala, n => n === 7 || n === 8),
+             'CFS 9 — Enfermedad terminal':fragilidadDelMes(mesStr, sala, n => n === 9),
+           },
            reingresos: reingresosDelMes(mesStr, sala),          // v3_215
            reingresos30: reingresosDelMes(mesStr, sala, true) };
 }
@@ -19237,6 +19647,10 @@ function renderIndMensual(mesStr){
         ${filaARM('Días de TQT sin ARM (espontáneo)', s=>diasInterfazEnMes(mesStr,s,'TQT_ESP'))}
         ${filaARM('Pacientes distintos que pasaron por ARM', s=>pacientesEnARMenMes(s,mesStr))}
         <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Soporte no invasivo / Oxigenoterapia (días)</td></tr>
+        ${filaARM('SOFA — evaluaciones cargadas', s=>sofaDelMes(mesStr,s))}
+        ${filaARM('— Pacientes con SOFA evaluado', s=>sofaDelMes(mesStr,s,'pacientes'))}
+        ${filaARM('— Con SOFA máximo ≥ 10 (disfunción grave)', s=>sofaDelMes(mesStr,s,'graves'))}
+        ${filaARM('— SOFA máximo promedio', s=>sofaDelMes(mesStr,s,'promedio'))}
         ${filaARM('Días de VNI', s=>diasInterfazEnMes(mesStr,s,'VNI'))}
         ${filaARM('— Electiva (1ª línea)', s=>vniPorMotivoEnMes(mesStr,s,'electiva'))}
         ${filaARM('— Cambio de interfaz (sin PVE)', s=>vniPorMotivoEnMes(mesStr,s,'cambio_interfaz'))}
@@ -19434,6 +19848,13 @@ async function exportarIndicadoresCompleto(mesStr){
   Object.entries(d.catIMC).forEach(([k,v])=>rows.push([k, v, d.imcStats.n?Math.round(v/d.imcStats.n*1000)/10:0]));
   rows.push(['Con IMC registrado', d.imcStats.n, d.adultos?Math.round(d.imcStats.n/d.adultos*1000)/10:0]);
   if(d.imcRevisar) rows.push(['Con peso o talla mal cargados (revisar ficha)', d.imcRevisar, '']);
+  if(d.conFragilidad){
+    rows.push([]);
+    rows.push(['Fragilidad clínica previa (CFS)','Cantidad','%']);
+    Object.entries(d.fragilidadCat).forEach(([k,v])=>rows.push([k, v, d.conFragilidad?Math.round(v/d.conFragilidad*1000)/10:0]));
+    rows.push(['Con fragilidad establecida (CFS >= 5)', d.fragiles, d.conFragilidad?Math.round(d.fragiles/d.conFragilidad*1000)/10:0]);
+    rows.push(['Evaluados', d.conFragilidad, pctN(d.conFragilidad)]);
+  }
   if(d.pediatricos){
     rows.push([]);
     rows.push(['Percentilo de IMC (pediatría)','Cantidad','%']);
@@ -19489,6 +19910,10 @@ async function exportarIndicadoresCompleto(mesStr){
   rows.push(calcFila('Días de TET', s=>diasInterfazEnMes(mesStr,s,'TET')));
   rows.push(calcFila('Días de TQT en ARM', s=>diasInterfazEnMes(mesStr,s,'TQT_ARM')));
   rows.push(calcFila('Días de TQT sin ARM (espontáneo)', s=>diasInterfazEnMes(mesStr,s,'TQT_ESP')));
+  rows.push(calcFila('SOFA — evaluaciones cargadas', s=>sofaDelMes(mesStr,s)));
+  rows.push(calcFila('— Pacientes con SOFA evaluado', s=>sofaDelMes(mesStr,s,'pacientes')));
+  rows.push(calcFila('— Con SOFA máximo >= 10 (disfunción grave)', s=>sofaDelMes(mesStr,s,'graves')));
+  rows.push(calcFila('— SOFA máximo promedio', s=>sofaDelMes(mesStr,s,'promedio')));
   rows.push(calcFila('Días de VNI', s=>diasInterfazEnMes(mesStr,s,'VNI')));
   rows.push(calcFila('— VNI electiva (1a linea)', s=>vniPorMotivoEnMes(mesStr,s,'electiva')));
   rows.push(calcFila('— VNI por cambio de interfaz (sin PVE)', s=>vniPorMotivoEnMes(mesStr,s,'cambio_interfaz')));
