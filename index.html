@@ -9391,7 +9391,7 @@ async function generarResumenIA(){
   // Armar texto de datos de ingreso
   const tipoLabel = TIPO_KINE_LABEL[p.tipoKine] || '';
   const antTxt = antecedentesTexto(p);
-  const obGrado = gradoObesidad(p.imc);
+  const obGrado = gradoObesidad(imcDePaciente(p));
   const datosIngreso = [
     `Apellido y nombre: ${p.apellido}, ${p.nombre}`,
     `Edad: ${edadTextoPaciente(p)}, sexo: ${p.genero||'—'}`,
@@ -9402,7 +9402,7 @@ async function generarResumenIA(){
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
     antTxt ? `Antecedentes: ${antTxt}` : '',
-    obGrado ? `Estado nutricional: ${obGrado} (IMC ${p.imc})` : '',
+    obGrado ? `Estado nutricional: ${obGrado} (IMC ${imcDePaciente(p)})` : '',
     p.otrosAnt ? `Otros antecedentes: ${p.otrosAnt}` : '',
     p.causaVM ? `Causa de VM: ${p.causaVM}` : '',
     p.fIOT ? `Fecha IOT: ${fmtDate(p.fIOT)}` : '',
@@ -9527,7 +9527,7 @@ async function generarInformeAlta(patientId){
 
   const tipoLabel = TIPO_KINE_LABEL[p.tipoKine] || '';
   const antTxt2 = antecedentesTexto(p);
-  const obGrado2 = gradoObesidad(p.imc);
+  const obGrado2 = gradoObesidad(imcDePaciente(p));
   const datosIngreso = [
     `Apellido y nombre: ${p.apellido}, ${p.nombre}`,
     `DNI: ${p.dni||'—'}`,
@@ -9539,7 +9539,7 @@ async function generarInformeAlta(patientId){
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
     antTxt2 ? `Antecedentes: ${antTxt2}` : '',
-    obGrado2 ? `Estado nutricional: ${obGrado2} (IMC ${p.imc})` : '',
+    obGrado2 ? `Estado nutricional: ${obGrado2} (IMC ${imcDePaciente(p)})` : '',
     p.otrosAnt ? `Otros antecedentes: ${p.otrosAnt}` : '',
     p.causaVM ? `Causa de VM: ${p.causaVM}` : '',
     p.fIOT ? `Fecha IOT: ${fmtDate(p.fIOT)}` : '',
@@ -10645,6 +10645,61 @@ document.addEventListener('change', function(ev){
 });
 
 // ── Obesidad según IMC ──────────────────────────────────
+// ════════════════════════════════════════════════════════
+//  v3_213 — TALLA E IMC A PRUEBA DE CARGAS RARAS
+// ════════════════════════════════════════════════════════
+// El promedio de IMC del servicio daba 1806,9. La causa: alguna ficha con la
+// talla cargada en METROS (1,74) en vez de centímetros. Como el cálculo divide
+// por (talla/100)², un 1,74 se convierte en 0,0174 m y el IMC de ese paciente
+// da ~247.000, que solo, arrastra el promedio de todo el servicio.
+// Ahora la talla se normaliza (metros → cm) y el IMC se valida contra un rango
+// fisiológico antes de entrar a cualquier estadística.
+
+// Talla en cm. Acepta 1,74 (metros) y lo pasa a 174. Devuelve null si el valor
+// no puede ser una talla humana (un recién nacido mide ~48 cm).
+function tallaCm(v){
+  const t = parseFloat(String(v ?? '').replace(',', '.'));
+  if(!isFinite(t) || t <= 0) return null;
+  if(t <= 3) return +(t * 100).toFixed(1);   // vino en metros
+  if(t < 20 || t > 260) return null;         // fuera de todo rango posible
+  return +t.toFixed(1);
+}
+
+// Peso en kg, validado (desde un prematuro de 400 g hasta 400 kg)
+function pesoKg(v){
+  const k = parseFloat(String(v ?? '').replace(',', '.'));
+  if(!isFinite(k) || k < 0.3 || k > 400) return null;
+  return k;
+}
+
+// IMC fisiológicamente posible. Fuera de 5–90 hay un error de carga.
+const IMC_MIN = 5, IMC_MAX = 90;
+function calcularIMC(peso, talla){
+  const kg = pesoKg(peso), cm = tallaCm(talla);
+  if(kg === null || cm === null) return null;
+  const v = +(kg / Math.pow(cm / 100, 2)).toFixed(1);
+  return (v >= IMC_MIN && v <= IMC_MAX) ? v : null;
+}
+
+// IMC de un paciente: se recalcula desde peso y talla (así se corrigen solas
+// las fichas viejas que tienen guardado un IMC disparatado) y, si eso no se
+// puede, se usa el guardado siempre que sea plausible.
+function imcDePaciente(p){
+  if(!p) return null;
+  const calc = calcularIMC(p.peso, p.talla);
+  if(calc !== null) return calc;
+  const g = parseFloat(p.imc);
+  return (isFinite(g) && g >= IMC_MIN && g <= IMC_MAX) ? +g.toFixed(1) : null;
+}
+
+// ¿La ficha tiene peso/talla cargados pero el IMC no da un valor posible?
+// Sirve para avisarle a la jefatura qué fichas hay que corregir.
+function imcSospechoso(p){
+  if(!p) return false;
+  const hayDatos = (p.peso !== '' && p.peso != null) || (p.talla !== '' && p.talla != null);
+  return hayDatos && imcDePaciente(p) === null;
+}
+
 function gradoObesidad(imc){
   const v = parseFloat(imc);
   if(!v || isNaN(v) || v < 25) return null;
@@ -15278,7 +15333,7 @@ function openEditPaciente(id){
     if(chk){ chk.checked = antActuales.includes(a.key); chk.closest('.ant-chip')?.classList.toggle('is-checked', chk.checked); }
   });
   M('fOtrosAnt',p.otrosAnt);
-  document.getElementById('fObesidadCalc').value = gradoObesidad(p.imc) || 'Sin sobrepeso';
+  document.getElementById('fObesidadCalc').value = gradoObesidad(imcDePaciente(p)) || 'Sin sobrepeso';
   // v3_143: la sección ARM/Ventilación quedó oculta (solo se pregunta si ingresa
   // en ARM y desde cuándo). Los campos siguen existiendo para conservar los datos.
   { const sA=document.getElementById('fSeccionARM'); if(sA) sA.style.display='none'; }
@@ -15414,9 +15469,12 @@ async function guardarPaciente(){
 
   _guardandoPac = true;
   try{
-  const peso = parseFloat(G('fPeso')) || null;
-  const talla = parseFloat(G('fTalla')) || null;
-  const imc = (peso && talla) ? +(peso/Math.pow(talla/100,2)).toFixed(1) : null;
+  // v3_213: la talla se normaliza a cm (si la cargaron en metros, 1,74 → 174) y
+  // el IMC solo se guarda si da un valor posible. Antes una talla en metros
+  // guardaba un IMC de ~247.000 que después rompía los indicadores.
+  const peso = pesoKg(G('fPeso'));
+  const talla = tallaCm(G('fTalla'));
+  const imc = calcularIMC(peso, talla);
   const genero = G('fGenero');
   const pcp = pcpSegunSala(talla, genero, G('fSala'));   // v3_156
   // v3_130: los antecedentes salen de la lista que corresponda a la sala
@@ -15589,17 +15647,34 @@ function calcPCP(tallaCm, genero){
 });
 
 function updateIMCyPCP(){
-  const p = parseFloat(document.getElementById('fPeso').value);
-  const t = parseFloat(document.getElementById('fTalla').value);
+  const elT = document.getElementById('fTalla');
+  const pRaw = document.getElementById('fPeso').value;
+  const tRaw = elT ? elT.value : '';
   const g = document.getElementById('fGenero').value;
-  const imc = (p && t) ? (p/Math.pow(t/100,2)) : null;
-  document.getElementById('fIMC').value = imc!==null ? imc.toFixed(1) : '';
+  // v3_213: si la talla vino en metros se corrige sola en el campo, así el
+  // kine ve enseguida qué quedó cargado y el IMC deja de dar disparates.
+  const tNum = parseFloat(String(tRaw).replace(',', '.'));
+  if(elT && isFinite(tNum) && tNum > 0 && tNum <= 3){
+    elT.value = String(+(tNum * 100).toFixed(1));
+    showToast('La talla se carga en centímetros: se corrigió a ' + elT.value + ' cm','info');
+  }
+  const p = pesoKg(document.getElementById('fPeso').value);
+  const t = tallaCm(elT ? elT.value : tRaw);
+  const imc = calcularIMC(p, t);
+  document.getElementById('fIMC').value = imc !== null ? imc.toFixed(1) : '';
+  // Aviso cuando hay datos cargados pero no dan un IMC posible
+  { const w = document.getElementById('fIMCWrap');
+    const hayDatos = String(pRaw).trim() !== '' && String(tRaw).trim() !== '';
+    if(w) w.style.opacity = (hayDatos && imc === null) ? '.6' : '';
+    if(hayDatos && imc === null && (p === null || t === null)){
+      document.getElementById('fIMC').value = 'revisar peso/talla';
+    } }
   // v3_131: en pediatría se usan percentilos, no IMC ni Devine
   if(esSalaPediatrica(document.getElementById('fSala')?.value)){
     calcPercentilosPed();
     return;
   }
-  const pcp = calcPCP(t, g);
+  const pcp = (t !== null) ? calcPCP(t, g) : null;
   document.getElementById('fPCP').value = pcp!==null ? pcp.toFixed(1)+' kg' : '';
   const obEl = document.getElementById('fObesidadCalc');
   if(obEl) obEl.value = imc!==null ? (gradoObesidad(imc) || 'Sin sobrepeso') : '';
@@ -17039,6 +17114,7 @@ function renderIndDemografia(mesStr){
     indFila2('IMC promedio', d.imcStats.prom??'—','') +
     Object.entries(d.catIMC).map(([k,v])=>indFila2(k, v, pctTxt(v, d.imcStats.n))).join('') +
     indFila2('Con IMC registrado', d.imcStats.n, pctTxt(d.imcStats.n, d.adultos)) +
+    (d.imcRevisar ? indFila2('<span style="color:var(--red-600);font-weight:700"><i class="ti ti-alert-triangle"></i> Con peso o talla mal cargados — revisar la ficha</span>', d.imcRevisar, '') : '') +
     (d.pediatricos ? indFila2('<em style="color:var(--text-muted)">Pediátricos excluidos (van en el cuadro siguiente)</em>', d.pediatricos, '') : ''),
     ['Categoría','Pacientes','% sobre adultos'])}
 
@@ -17046,7 +17122,8 @@ function renderIndDemografia(mesStr){
     Object.entries(d.pedIMC.cat).map(([k,v])=>indFila2(k, v, pctTxt(v, d.pedIMC.conPercentil))).join('') +
     indFila2('Con percentilo calculado', d.pedIMC.conPercentil, pctTxt(d.pedIMC.conPercentil, d.pediatricos)) +
     (d.pedIMC.menores2a ? indFila2('Menores de 2 años (se evalúan por peso/talla)', d.pedIMC.menores2a, '') : '') +
-    (d.pedIMC.sinPercentil ? indFila2('Sin datos suficientes (falta peso, talla o fecha de nacimiento)', d.pedIMC.sinPercentil, '') : ''),
+    (d.pedIMC.sinPercentil ? indFila2('Sin datos suficientes (falta peso, talla o fecha de nacimiento)', d.pedIMC.sinPercentil, '') : '') +
+    (d.pedIMC.revisar ? indFila2('<span style="color:var(--red-600);font-weight:700"><i class="ti ti-alert-triangle"></i> Con peso o talla mal cargados — revisar la ficha</span>', d.pedIMC.revisar, '') : ''),
     ['Categoría','Pacientes','% sobre calculados']) : ''}
 
   ${indTabla('Antecedentes (% sobre pacientes del mes)','ti-clipboard-list',
@@ -17571,9 +17648,13 @@ function calcDemografia(mesStr){
   const psAdultos = ps.filter(p => !esPed(p));
   const psPed     = ps.filter(esPed);
 
-  const imcStats = statsNum(psAdultos.map(p=>p.imc));
+  // v3_213: el IMC se recalcula desde peso y talla y se descarta si no es un
+  // valor posible. Antes bastaba UNA ficha con la talla en metros para que el
+  // promedio del servicio diera 1806,9.
+  const imcStats = statsNum(psAdultos.map(imcDePaciente));
+  const imcRevisar = psAdultos.filter(imcSospechoso).length;
   const catIMC = { 'Bajo peso (<18.5)':0, 'Normopeso (18.5-24.9)':0, 'Sobrepeso (25-29.9)':0, 'Obesidad I (30-34.9)':0, 'Obesidad II (35-39.9)':0, 'Obesidad III (40 o más)':0 };
-  psAdultos.forEach(p=>{ const v=parseFloat(p.imc); if(isNaN(v))return;
+  psAdultos.forEach(p=>{ const v=imcDePaciente(p); if(v===null)return;
     if(v<18.5)catIMC['Bajo peso (<18.5)']++; else if(v<25)catIMC['Normopeso (18.5-24.9)']++;
     else if(v<30)catIMC['Sobrepeso (25-29.9)']++; else if(v<35)catIMC['Obesidad I (30-34.9)']++;
     else if(v<40)catIMC['Obesidad II (35-39.9)']++; else catIMC['Obesidad III (40 o más)']++; });
@@ -17582,11 +17663,12 @@ function calcDemografia(mesStr){
   // Categorías estándar: <P3 bajo peso · P3–P84 normal · P85–P96 sobrepeso · ≥P97 obesidad.
   const pedIMC = { total: psPed.length, conPercentil:0, sinPercentil:0, menores2a:0,
     cat: { 'Bajo peso (< P3)':0, 'Normopeso (P3 - P84)':0, 'Sobrepeso (P85 - P96)':0, 'Obesidad (P97 o más)':0 } };
+  pedIMC.revisar = psPed.filter(imcSospechoso).length;
   psPed.forEach(p => {
-    const imc = parseFloat(p.imc);
+    const imc = imcDePaciente(p);
     const e = p.fechaNac ? edadDesdeFechaNac(p.fechaNac) : null;
     const meses = e ? e.meses : (p.edad != null && p.edad !== '' ? Number(p.edad)*12 : null);
-    if(isNaN(imc) || meses === null || !isFinite(meses)){ pedIMC.sinPercentil++; return; }
+    if(imc === null || meses === null || !isFinite(meses)){ pedIMC.sinPercentil++; return; }
     if(meses < 24){ pedIMC.menores2a++; return; }   // debajo de los 2 años se usa peso/talla, no IMC
     const r = percentilIMCPed(imc, meses, p.genero);
     if(!r){ pedIMC.sinPercentil++; return; }
@@ -17624,7 +17706,7 @@ function calcDemografia(mesStr){
   // correcto son los egresos reales del servicio: altas + óbitos.
   const egresosReales = altas + obitos;
   const estancias = ps.filter(p=>p.fIHosp).map(p=>(daysBetween(p.fIHosp, p.fEUTI||today())||0)+1);
-  return { total, porSector, sexo, edadStats, franjas, imcStats, catIMC, pedIMC,
+  return { total, porSector, sexo, edadStats, franjas, imcStats, catIMC, pedIMC, imcRevisar,
            adultos: psAdultos.length, pediatricos: psPed.length,
            antecedentes, grupos, sinGrupo,
            causasTop, altas, obitos, traslados, egresosTot, egresosReales,
@@ -17913,7 +17995,7 @@ function renderIndPacientes(){
       <td>${p.genero?p.genero[0]:'—'}</td>
       <td>${p.edad||'—'}</td>
       <td style="white-space:nowrap">${p.tipoKine?(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine).replace(/^[^ ]+ /,''):'—'}</td>
-      <td>${p.imc||'—'}</td>
+      <td>${imcDePaciente(p) ?? '—'}</td>
       <td>${diasHosp}</td>
       <td style="font-weight:${diasArm>0?'700':'400'};color:${diasArm>0?'var(--red-600)':'inherit'}">${diasArm||'—'}</td>
       <td>${diasTET||'—'}</td>
@@ -18016,6 +18098,7 @@ async function exportarIndicadoresCompleto(mesStr){
   rows.push(['IMC promedio', d.imcStats.prom??'']);
   Object.entries(d.catIMC).forEach(([k,v])=>rows.push([k, v, d.imcStats.n?Math.round(v/d.imcStats.n*1000)/10:0]));
   rows.push(['Con IMC registrado', d.imcStats.n, d.adultos?Math.round(d.imcStats.n/d.adultos*1000)/10:0]);
+  if(d.imcRevisar) rows.push(['Con peso o talla mal cargados (revisar ficha)', d.imcRevisar, '']);
   if(d.pediatricos){
     rows.push([]);
     rows.push(['Percentilo de IMC (pediatría)','Cantidad','%']);
@@ -18138,7 +18221,7 @@ async function exportarIndicadoresCompleto(mesStr){
     const diasArm = p.inicioARM ? (daysBetween(p.inicioARM,p.finARM||today())||0)+1 : 0;
     rows.push([
       `${p.apellido}, ${p.nombre}`, p.dni||'', SALA_LABEL[p.sala]||p.sala||'', p.cama||'', p.estado||'',
-      p.genero||'', p.edad||'', p.tipoKine?(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine).replace(/^[^ ]+ /,''):'', p.imc||'',
+      p.genero||'', p.edad||'', p.tipoKine?(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine).replace(/^[^ ]+ /,''):'', imcDePaciente(p)||'',
       p.fIHosp ? (daysBetween(p.fIHosp,p.fEUTI||today())||0)+1 : '',
       diasArm||'', diasU(e=>e.interfaz==='TET'&&!e.interfazEsp)||'',
       diasU(e=>e.interfaz==='TQT'&&!e.interfazEsp)||'',
@@ -18566,7 +18649,7 @@ function exportarDatos(){
 
   const filasPac = patients.map(p => fila([
     p.apellido||'', p.nombre||'', p.dni||'', p.edad||'', p.genero||'',
-    p.peso||'', p.talla||'', p.imc||'', gradoObesidad(p.imc)||'',
+    p.peso||'', tallaCm(p.talla)||p.talla||'', imcDePaciente(p)||'', gradoObesidad(imcDePaciente(p))||'',
     SALA_LABEL[p.sala]||p.sala||'', p.cama||'', p.estado||'',
     fmtDate(p.fIHosp), fmtDate(p.fIUTI),
     p.diagnostico||'', antecedentesTexto(p), p.otrosAnt||'',
