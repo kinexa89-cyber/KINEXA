@@ -167,6 +167,51 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); font-si
 .bottom-tab span{ font-size:9px; font-weight:600; letter-spacing:.3px; text-transform:uppercase; }
 .bottom-tab.active{ color:var(--teal-400); }
 
+
+/* ─── v3_214: MIS NOTAS (pendientes personales de cada kinesiólogo/a) ─── */
+.notas-tab{ position:fixed; right:14px; bottom:calc(env(safe-area-inset-bottom,0px) + 14px);
+  z-index:120; display:flex; align-items:center; gap:7px; border:none; cursor:pointer;
+  background:var(--purple-600,#7c3aed); color:#fff; font-family:var(--font); font-size:12.5px; font-weight:700;
+  padding:10px 15px; border-radius:22px; box-shadow:0 4px 16px rgba(0,0,0,.28); transition:transform .12s; }
+.notas-tab:active{ transform:scale(.96); }
+body:has(.modal-overlay.open) .notas-tab{ display:none; }
+.notas-tab i{ font-size:17px; }
+.notas-tab .notas-badge{ background:#fff; color:var(--purple-700,#6d28d9); border-radius:10px;
+  min-width:19px; height:19px; padding:0 5px; font-size:11px; font-weight:800;
+  display:inline-flex; align-items:center; justify-content:center; }
+@media(max-width:768px){ .notas-tab{ bottom:calc(env(safe-area-inset-bottom,0px) + 68px); } }
+
+.notas-panel{ position:fixed; right:0; left:0; bottom:0; z-index:130; background:#fff;
+  border-radius:16px 16px 0 0; box-shadow:0 -6px 28px rgba(0,0,0,.25);
+  max-height:78vh; display:none; flex-direction:column;
+  padding-bottom:env(safe-area-inset-bottom,0px); }
+.notas-panel.open{ display:flex; animation:notasIn .18s ease; }
+@keyframes notasIn{ from{ transform:translateY(18px); opacity:0 } to{ transform:none; opacity:1 } }
+@media(min-width:769px){ .notas-panel{ left:auto; width:420px; right:16px; bottom:16px; border-radius:14px; max-height:70vh; } }
+.notas-head{ display:flex; align-items:center; gap:9px; padding:13px 16px 11px;
+  border-bottom:1px solid var(--border); }
+.notas-head .t{ font-size:14px; font-weight:800; color:var(--blue-900); flex:1; }
+.notas-head .s{ font-size:11px; color:var(--text-muted); font-weight:500; display:block; margin-top:1px; }
+.notas-nueva{ display:flex; gap:8px; padding:11px 16px; border-bottom:1px solid var(--border); }
+.notas-nueva input{ flex:1; border:1.5px solid var(--border); border-radius:9px; padding:9px 11px;
+  font-family:var(--font); font-size:13.5px; }
+.notas-nueva input:focus{ outline:none; border-color:var(--purple-400,#a78bfa); }
+.notas-lista{ overflow-y:auto; padding:8px 10px 14px; flex:1; }
+.nota-item{ display:flex; align-items:flex-start; gap:9px; padding:10px 8px;
+  border-bottom:1px solid rgba(0,0,0,.05); }
+.nota-item .txt{ flex:1; font-size:13.5px; color:var(--text); line-height:1.35; word-break:break-word; white-space:pre-wrap; }
+.nota-item .fec{ display:block; font-size:10.5px; color:var(--text-muted); margin-top:3px; font-weight:500; }
+.nota-btn{ border:none; background:none; cursor:pointer; padding:3px; border-radius:7px;
+  display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+.nota-btn i{ font-size:20px; }
+.nota-btn.ok{ color:var(--teal-600,#0d9488); }
+.nota-btn.no{ color:var(--red-400,#f87171); }
+.nota-btn:active{ background:rgba(0,0,0,.06); }
+.nota-item.hecha .txt{ text-decoration:line-through; color:var(--text-muted); }
+.notas-vacio{ text-align:center; color:var(--text-muted); font-size:12.5px; padding:26px 12px; }
+.notas-hechas-tit{ font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.4px;
+  color:var(--text-muted); padding:12px 8px 5px; cursor:pointer; display:flex; align-items:center; gap:6px; }
+
 /* ─── MAIN ─── */
 main{ flex:1; padding:1.2rem; max-width:1200px; margin:0 auto; width:100%; padding-bottom:80px; }
 .section{ display:none; }
@@ -1087,6 +1132,26 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <button class="bottom-tab" onclick="showSection('indicadores')" id="btab-indicadores" style="display:none"><i class="ti ti-chart-bar"></i><span>Indicadores</span></button>
       <button class="bottom-tab" onclick="showSection('actividad')" id="btab-actividad" style="display:none"><i class="ti ti-activity"></i><span>Actividad</span></button>
     </div>
+  </div>
+
+  <!-- ── v3_214: MIS NOTAS (pendientes personales) ── -->
+  <button class="notas-tab" id="notasTab" onclick="toggleNotas()" title="Mis notas">
+    <i class="ti ti-notes"></i><span>Mis notas</span>
+    <span class="notas-badge" id="notasBadge" style="display:none">0</span>
+  </button>
+
+  <div class="notas-panel" id="notasPanel">
+    <div class="notas-head">
+      <i class="ti ti-notes" style="font-size:20px;color:var(--purple-600,#7c3aed)"></i>
+      <div class="t">Mis notas<span class="s" id="notasSub">Solo las ves vos</span></div>
+      <button class="nota-btn" onclick="toggleNotas()" title="Cerrar"><i class="ti ti-chevron-down" style="color:var(--text-muted)"></i></button>
+    </div>
+    <div class="notas-nueva">
+      <input id="notaNueva" type="text" maxlength="280" placeholder="Escribí un pendiente y tocá +"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();agregarNota();}">
+      <button class="btn btn-primary btn-sm" onclick="agregarNota()" title="Agregar"><i class="ti ti-plus"></i></button>
+    </div>
+    <div class="notas-lista" id="notasLista"></div>
   </div>
 
   <main>
@@ -5477,6 +5542,32 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
   </div>
 </div>
 
+<!-- ── ALERTA IMPORTANTE: editar desde la evolución (v3_213) ── -->
+<div class="modal-overlay" id="modalAlertaImp">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title"><i class="ti ti-alert-triangle" style="color:var(--red-600)"></i> Alerta importante</div>
+        <div class="modal-sub" id="alertaImpSub">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalAlertaImp')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px">
+        Lo ve todo el equipo al abrir la evolución y en la ficha del paciente. Usalo para lo que no se puede pasar por alto en ningún turno.
+      </p>
+      <textarea id="alertaImpTexto" rows="3"
+        placeholder="Ej: NO cargar peso en MID / Vía aérea dificultosa: Cormack III"
+        style="border:1.5px solid var(--red-200);background:var(--red-50);border-radius:8px;width:100%;padding:8px 10px;font-family:var(--font);font-size:13px;resize:vertical"></textarea>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Si lo dejás vacío, el alerta se saca.</div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalAlertaImp')">Cancelar</button>
+      <button class="btn btn-primary" id="btnGuardarAlertaImp" onclick="guardarAlertaImportante()"><i class="ti ti-device-floppy"></i>Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── ELEGIR INSTITUCIÓN AL INGRESAR (v3_206) ── -->
 <div class="modal-overlay" id="modalElegirInst">
   <div class="modal" style="max-width:440px">
@@ -5865,7 +5956,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_212';
+const APP_VERSION = 'v3_215';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -6949,20 +7040,114 @@ function _mismaPersona(a, b){
   return null;
 }
 
+// ════════════════════════════════════════════════════════
+//  v3_215 — REINGRESOS
+// ════════════════════════════════════════════════════════
+// Cuando alguien vuelve a internarse, la app lo detectaba como "paciente ya
+// cargado" y ofrecía trasladarlo. Para la historia clínica está bien (conviene
+// no partir el legajo), pero para la estadística está mal: una persona que se
+// fue de alta hace 10 días y vuelve NO es un traslado, es un ingreso nuevo.
+//
+// Solución: se conserva UNA sola ficha por persona (así todas las evoluciones
+// quedan juntas y accesibles) pero la internación anterior se cierra y se
+// archiva en `p.internaciones`. La ficha arranca una internación nueva, que
+// cuenta como ingreso en el mes que corresponda.
+
+// Internación actual: 1 si nunca reingresó
+const nInternacion = p => ((p?.internaciones?.length) || 0) + 1;
+const esReingreso  = p => nInternacion(p) > 1;
+
+// Fecha de ingreso de la internación en curso
+const ingresoActual = p => p?.fISector || p?.fIUTI || p?.fIHosp || '';
+
+// Días entre el último egreso y este reingreso (null si no se puede calcular).
+// Es el dato que pide cualquier auditoría: el reingreso precoz (< 30 días) es
+// un indicador de calidad reconocido.
+function diasDesdeEgresoPrevio(p){
+  const prev = (p?.internaciones || [])[ (p.internaciones||[]).length - 1 ];
+  const egreso = prev?.fEUTI || prev?.fEK;
+  const ing = ingresoActual(p);
+  if(!egreso || !ing) return null;
+  const d = daysBetween(egreso, ing);
+  return (d === null || d === undefined || d < 0) ? null : d;
+}
+
+// Cierra la internación en curso y la archiva. Devuelve la ficha nueva.
+function _archivarInternacion(p, datosNuevos){
+  const previas = Array.isArray(p.internaciones) ? [...p.internaciones] : [];
+  previas.push({
+    n: previas.length + 1,
+    fIHosp: p.fIHosp || '', fIUTI: p.fIUTI || '', fISector: p.fISector || '',
+    fEUTI: p.fEUTI || '', fEK: p.fEK || '',
+    sala: p.sala || '', cama: p.cama || '',
+    diagnostico: p.diagnostico || '', estadoFinal: p.estado || '',
+  });
+  return { ...p, ...datosNuevos, internaciones: previas };
+}
+
+// Evoluciones agrupadas por internación, de la más nueva a la más vieja.
+// Los cortes se calculan por fecha, así también funciona con las internaciones
+// que quedaron archivadas antes de que existiera este campo.
+function internacionesDePaciente(pacId){
+  const p = patients.find(x => x.id === pacId);
+  if(!p) return [];
+  const evos = evoluciones.filter(e => e.patientId === pacId && e.date)
+    .sort((a,b) => String(b.date).localeCompare(String(a.date)));
+  const previas = p.internaciones || [];
+  const bloques = [{
+    n: previas.length + 1, actual: true,
+    desde: ingresoActual(p), hasta: p.fEUTI || '',
+    sala: p.sala, diagnostico: p.diagnostico, evos: [],
+  }];
+  previas.slice().reverse().forEach(i => bloques.push({
+    n: i.n, actual: false,
+    desde: i.fISector || i.fIUTI || i.fIHosp || '', hasta: i.fEUTI || i.fEK || '',
+    sala: i.sala, diagnostico: i.diagnostico, estadoFinal: i.estadoFinal, evos: [],
+  }));
+  // Cada evolución cae en el bloque cuyo inicio es el más reciente que la precede
+  evos.forEach(e => {
+    const b = bloques.find(x => x.desde && String(e.date) >= String(x.desde)) || bloques[bloques.length - 1];
+    b.evos.push(e);
+  });
+  return bloques;
+}
+
 // Candidatos a ser el mismo paciente que uno que se está por cargar.
-// Solo mira los activos y los que ingresaron hace poco: un homónimo de hace
-// ocho meses no tiene por qué molestar a nadie.
+// v3_215: se separa en dos situaciones distintas, porque se resuelven distinto:
+//   · ficha ACTIVA  → es un duplicado real (el pase de sector se cargó de cero)
+//   · ficha EGRESADA → la persona volvió a internarse: es un REINGRESO
+// Para el duplicado la ventana sigue siendo corta (un homónimo de hace ocho
+// meses no tiene por qué molestar), pero el reingreso se busca en toda la
+// historia: alguien puede volver a internarse un año después.
 const DIAS_VENTANA_DUPLICADO = 20;
+
+function _ordenarCandidatos(lista){
+  const peso = { seguro:0, probable:1, posible:2 };
+  return lista.sort((a,b) => peso[a.nivel] - peso[b.nivel]);
+}
+
 function posiblesDuplicados(datos, excluirId){
   const limite = Date.now() - DIAS_VENTANA_DUPLICADO * 86400000;
-  return patients.filter(p => {
+  return _ordenarCandidatos(patients.filter(p => {
     if(excluirId != null && String(p.id) === String(excluirId)) return false;
-    const ing = p.fISector || p.fIUTI || p.fIHosp;
-    const reciente = ing ? new Date(ing + 'T12:00:00').getTime() >= limite : false;
-    if(p.estado !== 'Activo' && !reciente) return false;
+    if(p.estado !== 'Activo') return false;          // los egresados son reingresos, no duplicados
     return !!_mismaPersona(datos, p);
-  }).map(p => ({ p, ..._mismaPersona(datos, p) }))
-    .sort((a,b) => ({seguro:0, probable:1, posible:2}[a.nivel] - {seguro:0, probable:1, posible:2}[b.nivel]));
+  }).map(p => ({ p, ..._mismaPersona(datos, p) })));
+}
+
+// Internaciones anteriores de la misma persona, ya cerradas.
+// El óbito queda afuera a propósito: no hay reingreso posible, y si aparece un
+// homónimo conviene que se cargue como paciente nuevo sin sugerir nada raro.
+function posiblesReingresos(datos, excluirId){
+  return _ordenarCandidatos(patients.filter(p => {
+    if(excluirId != null && String(p.id) === String(excluirId)) return false;
+    if(p.estado === 'Activo') return false;
+    if(String(p.estado || '').toLowerCase().includes('óbito')) return false;
+    if(String(p.estado || '').toLowerCase().includes('obito')) return false;
+    return !!_mismaPersona(datos, p);
+  }).map(p => ({ p, ..._mismaPersona(datos, p) })))
+    // El egreso más reciente primero
+    .sort((a,b) => String(b.p.fEUTI||'').localeCompare(String(a.p.fEUTI||'')));
 }
 
 function normalizarPacientes(lista){
@@ -7192,6 +7377,7 @@ function savePacientes(){
 }
 function saveEvalDeg(){ if(DEMO) return; LS.set('hbee_eval_deg', evalDeglusion); }
 function saveEvos(){
+  try { limpiarCacheSectores(); } catch(e){}   // v3_214: cambió la lista de evoluciones
   if(DEMO) return;   // v3_185
   const corte = _fechaCorteCache();
   const idsActivos = new Set(patients.filter(p => p && p.estado === 'Activo').map(p => String(p.id)));
@@ -7619,6 +7805,7 @@ function launchApp(){
   if(btnCfg) btnCfg.style.display = (currentUser && currentUser.role === 'admin') ? '' : 'none';
   // v3_168: la bandeja de sugerencias es solo para la jefatura
   actualizarBotonBandeja();
+  iniciarNotas();   // v3_214: pendientes personales de quien está usando la app
   if(esJefatura()) cargarSugerencias().then(actualizarBotonBandeja);
   const av = document.getElementById('navAvatar');
   av.textContent = currentUser.name.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase();
@@ -7681,6 +7868,8 @@ function launchApp(){
   loadFromSupabase();
 }
 function doLogout(){
+  cerrarNotas();   // v3_214: que no quede la libreta abierta para el que entre después
+  notas = []; _notasNube = null;
   if(DEMO){ location.reload(); return; }   // v3_185: la demo no deja rastro
   try { addLog('logout',`Salió: ${currentUser?.name||''}`); } catch(e){}
   try { rpc('kinexa_logout', { p_token: TOKEN }); } catch(e){}
@@ -7990,7 +8179,10 @@ async function entrarDemo(){
   patients = pacs;
   evoluciones = evos;
   logs = [];
-  evalDeglusion = {};
+  // v3_213: tiene que ser un ARRAY. Con {} rompía renderBannerDeglusion
+  // (evalDeglusion.find no es función) y por eso la demo no abría el modal
+  // de evolución: el error cortaba openEvolucion antes del openModal.
+  evalDeglusion = [];
   aplicarSectoresKinexa(DEMO_SECTORES);
   DATOS_COMPLETOS = true;
   marcarTodoSincronizado();
@@ -9362,7 +9554,7 @@ async function generarResumenIA(){
   // Armar texto de datos de ingreso
   const tipoLabel = TIPO_KINE_LABEL[p.tipoKine] || '';
   const antTxt = antecedentesTexto(p);
-  const obGrado = gradoObesidad(p.imc);
+  const obGrado = gradoObesidad(imcDePaciente(p));
   const datosIngreso = [
     `Apellido y nombre: ${p.apellido}, ${p.nombre}`,
     `Edad: ${edadTextoPaciente(p)}, sexo: ${p.genero||'—'}`,
@@ -9373,7 +9565,7 @@ async function generarResumenIA(){
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
     antTxt ? `Antecedentes: ${antTxt}` : '',
-    obGrado ? `Estado nutricional: ${obGrado} (IMC ${p.imc})` : '',
+    obGrado ? `Estado nutricional: ${obGrado} (IMC ${imcDePaciente(p)})` : '',
     p.otrosAnt ? `Otros antecedentes: ${p.otrosAnt}` : '',
     p.causaVM ? `Causa de VM: ${p.causaVM}` : '',
     p.fIOT ? `Fecha IOT: ${fmtDate(p.fIOT)}` : '',
@@ -9498,7 +9690,7 @@ async function generarInformeAlta(patientId){
 
   const tipoLabel = TIPO_KINE_LABEL[p.tipoKine] || '';
   const antTxt2 = antecedentesTexto(p);
-  const obGrado2 = gradoObesidad(p.imc);
+  const obGrado2 = gradoObesidad(imcDePaciente(p));
   const datosIngreso = [
     `Apellido y nombre: ${p.apellido}, ${p.nombre}`,
     `DNI: ${p.dni||'—'}`,
@@ -9510,7 +9702,7 @@ async function generarInformeAlta(patientId){
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
     antTxt2 ? `Antecedentes: ${antTxt2}` : '',
-    obGrado2 ? `Estado nutricional: ${obGrado2} (IMC ${p.imc})` : '',
+    obGrado2 ? `Estado nutricional: ${obGrado2} (IMC ${imcDePaciente(p)})` : '',
     p.otrosAnt ? `Otros antecedentes: ${p.otrosAnt}` : '',
     p.causaVM ? `Causa de VM: ${p.causaVM}` : '',
     p.fIOT ? `Fecha IOT: ${fmtDate(p.fIOT)}` : '',
@@ -9529,7 +9721,7 @@ async function generarInformeAlta(patientId){
   // Armar texto completo de TODAS las evoluciones, en orden cronológico
   const evosTexto = todasEvos.map(e => {
     const partes = [`— ${fmtDate(e.date)} (${e.turno||'—'}, kine: ${e.kine||'—'}):`];
-    if(e.tipo==='traslado'||e.tipo==='alta'||e.tipo==='obito'){
+    if(e.tipo==='traslado'||e.tipo==='alta'||e.tipo==='obito'||e.tipo==='reingreso'){
       partes.push(`[EVENTO: ${e.tipo.toUpperCase()}] ${e.obs||''}`);
       return partes.join(' ');
     }
@@ -9624,7 +9816,7 @@ function _crc32(bytes){
   return (crc ^ 0xFFFFFFFF) >>> 0;
 }
 
-function _zipStore(files){
+function _zipStore(files, mime){
   const enc = new TextEncoder();
   const u16 = v => [v&0xFF,(v>>>8)&0xFF];
   const u32 = v => [v&0xFF,(v>>>8)&0xFF,(v>>>16)&0xFF,(v>>>24)&0xFF];
@@ -9646,7 +9838,119 @@ function _zipStore(files){
   });
   const centralSize = central.reduce((a,c)=>a+c.length,0);
   const eocd = new Uint8Array([].concat(u32(0x06054b50),u16(0),u16(0),u16(files.length),u16(files.length),u32(centralSize),u32(offset),u16(0)));
-  return new Blob([...locals,...central,eocd],{type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+  return new Blob([...locals,...central,eocd],
+    {type: mime || 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+}
+
+// ════════════════════════════════════════════════════════
+//  v3_213 — GENERADOR DE .XLSX REAL (Excel moderno)
+// ════════════════════════════════════════════════════════
+// Antes se exportaba un CSV. Excel abre el CSV con la codificación regional
+// del sistema (ANSI/Windows-1252) y no con UTF-8, así que todo lo que llevaba
+// tilde o ñ salía como símbolos raros: "AtenciÃ³n", "KinesiÃ³logo", "NÃ©lida".
+// El BOM ayudaba en algunos casos, pero con la directiva "sep=;" Excel lo
+// ignora y vuelve a ANSI, que es justo lo que pasaba en los indicadores.
+//
+// Un .xlsx es un ZIP de XML declarado en UTF-8: la codificación viaja adentro
+// del archivo y no depende de cómo lo abra la máquina. Se reutiliza el mismo
+// armador de ZIP que ya genera los informes .docx, así que no hace falta
+// ninguna librería externa. De paso, cada bloque va en su propia hoja en vez
+// de amontonarse en una sola columna.
+
+const _XLSX_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+
+function _xmlEsc(v){
+  return String(v == null ? '' : v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&apos;')
+    // Excel rechaza los caracteres de control: se limpian antes de escribir
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,'');
+}
+
+// Nombre de columna de Excel: 1 → A, 27 → AA
+function _colXlsx(n){
+  let s = '';
+  while(n > 0){ const r = (n - 1) % 26; s = String.fromCharCode(65 + r) + s; n = Math.floor((n - 1) / 26); }
+  return s;
+}
+
+// Excel no acepta : \ / ? * [ ] en el nombre de hoja, y corta en 31 caracteres
+function _nombreHoja(n, i){
+  let t = String(n || ('Hoja' + (i + 1))).replace(/[:\\\/?*\[\]]/g, ' ').trim().slice(0, 31);
+  return t || ('Hoja' + (i + 1));
+}
+
+// Una fila puede traer números o texto. Los números van como número real
+// (Excel los suma y grafica); el resto va como texto embebido (inlineStr),
+// que evita tener que armar la tabla de cadenas compartidas.
+function _filaXlsx(celdas, nFila){
+  let out = '<row r="' + nFila + '">';
+  celdas.forEach((c, i) => {
+    if(c === null || c === undefined || c === '') return;   // celda vacía: no se escribe
+    const ref = _colXlsx(i + 1) + nFila;
+    if(typeof c === 'number' && isFinite(c)){
+      out += '<c r="' + ref + '"><v>' + c + '</v></c>';
+    } else {
+      out += '<c r="' + ref + '" t="inlineStr"><is><t xml:space="preserve">' + _xmlEsc(c) + '</t></is></c>';
+    }
+  });
+  return out + '</row>';
+}
+
+// hojas = [{ nombre:'Pacientes', filas:[[...],[...]] }, ...]
+function _construirXLSX(hojas){
+  const hs = (hojas || []).filter(h => h && Array.isArray(h.filas));
+  if(!hs.length) hs.push({ nombre:'Hoja1', filas:[[]] });
+
+  const sheetsXml = hs.map(h => {
+    const filas = h.filas.map((f, i) => _filaXlsx(Array.isArray(f) ? f : [f], i + 1)).join('');
+    return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
+      '<sheetData>' + filas + '</sheetData></worksheet>';
+  });
+
+  const files = [
+    { name:'[Content_Types].xml', str:
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>' +
+      hs.map((h, i) => '<Override PartName="/xl/worksheets/sheet' + (i+1) + '.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>').join('') +
+      '</Types>' },
+    { name:'_rels/.rels', str:
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>' +
+      '</Relationships>' },
+    { name:'xl/workbook.xml', str:
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" ' +
+      'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' +
+      hs.map((h, i) => '<sheet name="' + _xmlEsc(_nombreHoja(h.nombre, i)) + '" sheetId="' + (i+1) + '" r:id="rId' + (i+1) + '"/>').join('') +
+      '</sheets></workbook>' },
+    { name:'xl/_rels/workbook.xml.rels', str:
+      '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      hs.map((h, i) => '<Relationship Id="rId' + (i+1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet' + (i+1) + '.xml"/>').join('') +
+      '</Relationships>' },
+  ];
+  sheetsXml.forEach((x, i) => files.push({ name:'xl/worksheets/sheet' + (i+1) + '.xml', str:x }));
+
+  return _zipStore(files, _XLSX_MIME);
+}
+
+// Arma el .xlsx y lo descarga
+function descargarXLSX(nombreArchivo, hojas){
+  const blob = _construirXLSX(hojas);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = String(nombreArchivo || 'Kinexa').replace(/\.xlsx$/i,'') + '.xlsx';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 
 function descargarInformeWord(p, textoInforme, diasARM, diasTQT){
@@ -10196,6 +10500,7 @@ document.addEventListener('click',  e=>{
 
 function openModal(id){
   marcarModalLimpio(id);            // arranca limpio en cada apertura
+  cerrarNotas();                    // v3_214: la libreta no se superpone a un modal
   document.getElementById(id).classList.add('open');
 }
 // forzar = true → cierre programático (después de guardar), sin preguntar nada
@@ -10504,6 +10809,61 @@ document.addEventListener('change', function(ev){
 });
 
 // ── Obesidad según IMC ──────────────────────────────────
+// ════════════════════════════════════════════════════════
+//  v3_213 — TALLA E IMC A PRUEBA DE CARGAS RARAS
+// ════════════════════════════════════════════════════════
+// El promedio de IMC del servicio daba 1806,9. La causa: alguna ficha con la
+// talla cargada en METROS (1,74) en vez de centímetros. Como el cálculo divide
+// por (talla/100)², un 1,74 se convierte en 0,0174 m y el IMC de ese paciente
+// da ~247.000, que solo, arrastra el promedio de todo el servicio.
+// Ahora la talla se normaliza (metros → cm) y el IMC se valida contra un rango
+// fisiológico antes de entrar a cualquier estadística.
+
+// Talla en cm. Acepta 1,74 (metros) y lo pasa a 174. Devuelve null si el valor
+// no puede ser una talla humana (un recién nacido mide ~48 cm).
+function tallaCm(v){
+  const t = parseFloat(String(v ?? '').replace(',', '.'));
+  if(!isFinite(t) || t <= 0) return null;
+  if(t <= 3) return +(t * 100).toFixed(1);   // vino en metros
+  if(t < 20 || t > 260) return null;         // fuera de todo rango posible
+  return +t.toFixed(1);
+}
+
+// Peso en kg, validado (desde un prematuro de 400 g hasta 400 kg)
+function pesoKg(v){
+  const k = parseFloat(String(v ?? '').replace(',', '.'));
+  if(!isFinite(k) || k < 0.3 || k > 400) return null;
+  return k;
+}
+
+// IMC fisiológicamente posible. Fuera de 5–90 hay un error de carga.
+const IMC_MIN = 5, IMC_MAX = 90;
+function calcularIMC(peso, talla){
+  const kg = pesoKg(peso), cm = tallaCm(talla);
+  if(kg === null || cm === null) return null;
+  const v = +(kg / Math.pow(cm / 100, 2)).toFixed(1);
+  return (v >= IMC_MIN && v <= IMC_MAX) ? v : null;
+}
+
+// IMC de un paciente: se recalcula desde peso y talla (así se corrigen solas
+// las fichas viejas que tienen guardado un IMC disparatado) y, si eso no se
+// puede, se usa el guardado siempre que sea plausible.
+function imcDePaciente(p){
+  if(!p) return null;
+  const calc = calcularIMC(p.peso, p.talla);
+  if(calc !== null) return calc;
+  const g = parseFloat(p.imc);
+  return (isFinite(g) && g >= IMC_MIN && g <= IMC_MAX) ? +g.toFixed(1) : null;
+}
+
+// ¿La ficha tiene peso/talla cargados pero el IMC no da un valor posible?
+// Sirve para avisarle a la jefatura qué fichas hay que corregir.
+function imcSospechoso(p){
+  if(!p) return false;
+  const hayDatos = (p.peso !== '' && p.peso != null) || (p.talla !== '' && p.talla != null);
+  return hayDatos && imcDePaciente(p) === null;
+}
+
 function gradoObesidad(imc){
   const v = parseFloat(imc);
   if(!v || isNaN(v) || v < 25) return null;
@@ -12830,6 +13190,7 @@ async function guardarEvoMin(){
 
   const evo = {
     id:Date.now(), patientId:currentEvoMinPacId, date, turno:G('emTurno'), kine:G('emKine'),
+    sala: (patients.find(x=>x.id===currentEvoMinPacId)?.sala) || currentSector || '',   // v3_214
     tipo_evo:'minimos',
     frecuencia:G('emFrecuencia'), eva:G('emEVA'),
     conciencia:G('emConciencia'), orientacion:G('emOrientacion'), noAtencion:G('emNoAtencion'),
@@ -13647,6 +14008,9 @@ async function confirmarEgreso(){
     evo = {
       id:Date.now(), patientId:egresoPacId, date:fecha,
       turno:currentShift(), kine:currentUser.name, tipo:'traslado',
+      // v3_214: origen y destino como datos, no solo dentro del texto. Con esto
+      // se sabe con exactitud a qué sector corresponde cada día de internación.
+      sala: salaOrigen, salaOrigen, salaDestino: destino,
       obs:`TRASLADO: De ${SALA_LABEL[salaOrigen]||salaOrigen} C${camaOrigen} → ${SALA_LABEL[destino]||destino}${nuevaCama?' C'+nuevaCama:''}${obs?'. '+obs:''}`,
       tecnicas:[], tolerancia:'',
     };
@@ -13661,6 +14025,7 @@ async function confirmarEgreso(){
     evo = {
       id:Date.now(), patientId:egresoPacId, date:fecha,
       turno:currentShift(), kine:currentUser.name, tipo:'alta',
+      sala: p.sala,   // v3_214: sector desde el que egresa
       obs:`ALTA: ${destino}${obs?'. '+obs:''}`,
       tecnicas:[], secCant:'', secChar:'', tolerancia:'',
     };
@@ -13678,6 +14043,7 @@ async function confirmarEgreso(){
     evo = {
       id:Date.now(), patientId:egresoPacId, date:fecha,
       turno:currentShift(), kine:currentUser.name, tipo:'obito',
+      sala: p.sala,   // v3_214: sector desde el que egresa
       causaObito:causa, donanteObito:donante?'Sí':'No',
       obs:`ÓBITO${detalle?': '+detalle:''}${obs?'. '+obs:''}`,
       tecnicas:[], secCant:'', secChar:'', tolerancia:'',
@@ -13990,11 +14356,19 @@ function evoSeccionGrid(titulo, pares){
   }</div>`;
 }
 
+// v3_215: marca visible de que la persona ya estuvo internada antes
+function badgeReingreso(p){
+  if(!esReingreso(p)) return '';
+  const n = nInternacion(p);
+  return ` <span class="badge" style="background:var(--purple-100,#ede9fe);color:var(--purple-700,#6d28d9);font-size:9px;vertical-align:middle"
+      title="${n}ª internación de este paciente"><i class="ti ti-rotate-clockwise"></i> ${n}ª int.</span>`;
+}
+
 function evoCardHTML(e, i){
-  // Eventos especiales (traslado, alta, óbito)
-  if(e.tipo==='traslado'||e.tipo==='alta'||e.tipo==='obito'){
-    const cm={traslado:'var(--blue-400)',alta:'var(--teal-400)',obito:'var(--red-400)'};
-    const im={traslado:'ti-arrows-transfer-up',alta:'ti-home-check',obito:'ti-heart-off'};
+  // Eventos especiales (traslado, alta, óbito, reingreso)
+  if(e.tipo==='traslado'||e.tipo==='alta'||e.tipo==='obito'||e.tipo==='reingreso'){
+    const cm={traslado:'var(--blue-400)',alta:'var(--teal-400)',obito:'var(--red-400)',reingreso:'var(--purple-500,#8b5cf6)'};
+    const im={traslado:'ti-arrows-transfer-up',alta:'ti-home-check',obito:'ti-heart-off',reingreso:'ti-rotate-clockwise'};
     return `<div class="evo-entry"><div class="evo-card" style="border-left:3px solid ${cm[e.tipo]}">
       <div class="evo-card-header"><div style="display:flex;align-items:center;gap:6px">
         <i class="ti ${im[e.tipo]}" style="color:${cm[e.tipo]};font-size:16px"></i>
@@ -14192,10 +14566,31 @@ async function openHistorialRapido(patientId, desdeEvolucion){
   const evos = evoluciones.filter(e=>e.patientId===patientId)
     .sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
   document.getElementById('histRapTitulo').textContent = `${p.apellido}, ${p.nombre}`;
-  document.getElementById('histRapSub').textContent = `${SALA_LABEL[p.sala]||p.sala} · C${p.cama||'—'} · ${p.diagnostico||'—'}`;
+  document.getElementById('histRapSub').textContent = `${SALA_LABEL[p.sala]||p.sala} · C${p.cama||'—'} · ${p.diagnostico||'—'}`
+    + (esReingreso(p) ? ` · ${nInternacion(p)}ª internación` : '');
   const cont = document.getElementById('histRapContent');
   if(!evos.length){
     cont.innerHTML='<div class="empty"><i class="ti ti-notes-off"></i><p>Sin evoluciones</p></div>';
+  } else if(esReingreso(p)){
+    // v3_215: con más de una internación, el historial se muestra separado por
+    // internación. Se sigue viendo todo, pero sin mezclar la estadía de ahora
+    // con la de hace seis meses.
+    const bloques = internacionesDePaciente(patientId);
+    cont.innerHTML = bloques.filter(b => b.evos.length || b.actual).map(b => {
+      const per = [b.desde ? fmtDate(b.desde) : '—', b.hasta ? fmtDate(b.hasta) : (b.actual ? 'en curso' : '—')].join(' → ');
+      return `<div style="margin:${b.actual?'0':'18px'} 0 8px;padding:8px 11px;border-radius:8px;
+          background:${b.actual?'var(--purple-50)':'var(--gray-100)'};
+          border-left:3px solid ${b.actual?'var(--purple-500,#8b5cf6)':'var(--border)'}">
+          <div style="font-size:12px;font-weight:800;color:${b.actual?'var(--purple-700,#6d28d9)':'var(--text-muted)'}">
+            <i class="ti ti-rotate-clockwise"></i> Internación N° ${b.n}${b.actual?' — actual':''}</div>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:2px">${per}
+            ${b.sala?' · '+(SALA_LABEL[b.sala]||b.sala):''}${b.diagnostico?' · '+escapeHTML(b.diagnostico):''}
+            ${b.estadoFinal?' · '+escapeHTML(b.estadoFinal):''}</div>
+        </div>` +
+        (b.evos.length
+          ? '<div class="timeline">'+b.evos.map(evoCardHTML).join('')+'</div>'
+          : '<div style="font-size:12px;color:var(--text-muted);padding:6px 10px 2px">Sin evoluciones cargadas en esta internación.</div>');
+    }).join('');
   } else {
     cont.innerHTML='<div class="timeline">'+evos.map(evoCardHTML).join('')+'</div>';
   }
@@ -14591,7 +14986,7 @@ function renderTabla(){
     const estVent = estadoVentPaciente(p);
     return `<tr>
       <td>${salaChip(p.sala)} <small style="color:var(--text-muted);font-size:10px">C.${p.cama||'?'}</small></td>
-      <td><div style="font-weight:600;color:var(--blue-900)">${p.apellido}, ${p.nombre}</div><div style="font-size:10px;color:var(--text-muted)">DNI ${p.dni||'—'} · ${escapeHTML(edadTextoPaciente(p))}</div></td>
+      <td><div style="font-weight:600;color:var(--blue-900)">${p.apellido}, ${p.nombre}${badgeReingreso(p)}</div><div style="font-size:10px;color:var(--text-muted)">DNI ${p.dni||'—'} · ${escapeHTML(edadTextoPaciente(p))}</div></td>
       <td style="max-width:180px;white-space:normal">${p.diagnostico||'—'}</td>
       <td class="hide-mobile">${fmtDate(p.fIUTI)||'—'}</td>
       <td>${p.estado==='Activo' ? ventBadgeHTML(estVent) : '<span class="badge badge-gray">—</span>'}</td>
@@ -14667,7 +15062,7 @@ function filterPacientes(q){
     const estVent = estadoVentPaciente(p);
     return `<tr>
       <td>${salaChip(p.sala)} <small style="color:var(--text-muted);font-size:10px">C.${p.cama||'?'}</small></td>
-      <td><div style="font-weight:600;color:var(--blue-900)">${p.apellido}, ${p.nombre}</div><div style="font-size:10px;color:var(--text-muted)">DNI ${p.dni||'—'} · ${escapeHTML(edadTextoPaciente(p))}</div></td>
+      <td><div style="font-weight:600;color:var(--blue-900)">${p.apellido}, ${p.nombre}${badgeReingreso(p)}</div><div style="font-size:10px;color:var(--text-muted)">DNI ${p.dni||'—'} · ${escapeHTML(edadTextoPaciente(p))}</div></td>
       <td style="max-width:180px;white-space:normal">${p.diagnostico||'—'}</td>
       <td class="hide-mobile">${fmtDate(p.fIUTI)||'—'}</td>
       <td>${p.estado==='Activo' ? ventBadgeHTML(estVent) : '<span class="badge badge-gray">—</span>'}</td>
@@ -14960,7 +15355,7 @@ async function reactivarPaciente(id){
   const nota = {
     id: Date.now(), patientId: id, date: hoy,
     turno: currentShift(), kine: currentUser.name, kineUser: currentUser.user,
-    tipo: 'reactivacion',
+    tipo: 'reactivacion', sala: p.sala,   // v3_214
     obs: `REACTIVACIÓN: se deshace el egreso${egreso ? ' del '+fmtDate(egreso.date) : ''}${motivo ? '. '+motivo : ''}`,
     tecnicas: [], tolerancia: ''
   };
@@ -15137,7 +15532,7 @@ function openEditPaciente(id){
     if(chk){ chk.checked = antActuales.includes(a.key); chk.closest('.ant-chip')?.classList.toggle('is-checked', chk.checked); }
   });
   M('fOtrosAnt',p.otrosAnt);
-  document.getElementById('fObesidadCalc').value = gradoObesidad(p.imc) || 'Sin sobrepeso';
+  document.getElementById('fObesidadCalc').value = gradoObesidad(imcDePaciente(p)) || 'Sin sobrepeso';
   // v3_143: la sección ARM/Ventilación quedó oculta (solo se pregunta si ingresa
   // en ARM y desde cuándo). Los campos siguen existiendo para conservar los datos.
   { const sA=document.getElementById('fSeccionARM'); if(sA) sA.style.display='none'; }
@@ -15208,6 +15603,7 @@ async function guardarPaciente(){
   // de la variable global. Basta con que uno de los dos lo sepa.
   const idEdicion = (document.getElementById('fEditPacId')?.value || '').trim()
                  || (editPacId != null ? String(editPacId) : '');
+  let reingresoSobreId = null;   // v3_215: ficha sobre la que se abre una internación nueva
 
   // ── v3_167: ¿este paciente ya está cargado en otro sector? ────
   // Pasa cuando el pase de sector demora: el sector nuevo lo carga de cero y el
@@ -15239,6 +15635,37 @@ async function guardarPaciente(){
       const elDni = document.getElementById('fDNI');
       if(elDni){ elDni.scrollIntoView({behavior:'smooth', block:'center'}); try{ elDni.focus({preventScroll:true}); }catch(e){} }
       return;
+    }
+
+    // ── v3_215: ¿es un REINGRESO? ──────────────────────────────
+    // La persona ya estuvo internada y se fue de alta. No es un duplicado:
+    // corresponde una internación nueva, pero sobre la misma ficha, para no
+    // perder la historia previa.
+    const reing = posiblesReingresos({ apellido, nombre:G('fNombre'), dni:G('fDNI') }, null);
+    if(reing.length){
+      const ant = reing[0].p;
+      const egreso = ant.fEUTI || ant.fEK || '';
+      const dias = egreso ? daysBetween(egreso, G('fFIUTI') || today()) : null;
+      const nEvos = evoluciones.filter(e => e.patientId === ant.id && !e.tipo).length;
+      const nInt = nInternacion(ant);
+      const ok = confirm(
+        `🔄 REINGRESO: esta persona ya estuvo internada (${reing[0].motivo}).\n\n` +
+        `${ant.apellido}, ${ant.nombre}${ant.dni ? ' · DNI '+ant.dni : ''}\n` +
+        `Última internación: ${SALA_LABEL[ant.sala]||ant.sala||'—'}` +
+        (egreso ? ` · egresó el ${fmtDate(egreso)}` : '') +
+        (dias !== null ? ` (hace ${dias} día${dias===1?'':'s'})` : '') + `\n` +
+        `Diagnóstico previo: ${ant.diagnostico || '—'}\n` +
+        `Evoluciones de internaciones anteriores: ${nEvos}\n\n` +
+        (dias !== null && dias <= 1
+          ? `⚠️ Egresó hace muy poco. Si el alta se cargó por error, NO uses reingreso: pedile a la jefatura que lo reactive, así no queda una internación de más en la estadística.\n\n`
+          : '') +
+        `Aceptar = REINGRESO sobre la misma ficha.\n` +
+        `Cuenta como ingreso nuevo en la estadística (sería la internación N° ${nInt + 1}) ` +
+        `y vas a poder ver las evoluciones de las internaciones anteriores.\n\n` +
+        `Cancelar = crear una ficha separada (la historia previa queda aparte)`
+      );
+      if(ok) reingresoSobreId = ant.id;
+      // Si eligió ficha nueva, se sigue de largo y se crea como paciente nuevo
     }
   }
 
@@ -15273,9 +15700,12 @@ async function guardarPaciente(){
 
   _guardandoPac = true;
   try{
-  const peso = parseFloat(G('fPeso')) || null;
-  const talla = parseFloat(G('fTalla')) || null;
-  const imc = (peso && talla) ? +(peso/Math.pow(talla/100,2)).toFixed(1) : null;
+  // v3_213: la talla se normaliza a cm (si la cargaron en metros, 1,74 → 174) y
+  // el IMC solo se guarda si da un valor posible. Antes una talla en metros
+  // guardaba un IMC de ~247.000 que después rompía los indicadores.
+  const peso = pesoKg(G('fPeso'));
+  const talla = tallaCm(G('fTalla'));
+  const imc = calcularIMC(peso, talla);
   const genero = G('fGenero');
   const pcp = pcpSegunSala(talla, genero, G('fSala'));   // v3_156
   // v3_130: los antecedentes salen de la lista que corresponda a la sala
@@ -15334,6 +15764,43 @@ async function guardarPaciente(){
     patients[idx] = { ...patients[idx], ...data, id: patients[idx].id };
     addLog('edit', `Editó paciente: ${apellido}, ${data.nombre}${motivo ? ' ('+motivo+')' : ''}`);
   };
+
+  // ── v3_215: REINGRESO ──────────────────────────────────
+  // Misma ficha (la historia no se parte) pero internación nueva: la anterior
+  // se archiva y las fechas de egreso se limpian, así el paciente vuelve a
+  // estar Activo y cuenta como ingreso del mes en la estadística.
+  if(reingresoSobreId != null){
+    const iR = patients.findIndex(x => String(x.id) === String(reingresoSobreId));
+    if(iR >= 0){
+      const ant = patients[iR];
+      const nueva = _archivarInternacion(ant, {
+        ...data, id: ant.id, estado:'Activo', fEUTI:'', fEK:'', causaObito:'', donanteObito:'',
+        bannerTraslado: null,
+        fISector: G('fFIUTI') || today(),
+      });
+      patients[iR] = nueva;
+      const nInt = nInternacion(nueva);
+      const dias = diasDesdeEgresoPrevio(nueva);
+      const marca = {
+        id: Date.now(), patientId: ant.id, date: nueva.fISector,
+        turno: currentShift(), kine: currentUser?.name || '', kineUser: currentUser?.user || '',
+        tipo: 'reingreso', sala: nueva.sala,
+        obs: `REINGRESO: internación N° ${nInt}` +
+             (dias !== null ? ` · ${dias} día${dias===1?'':'s'} desde el egreso anterior` : '') +
+             ` · ${SALA_LABEL[nueva.sala]||nueva.sala} cama ${nueva.cama||'—'}` +
+             (nueva.diagnostico ? `. Dx: ${nueva.diagnostico}` : ''),
+        tecnicas: [], tolerancia: '',
+      };
+      evoluciones.unshift(marca);
+      addLog('create', `Reingreso: ${apellido}, ${data.nombre} — internación N° ${nInt}` +
+        (dias !== null ? ` (a ${dias} día${dias===1?'':'s'} del egreso previo)` : ''));
+      await persistAll();
+      closeModal('modalPaciente', true);
+      showToast(`Reingreso registrado — internación N° ${nInt}`,'success');
+      renderAll();
+      return;
+    }
+  }
 
   let idx = idEdicion ? patients.findIndex(x => String(x.id) === idEdicion) : -1;
 
@@ -15447,18 +15914,53 @@ function calcPCP(tallaCm, genero){
   document.getElementById(id)?.addEventListener('change',()=>{ updateIMCyPCP(); });
 });
 
-function updateIMCyPCP(){
-  const p = parseFloat(document.getElementById('fPeso').value);
-  const t = parseFloat(document.getElementById('fTalla').value);
+// v3_215: la corrección metros → cm se hace SOLO cuando el campo pierde el foco.
+// En v3_213 se hacía en cada tecla: al escribir "174", apenas entraba el "1" el
+// campo se reescribía como "100" y ya no se podía seguir tipeando. La conversión
+// sigue existiendo (protege el IMC), pero espera a que la persona termine.
+document.getElementById('fTalla')?.addEventListener('blur', normalizarCampoTalla);
+
+function normalizarCampoTalla(){
+  const elT = document.getElementById('fTalla');
+  if(!elT) return;
+  const tNum = parseFloat(String(elT.value).replace(',', '.'));
+  if(isFinite(tNum) && tNum > 0 && tNum <= 3){
+    elT.value = String(+(tNum * 100).toFixed(1));
+    showToast('La talla se carga en centímetros: se corrigió a ' + elT.value + ' cm','info');
+  }
+  updateIMCyPCP(true);   // recién acá se avisa si el valor no sirve
+}
+
+function updateIMCyPCP(finalizado){
+  const elT = document.getElementById('fTalla');
+  const pRaw = document.getElementById('fPeso').value;
+  const tRaw = elT ? elT.value : '';
   const g = document.getElementById('fGenero').value;
-  const imc = (p && t) ? (p/Math.pow(t/100,2)) : null;
-  document.getElementById('fIMC').value = imc!==null ? imc.toFixed(1) : '';
+  const p = pesoKg(pRaw);
+  // Mientras se escribe se lee la talla tal cual, en centímetros: si todavía
+  // no es un valor posible, el IMC queda en blanco hasta que se termine de cargar.
+  const tParcial = parseFloat(String(tRaw).replace(',', '.'));
+  const t = (isFinite(tParcial) && tParcial >= 20 && tParcial <= 260) ? +tParcial.toFixed(1) : null;
+  const imc = calcularIMC(p, t);
+  document.getElementById('fIMC').value = imc !== null ? imc.toFixed(1) : '';
+  // Aviso cuando hay datos cargados pero no dan un IMC posible
+  { const w = document.getElementById('fIMCWrap');
+    const hayDatos = String(pRaw).trim() !== '' && String(tRaw).trim() !== '';
+    // Solo se avisa si la talla ya está fuera de rango de verdad (no mientras
+    // se escribe: un "1" a medio tipear no es un error de carga todavía)
+    // Mientras se escribe, un valor a medio tipear ("17" camino a "174") no es
+    // un error: el aviso aparece cuando el campo se termina de cargar.
+    const tallaImposible = isFinite(tParcial) && (tParcial > 260 || (finalizado && tParcial > 3 && tParcial < 20));
+    const mostrarAviso = hayDatos && imc === null && (p === null || tallaImposible);
+    if(w) w.style.opacity = mostrarAviso ? '.6' : '';
+    if(mostrarAviso) document.getElementById('fIMC').value = 'revisar peso/talla';
+  }
   // v3_131: en pediatría se usan percentilos, no IMC ni Devine
   if(esSalaPediatrica(document.getElementById('fSala')?.value)){
     calcPercentilosPed();
     return;
   }
-  const pcp = calcPCP(t, g);
+  const pcp = (t !== null) ? calcPCP(t, g) : null;
   document.getElementById('fPCP').value = pcp!==null ? pcp.toFixed(1)+' kg' : '';
   const obEl = document.getElementById('fObesidadCalc');
   if(obEl) obEl.value = imc!==null ? (gradoObesidad(imc) || 'Sin sobrepeso') : '';
@@ -15598,7 +16100,8 @@ function openEvolucion(patientId){
   // Header del modal
   const tipoLabel = TIPO_KINE_LABEL[p.tipoKine] || '';
   document.getElementById('evoModalTitle').textContent = `${p.apellido}, ${p.nombre}`;
-  document.getElementById('evoModalSub').textContent = `${tipoLabel ? tipoLabel+' · ' : ''}${p.diagnostico||'—'} · ${SALA_LABEL[p.sala]||p.sala||'—'} cama ${p.cama||'—'}`;
+  document.getElementById('evoModalSub').textContent = `${tipoLabel ? tipoLabel+' · ' : ''}${p.diagnostico||'—'} · ${SALA_LABEL[p.sala]||p.sala||'—'} cama ${p.cama||'—'}`
+    + (esReingreso(p) ? ` · ${nInternacion(p)}ª internación` : '');   // v3_215
 
   // Reset form
   document.getElementById('eDate').value = todayStr;
@@ -15810,16 +16313,10 @@ function openEvolucion(patientId){
   actualizarAccesoDeglusion();   // v3_211
 
   // ── Banner ALERTA IMPORTANTE (v3_111) ─────────────────────
-  { const ba = document.getElementById('evoBannerAlerta');
-    if(ba){
-      if(p.alertaImportante && p.alertaImportante.trim()){
-        ba.style.display = 'flex';
-        ba.innerHTML = `<i class="ti ti-alert-triangle" style="font-size:24px;color:var(--red-600);flex-shrink:0"></i>
-          <div><div style="font-size:12px;font-weight:800;color:var(--red-600);letter-spacing:.5px">⚠ IMPORTANTE — TODO EL EQUIPO</div>
-          <div style="font-size:13px;color:var(--red-800);font-weight:700">${escapeHTML(p.alertaImportante)}</div></div>`;
-      } else { ba.style.display = 'none'; ba.innerHTML = ''; }
-    }
-  }
+  // v3_213: se puede editar acá mismo. Antes había que salir de la evolución,
+  // abrir la edición del paciente y buscar el campo; con el paciente delante
+  // eso no pasaba nunca y el alerta quedaba desactualizado.
+  renderBannerAlertaEvo(patientId);
 
   // ── Banner paciente POST UCI + evaluación MRC ──
   const postUCI = esPacientePostUCI(p);
@@ -15861,6 +16358,311 @@ function openEvolucion(patientId){
 
   actualizarContadorHistorial('evoHistCount', patientId);
   openModal('modalEvo');
+}
+
+// ════════════════════════════════════════════════════════
+//  v3_213 — ALERTA IMPORTANTE EDITABLE DESDE LA EVOLUCIÓN
+// ════════════════════════════════════════════════════════
+// El alerta se cargaba solo en el ingreso del paciente. Cuando cambiaba algo
+// (se autorizó la carga, se resolvió la vía aérea dificultosa, apareció una
+// contraindicación nueva), había que salir de la evolución y entrar a editar
+// la ficha, así que en la práctica nadie lo actualizaba. Ahora el lápiz está
+// en el mismo banner que se ve al evolucionar, y si el paciente no tiene
+// alerta aparece un botón para agregarlo.
+
+let _alertaImpPacId = null;
+
+function renderBannerAlertaEvo(patientId){
+  const ba = document.getElementById('evoBannerAlerta');
+  if(!ba) return;
+  const p = patients.find(x => x.id === patientId);
+  if(!p){ ba.style.display = 'none'; ba.innerHTML = ''; return; }
+
+  const txt = (p.alertaImportante || '').trim();
+  const lapiz = `<button type="button" onclick="openAlertaImportante(${p.id})"
+      title="${txt ? 'Editar el alerta' : 'Agregar un alerta'}"
+      style="background:none;border:none;cursor:pointer;color:var(--red-600);padding:2px 4px;flex-shrink:0;align-self:flex-start">
+      <i class="ti ti-pencil" style="font-size:18px"></i></button>`;
+
+  if(txt){
+    ba.style.display = 'flex';
+    ba.style.background = 'var(--red-50)';
+    ba.style.borderColor = 'var(--red-400)';
+    ba.innerHTML = `<i class="ti ti-alert-triangle" style="font-size:24px;color:var(--red-600);flex-shrink:0"></i>
+      <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800;color:var(--red-600);letter-spacing:.5px">⚠ IMPORTANTE — TODO EL EQUIPO</div>
+      <div style="font-size:13px;color:var(--red-800);font-weight:700">${escapeHTML(txt)}</div></div>${lapiz}`;
+  } else {
+    // Sin alerta cargado: se ofrece agregarlo, discreto para no competir con el formulario
+    ba.style.display = 'flex';
+    ba.style.background = 'transparent';
+    ba.style.borderColor = 'transparent';
+    ba.innerHTML = `<button type="button" onclick="openAlertaImportante(${p.id})"
+        style="background:none;border:1px dashed var(--red-200);border-radius:8px;cursor:pointer;
+               color:var(--red-600);font-size:11.5px;font-weight:600;font-family:var(--font);
+               padding:5px 10px;display:inline-flex;align-items:center;gap:5px">
+        <i class="ti ti-alert-triangle" style="font-size:14px"></i>Agregar alerta importante</button>`;
+  }
+}
+
+function openAlertaImportante(patientId){
+  const p = patients.find(x => x.id === patientId);
+  if(!p){ showToast('No se encontró el paciente','error'); return; }
+  _alertaImpPacId = patientId;
+  const sub = document.getElementById('alertaImpSub');
+  if(sub) sub.textContent = `${p.apellido}, ${p.nombre} · ${SALA_LABEL[p.sala]||p.sala||'—'} cama ${p.cama||'—'}`;
+  const ta = document.getElementById('alertaImpTexto');
+  if(ta) ta.value = p.alertaImportante || '';
+  openModal('modalAlertaImp');
+  setTimeout(() => { try { ta?.focus(); } catch(e){} }, 120);
+}
+
+async function guardarAlertaImportante(){
+  const p = patients.find(x => x.id === _alertaImpPacId);
+  if(!p){ closeModal('modalAlertaImp', true); return; }
+  if(frenarSiVencida()) return;
+
+  const nuevo = (document.getElementById('alertaImpTexto')?.value || '').trim();
+  const anterior = (p.alertaImportante || '').trim();
+  if(nuevo === anterior){ closeModal('modalAlertaImp', true); return; }
+
+  const btn = document.getElementById('btnGuardarAlertaImp');
+  const html = btn ? btn.innerHTML : '';
+  if(btn){ btn.disabled = true; btn.innerHTML = '<span class="ocr-spinner"></span>Guardando…'; }
+
+  const actualizado = { ...p, alertaImportante: nuevo };
+  try {
+    if(!DEMO){
+      await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'paciente', p_id:String(p.id), p_data:_limpiarObj(actualizado) });
+    }
+  } catch(err){
+    console.error('No se pudo guardar el alerta', err);
+    if(btn){ btn.disabled = false; btn.innerHTML = html; }
+    setSyncStatus('error');
+    showToast('No se pudo guardar el alerta. Revisá la conexión y probá de nuevo.','error');
+    return;   // no se toca nada local: lo que se ve es lo que hay en la base
+  }
+
+  const idx = patients.findIndex(x => x.id === p.id);
+  patients[idx] = actualizado;
+  _huellas['paciente:'+p.id] = _huella(JSON.stringify(_limpiarObj(actualizado)));
+  savePacientes();
+  addLog('edit', nuevo
+    ? `${anterior ? 'Editó' : 'Agregó'} el alerta importante de ${p.apellido}, ${p.nombre}: ${nuevo}`
+    : `Quitó el alerta importante de ${p.apellido}, ${p.nombre}`);
+  setSyncStatus('ok');
+  closeModal('modalAlertaImp', true);
+  showToast(nuevo ? 'Alerta actualizado ✓' : 'Alerta quitado','success');
+
+  // Se refresca el banner sin cerrar la evolución que está cargando el kine
+  if(currentEvoPacId === p.id) renderBannerAlertaEvo(p.id);
+  renderAll();
+}
+
+
+// ════════════════════════════════════════════════════════
+//  v3_214 — MIS NOTAS (pendientes personales de cada kine)
+// ════════════════════════════════════════════════════════
+// Lo pidió el equipo: una libretita propia para anotar lo que queda pendiente
+// del turno. Cada kinesiólogo/a ve SOLO sus notas. El tilde da la nota por
+// hecha (desaparece de la lista pero queda 7 días en "Hechas", por si se tocó
+// sin querer) y la cruz la borra.
+//
+// Se guardan en el dispositivo y, si la base lo acepta, también en la nube,
+// para que la misma persona las vea desde el celular y desde la computadora.
+// Si la nube no está disponible siguen funcionando igual, en local.
+
+let notas = [];
+let _notasNube = null;      // null = no se probó todavía · false = solo local
+let _notasVerHechas = false;
+const NOTAS_HECHAS_DIAS = 7;
+
+function _notasClave(){ return 'kinexa_notas_' + (currentUser?.user || 'anon'); }
+function _notaMia(n){ return n && String(n.user||'') === String(currentUser?.user||''); }
+
+function cargarNotasLocal(){
+  notas = (DEMO ? notas : LS.get(_notasClave())) || [];
+  if(!Array.isArray(notas)) notas = [];
+  purgarNotasViejas();
+}
+// En la demo las notas viven solo en memoria: no dejan rastro en el dispositivo
+function guardarNotasLocal(){ if(DEMO) return; LS.set(_notasClave(), notas); }
+
+// Las hechas se guardan un tiempo corto y después se van solas
+function purgarNotasViejas(){
+  const limite = Date.now() - NOTAS_HECHAS_DIAS * 86400000;
+  const antes = notas.length;
+  notas = notas.filter(n => !(n.hecha && (n.hechaEn || 0) < limite));
+  if(notas.length !== antes) guardarNotasLocal();
+}
+
+// ── Nube (best effort: si falla, las notas siguen siendo locales) ──
+async function _notaANube(n){
+  if(DEMO || !TOKEN || _notasNube === false) return;
+  try {
+    await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'nota', p_id:String(n.id), p_data:n });
+    _notasNube = true;
+  } catch(err){
+    if(_notasNube === null) console.warn('Las notas quedan solo en este dispositivo:', err?.message || err);
+    _notasNube = false;
+    actualizarSubtituloNotas();
+  }
+}
+
+async function cargarNotasNube(){
+  if(DEMO || !TOKEN) return;
+  try {
+    const res = await rpc('kinexa_registros', { p_token:TOKEN, p_tipo:'nota' });
+    _notasNube = true;
+    const mias = (res || []).filter(x => x && _notaMia(x) && !x._borrada);
+    // Gana la versión más nueva de cada nota
+    const porId = new Map();
+    [...notas, ...mias].forEach(n => {
+      if(!n || !n.id) return;
+      const prev = porId.get(String(n.id));
+      if(!prev || (n.actualizada || 0) >= (prev.actualizada || 0)) porId.set(String(n.id), n);
+    });
+    notas = [...porId.values()];
+    purgarNotasViejas();
+    guardarNotasLocal();
+    renderNotas();
+  } catch(err){
+    _notasNube = false;
+    actualizarSubtituloNotas();
+  }
+}
+
+function actualizarSubtituloNotas(){
+  const el = document.getElementById('notasSub');
+  if(!el) return;
+  el.textContent = (_notasNube === false)
+    ? 'Solo las ves vos · guardadas en este dispositivo'
+    : 'Solo las ves vos';
+}
+
+// ── Pantalla ──
+function notasPendientes(){ return notas.filter(n => _notaMia(n) && !n.hecha); }
+function notasHechas(){
+  return notas.filter(n => _notaMia(n) && n.hecha)
+    .sort((a,b) => (b.hechaEn||0) - (a.hechaEn||0));
+}
+
+function actualizarBadgeNotas(){
+  const b = document.getElementById('notasBadge');
+  if(!b) return;
+  const n = notasPendientes().length;
+  b.textContent = n > 99 ? '99+' : String(n);
+  b.style.display = n ? 'inline-flex' : 'none';
+}
+
+function _fechaNota(ts){
+  if(!ts) return '';
+  const d = new Date(ts), hoy = new Date();
+  const mismoDia = d.toDateString() === hoy.toDateString();
+  const hh = String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+  if(mismoDia) return 'Hoy ' + hh;
+  return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + ' ' + hh;
+}
+
+function renderNotas(){
+  actualizarBadgeNotas();
+  actualizarSubtituloNotas();
+  const cont = document.getElementById('notasLista');
+  if(!cont) return;
+  const pend = notasPendientes();
+  const hechas = notasHechas();
+
+  const fila = n => `<div class="nota-item ${n.hecha?'hecha':''}">
+      <button class="nota-btn ok" onclick="${n.hecha?`desmarcarNota('${n.id}')`:`marcarNotaHecha('${n.id}')`}"
+        title="${n.hecha?'Volver a pendientes':'Marcar como hecha'}">
+        <i class="ti ${n.hecha?'ti-arrow-back-up':'ti-check'}"></i></button>
+      <div class="txt">${escapeHTML(n.texto||'')}<span class="fec">${_fechaNota(n.hecha ? n.hechaEn : n.creada)}</span></div>
+      <button class="nota-btn no" onclick="borrarNota('${n.id}')" title="Borrar"><i class="ti ti-x"></i></button>
+    </div>`;
+
+  cont.innerHTML =
+    (pend.length ? pend.map(fila).join('')
+      : `<div class="notas-vacio"><i class="ti ti-checkbox" style="font-size:26px;display:block;margin-bottom:6px;opacity:.5"></i>
+         No tenés pendientes anotados.<br>Escribí uno arriba.</div>`) +
+    (hechas.length ? `<div class="notas-hechas-tit" onclick="toggleNotasHechas()">
+        <i class="ti ti-chevron-${_notasVerHechas?'down':'right'}"></i>Hechas (${hechas.length})</div>
+        ${_notasVerHechas ? hechas.map(fila).join('') : ''}
+        ${_notasVerHechas ? `<div style="font-size:10.5px;color:var(--text-muted);padding:6px 8px">Las hechas se borran solas a los ${NOTAS_HECHAS_DIAS} días.</div>` : ''}` : '');
+}
+
+function toggleNotasHechas(){ _notasVerHechas = !_notasVerHechas; renderNotas(); }
+
+function cerrarNotas(){
+  const p = document.getElementById('notasPanel');
+  if(p) p.classList.remove('open');
+}
+
+function toggleNotas(){
+  const p = document.getElementById('notasPanel');
+  if(!p) return;
+  const abierto = p.classList.contains('open');
+  p.classList.toggle('open', !abierto);
+  if(!abierto){
+    renderNotas();
+    setTimeout(()=>{ try{ document.getElementById('notaNueva')?.focus(); }catch(e){} }, 140);
+  }
+}
+
+async function agregarNota(){
+  const inp = document.getElementById('notaNueva');
+  const texto = (inp?.value || '').trim();
+  if(!texto){ inp?.focus(); return; }
+  const n = {
+    id: 'n' + Date.now() + Math.floor(Math.random()*1000),
+    user: currentUser?.user || 'anon',
+    kine: currentUser?.name || '',
+    texto, creada: Date.now(), actualizada: Date.now(), hecha: false,
+  };
+  notas.unshift(n);
+  guardarNotasLocal();
+  if(inp) inp.value = '';
+  renderNotas();
+  _notaANube(n);
+}
+
+function _buscarNota(id){ return notas.find(n => String(n.id) === String(id) && _notaMia(n)); }
+
+async function marcarNotaHecha(id){
+  const n = _buscarNota(id);
+  if(!n) return;
+  n.hecha = true; n.hechaEn = Date.now(); n.actualizada = Date.now();
+  guardarNotasLocal();
+  renderNotas();
+  showToast('Pendiente resuelto ✓','success');
+  _notaANube(n);
+}
+
+async function desmarcarNota(id){
+  const n = _buscarNota(id);
+  if(!n) return;
+  n.hecha = false; delete n.hechaEn; n.actualizada = Date.now();
+  guardarNotasLocal();
+  renderNotas();
+  _notaANube(n);
+}
+
+async function borrarNota(id){
+  const n = _buscarNota(id);
+  if(!n) return;
+  notas = notas.filter(x => String(x.id) !== String(id));
+  guardarNotasLocal();
+  renderNotas();
+  if(!DEMO && TOKEN && _notasNube !== false){
+    try { await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'nota', p_id:String(id),
+            p_data:{ ...n, _borrada:{ fecha:new Date().toISOString() } } }); }
+    catch(err){ _notasNube = false; }
+  }
+}
+
+// Arranque: se llama al entrar a la app, ya con currentUser cargado
+function iniciarNotas(){
+  cargarNotasLocal();
+  renderNotas();
+  cargarNotasNube();
 }
 
 function setPosicionARM(pos){
@@ -15937,7 +16739,7 @@ const VENTANA_EDICION_EVO_MS = 24 * 60 * 60 * 1000;
 
 function puedeEditarEvolucion(evo){
   if(!evo || !currentUser) return false;
-  if(evo.tipo === 'traslado' || evo.tipo === 'alta' || evo.tipo === 'obito') return false;
+  if(['traslado','alta','obito','reingreso','reactivacion'].includes(evo.tipo)) return false;
   if(currentUser.role === 'admin') return true;         // jefatura: sin ventana
   return (Date.now() - evo.id) <= VENTANA_EDICION_EVO_MS;
 }
@@ -15992,7 +16794,7 @@ function edicionesTextoHTML(evo){
 // asiento que explique por qué.
 function puedeEliminarEvolucion(evo){
   if(!evo || !currentUser) return false;
-  if(evo.tipo === 'traslado' || evo.tipo === 'alta' || evo.tipo === 'obito') return false;
+  if(['traslado','alta','obito','reingreso','reactivacion'].includes(evo.tipo)) return false;
   // Jefatura y administradores: cualquier evolución, sin límite de tiempo
   if(currentUser.role === 'admin') return true;
   // v3_149: el resto del equipo puede borrar únicamente las propias,
@@ -16391,6 +17193,10 @@ async function guardarEvolucion(){
 
   const evo = {
     id: Date.now(), patientId: currentEvoPacId, date, hora:G('eHora'), turno:G('eTurno'), kine:G('eKine'), kineUser: currentUser?.user,
+    // v3_214: el sector queda grabado en la evolución. Si el paciente se
+    // traslada después, esta evolución sigue contando para el sector donde se
+    // hizo realmente el trabajo.
+    sala: (patients.find(x=>x.id===currentEvoPacId)?.sala) || currentSector || '',
     armDia:GN('eARM'), utiDia:GN('eUTI'),
     interfaz:G('eInterfazPrincipal') || G('eInterfaz'),
     interfazEsp:G('eInterfazEsp'),
@@ -16709,13 +17515,27 @@ function buscarHistorial(){
 // ════════════════════════════════════════════════════════
 //  INDICADORES
 // ════════════════════════════════════════════════════════
+// v3_214: sector sobre el que se miran los indicadores. '' = toda la institución.
+let indSectorSel = '';
+// Sectores que se muestran como columnas: todos, o solo el filtrado
+function sectoresVisibles(){
+  return indSectorSel ? [indSectorSel] : SECTORES;
+}
+function cambiarSectorInd(sala){
+  indSectorSel = sala || '';
+  renderIndicadores();
+}
+
 function renderIndicadores(){
   const el = document.getElementById('indicadoresContent');
   if(!el) return;
+  limpiarCacheSectores();   // v3_214: la historia de sectores se recalcula al vuelo
 
   // Vista actual: 'mensual' o 'pacientes'
   const vistaActual = el.dataset.vista || 'mensual';
   const mesSel = el.dataset.mes || today().slice(0,7);
+  // Si el sector filtrado dejó de existir (lo renombraron o lo borraron), se vuelve a toda la institución
+  if(indSectorSel && !SECTORES.includes(indSectorSel)) indSectorSel = '';
 
   el.innerHTML = `
   <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center">
@@ -16740,8 +17560,18 @@ function renderIndicadores(){
       <span style="font-size:12px;color:var(--text-muted)">a</span>
       <input type="month" id="indHasta" value="${_pHasta(mesSel)}" onchange="cambiarPeriodoInd()" title="Hasta" style="padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-family:var(--font);font-size:13px">
     </div>` : ''}
+    ${SECTORES.length > 1 ? `
+    <select id="indSector" onchange="cambiarSectorInd(this.value)" title="Sector"
+      style="padding:6px 10px;border:1px solid ${indSectorSel?'var(--purple-400)':'var(--border)'};border-radius:6px;font-family:var(--font);font-size:13px;${indSectorSel?'background:var(--purple-50);color:var(--purple-700);font-weight:700':''}">
+      <option value="">Toda la institución</option>
+      ${SECTORES.map(sc=>`<option value="${escapeHTML(sc)}" ${indSectorSel===sc?'selected':''}>${escapeHTML(SECTOR_LBL(sc))}</option>`).join('')}
+    </select>` : ''}
     <button class="btn btn-sm btn-success" onclick="exportarIndicadoresCompleto('${mesSel}')"><i class="ti ti-table-export"></i> Exportar TODO a Excel</button>
   </div>
+  ${indSectorSel ? `<div style="margin:-4px 0 12px;padding:8px 12px;background:var(--purple-50);border:1px solid var(--purple-200);border-radius:8px;font-size:12px;color:var(--purple-700);display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <i class="ti ti-filter"></i><span>Viendo solo <strong>${escapeHTML(SECTOR_LBL(indSectorSel))}</strong>. ${vistaActual==='pacientes' ? 'Se listan los pacientes que están hoy en ese sector.' : 'Cada evolución cuenta para el sector en el que se hizo, aunque el paciente después se haya trasladado.'}</span>
+    <button class="btn btn-sm btn-ghost" onclick="cambiarSectorInd('')" style="padding:2px 8px"><i class="ti ti-x"></i> Ver toda la institución</button>
+  </div>` : ''}
   ${!DATOS_COMPLETOS ? `<div style="margin:-4px 0 12px;padding:9px 12px;background:var(--amber-50);border:1px solid var(--amber-300);border-radius:8px;font-size:12px;color:var(--amber-800)"><i class="ti ti-alert-triangle"></i> <strong>Datos incompletos.</strong> No se pudo conectar con la nube, así que estos números salen solo de lo guardado en este dispositivo (pacientes activos y últimos 30 días). No los uses para reportar.</div>` : _avisoFueraDeAlcance(mesSel)}
   ${vistaActual!=='pacientes' ? `<div style="margin:-8px 0 14px;font-size:12px;color:var(--text-muted)"><i class="ti ti-calendar"></i> ${etiquetaPeriodo(mesSel)}${_avisoParcial(mesSel)}</div>` : ''}
   <div id="indBody"></div>`;
@@ -16770,13 +17600,13 @@ function indFila2(label, valor, extra){
 function renderIndDemografia(mesStr){
   const body = document.getElementById('indBody');
   if(!body) return;
-  const d = calcDemografia(mesStr);
-  const eq = calcEquipo(mesStr);
+  const d = calcDemografia(mesStr, indSectorSel);
+  const eq = calcEquipo(mesStr, indSectorSel);
   const T = d.total;
 
   body.innerHTML = `
   <div class="kpi-row" style="margin-bottom:16px">
-    <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-users"></i></div><div class="kpi-content"><div class="label">Pacientes del mes</div><div class="value">${T}</div><div class="sub">Ingresos: ${d.ingresos}</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-users"></i></div><div class="kpi-content"><div class="label">Pacientes del mes</div><div class="value">${T}</div><div class="sub">Ingresos: ${d.ingresos}${d.reingresos?` · ${d.reingresos} reingreso${d.reingresos===1?'':'s'}`:''}</div></div></div>
     <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-home-check"></i></div><div class="kpi-content"><div class="label">Egresos</div><div class="value">${d.egresosTot}</div><div class="sub">Altas ${d.altas} · Óbitos ${d.obitos} · Traslados ${d.traslados}</div></div></div>
     <div class="kpi-card"><div class="kpi-icon red"><i class="ti ti-heart-off"></i></div><div class="kpi-content"><div class="label">Mortalidad</div><div class="value">${d.mortalidad}</div><div class="sub">${d.mortalidadDetalle}</div></div></div>
     <div class="kpi-card"><div class="kpi-icon amber"><i class="ti ti-calendar-time"></i></div><div class="kpi-content"><div class="label">Estancia promedio</div><div class="value">${d.estanciaStats.prom??'—'}</div><div class="sub">días (mediana ${d.estanciaStats.mediana??'—'})</div></div></div>
@@ -16784,7 +17614,7 @@ function renderIndDemografia(mesStr){
   </div>
 
   ${indTabla('Pacientes por sector — '+mesStr,'ti-bed',
-    SECTORES.map(s=>indFila2(SECTOR_LBL(s), d.porSector[s]||0, pctTxt(d.porSector[s]||0, T))).join('') +
+    sectoresVisibles().map(s=>indFila2(SECTOR_LBL(s), d.porSector[s]||0, pctTxt(d.porSector[s]||0, T))).join('') +
     indFila2('<strong>TOTAL</strong>', T, '100%'),
     ['Sector','Pacientes','%'])}
 
@@ -16802,11 +17632,21 @@ function renderIndDemografia(mesStr){
     d.franjas.map(f=>indFila2('Franja '+f.label+' años', f.n, pctTxt(f.n,T))).join(''),
     ['Edad','Valor','%'])}
 
-  ${indTabla('Estado nutricional (IMC)','ti-scale',
+  ${indTabla('Estado nutricional (IMC) — adultos','ti-scale',
     indFila2('IMC promedio', d.imcStats.prom??'—','') +
     Object.entries(d.catIMC).map(([k,v])=>indFila2(k, v, pctTxt(v, d.imcStats.n))).join('') +
-    indFila2('Con IMC registrado', d.imcStats.n, pctTxt(d.imcStats.n,T)),
-    ['Categoría','Pacientes','%'])}
+    indFila2('Con IMC registrado', d.imcStats.n, pctTxt(d.imcStats.n, d.adultos)) +
+    (d.imcRevisar ? indFila2('<span style="color:var(--red-600);font-weight:700"><i class="ti ti-alert-triangle"></i> Con peso o talla mal cargados — revisar la ficha</span>', d.imcRevisar, '') : '') +
+    (d.pediatricos ? indFila2('<em style="color:var(--text-muted)">Pediátricos excluidos (van en el cuadro siguiente)</em>', d.pediatricos, '') : ''),
+    ['Categoría','Pacientes','% sobre adultos'])}
+
+  ${d.pediatricos ? indTabla('Estado nutricional (percentilo de IMC) — pediatría','ti-mood-kid',
+    Object.entries(d.pedIMC.cat).map(([k,v])=>indFila2(k, v, pctTxt(v, d.pedIMC.conPercentil))).join('') +
+    indFila2('Con percentilo calculado', d.pedIMC.conPercentil, pctTxt(d.pedIMC.conPercentil, d.pediatricos)) +
+    (d.pedIMC.menores2a ? indFila2('Menores de 2 años (se evalúan por peso/talla)', d.pedIMC.menores2a, '') : '') +
+    (d.pedIMC.sinPercentil ? indFila2('Sin datos suficientes (falta peso, talla o fecha de nacimiento)', d.pedIMC.sinPercentil, '') : '') +
+    (d.pedIMC.revisar ? indFila2('<span style="color:var(--red-600);font-weight:700"><i class="ti ti-alert-triangle"></i> Con peso o talla mal cargados — revisar la ficha</span>', d.pedIMC.revisar, '') : ''),
+    ['Categoría','Pacientes','% sobre calculados']) : ''}
 
   ${indTabla('Antecedentes (% sobre pacientes del mes)','ti-clipboard-list',
     d.antecedentes.filter(a=>a.n>0).sort((a,b)=>b.n-a.n).map(a=>indFila2(a.label, a.n, pctTxt(a.n,T))).join('') || indFila2('Sin antecedentes registrados','—',''),
@@ -16834,18 +17674,18 @@ function renderIndDemografia(mesStr){
 function renderIndPrestaciones(mesStr){
   const body = document.getElementById('indBody');
   if(!body) return;
-  const conteo = conteoTecnicasEnMes(mesStr);
-  const evalEst = evalEstructuradasEnMes(mesStr);
+  const conteo = conteoTecnicasEnMes(mesStr, indSectorSel);
+  const evalEst = evalEstructuradasEnMes(mesStr, indSectorSel);
   const entries = Object.entries(conteo).sort((a,b)=>b[1]-a[1]);
   const totalTecnicas = entries.reduce((s,[,n])=>s+n,0);
-  const totalPrestGen = prestacionesGeneralesEnMes('', mesStr);
+  const totalPrestGen = prestacionesGeneralesEnMes(indSectorSel, mesStr);
 
   body.innerHTML = `
   <div class="kpi-row" style="margin-bottom:16px">
     <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-checklist"></i></div><div class="kpi-content"><div class="label">Técnicas registradas</div><div class="value">${totalTecnicas}</div><div class="sub">${entries.length} técnicas distintas</div></div></div>
     <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-clipboard-check"></i></div><div class="kpi-content"><div class="label">Prestaciones generales</div><div class="value">${totalPrestGen}</div><div class="sub">ARM/TQT ×6 · resto ×2</div></div></div>
-    <div class="kpi-card"><div class="kpi-icon amber"><i class="ti ti-stethoscope"></i></div><div class="kpi-content"><div class="label">Procedimientos</div><div class="value">${procedimientosTotalEnMes('',mesStr)+fichasNeuroEnMes('',mesStr)}</div><div class="sub">PVE, decanulación, evaluaciones</div></div></div>
-    <div class="kpi-card"><div class="kpi-icon purple"><i class="ti ti-notes"></i></div><div class="kpi-content"><div class="label">Evoluciones del mes</div><div class="value">${evolucionesEnMes('',mesStr)}</div><div class="sub">registros clínicos</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon amber"><i class="ti ti-stethoscope"></i></div><div class="kpi-content"><div class="label">Procedimientos</div><div class="value">${procedimientosTotalEnMes(indSectorSel,mesStr)+fichasNeuroEnMes(indSectorSel,mesStr)}</div><div class="sub">PVE, decanulación, evaluaciones</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon purple"><i class="ti ti-notes"></i></div><div class="kpi-content"><div class="label">Evoluciones del mes</div><div class="value">${evolucionesEnMes(indSectorSel,mesStr)}</div><div class="sub">registros clínicos</div></div></div>
   </div>
 
   ${indTabla('Evaluaciones y procedimientos estructurados — '+mesStr,'ti-report-medical',
@@ -16987,7 +17827,7 @@ const SECTOR_LBL = s => SALA_LABEL[s]||s;
 
 // v3_207: días de ARM contados desde las evoluciones, un día por paciente y
 // fecha. Así el total es exactamente TET + TQT y el desglose siempre cierra.
-function _enSector(e, s){ return !s || patients.find(p=>p.id===e.patientId)?.sala === s; }
+function _enSector(e, s){ return evoEnSala(e, s); }   // v3_214: sector histórico
 function diasTETreg(mesStr, s){
   return contarDiasUnicos(e => enPeriodo(e.date, mesStr) && e.interfaz === 'TET' && _enSector(e, s));
 }
@@ -17049,16 +17889,103 @@ function pacientesEnARMenMes(sala, mesStr){
   ).length;
 }
 
+// ════════════════════════════════════════════════════════
+//  v3_214 — EN QUÉ SECTOR SE HIZO CADA EVOLUCIÓN
+// ════════════════════════════════════════════════════════
+// Hasta ahora todos los indicadores preguntaban por `paciente.sala`, que es el
+// sector donde el paciente está HOY. Si alguien estuvo 3 días en UTI A y después
+// pasó 3 días a Mínimos B, las seis evoluciones se le acreditaban enteras a
+// Mínimos B y UTI A perdía su trabajo. Con el filtro por sector eso se vuelve
+// mucho más visible, así que se corrige de raíz.
+//
+// Desde v3_214 cada evolución guarda el sector en el que se cargó (`e.sala`).
+// Para lo que ya está cargado se reconstruye la historia con los movimientos de
+// traslado del paciente, que dicen de dónde salió y a dónde entró.
+
+// Traslados de un paciente, del más viejo al más nuevo.
+// Se indexan de una sola pasada: sin esto, con muchos pacientes y evoluciones,
+// recorrer el listado completo por cada paciente y cada sector hace que la
+// pantalla de indicadores tarde varios segundos en un celular.
+let _trasIdx = null;
+function _indiceTraslados(){
+  if(_trasIdx) return _trasIdx;
+  _trasIdx = new Map();
+  evoluciones.forEach(e => {
+    if(!e || e.tipo !== 'traslado' || !e.date) return;
+    if(!_trasIdx.has(e.patientId)) _trasIdx.set(e.patientId, []);
+    _trasIdx.get(e.patientId).push(e);
+  });
+  _trasIdx.forEach(arr => arr.sort((a,b) => String(a.date).localeCompare(String(b.date))));
+  return _trasIdx;
+}
+function _trasladosDe(pacId){ return _indiceTraslados().get(pacId) || []; }
+
+// Los traslados viejos guardaban el origen y el destino solo dentro del texto
+// de la observación. Se recuperan comparando contra los sectores conocidos.
+function _sectoresDeTraslado(e){
+  if(e.salaOrigen || e.salaDestino) return { origen:e.salaOrigen || null, destino:e.salaDestino || null };
+  const obs = String(e.obs || '');
+  const m = obs.match(/^TRASLADO:\s*De\s+(.+?)\s+C\S*\s*→\s*(.+?)(?:\s+C\S+)?(?:\.|$)/);
+  if(!m) return { origen:null, destino:null };
+  // El texto guarda la etiqueta visible; se busca a qué sector corresponde
+  const aSector = etiqueta => {
+    const t = String(etiqueta || '').trim();
+    if(!t) return null;
+    const exacto = SECTORES.find(s => s === t);
+    if(exacto) return exacto;
+    const porLabel = SECTORES.find(s => (SALA_LABEL[s] || s) === t);
+    return porLabel || t;
+  };
+  return { origen: aSector(m[1]), destino: aSector(m[2]) };
+}
+
+// Tramos de internación: [{ desde:'YYYY-MM-DD', sala }], del más viejo al más nuevo
+const _tramosCache = new Map();
+function limpiarCacheSectores(){ _tramosCache.clear(); _trasIdx = null; }
+
+function tramosSectores(pacId){
+  if(_tramosCache.has(pacId)) return _tramosCache.get(pacId);
+  const p = patients.find(x => x.id === pacId);
+  const tras = _trasladosDe(pacId);
+  let tramos;
+  if(!tras.length){
+    tramos = [{ desde:'0000-01-01', sala: p ? p.sala : null }];
+  } else {
+    const prim = _sectoresDeTraslado(tras[0]);
+    tramos = [{ desde:'0000-01-01', sala: prim.origen || (p ? p.sala : null) }];
+    tras.forEach(t => {
+      const { destino } = _sectoresDeTraslado(t);
+      tramos.push({ desde: String(t.date), sala: destino || (p ? p.sala : null) });
+    });
+  }
+  _tramosCache.set(pacId, tramos);
+  return tramos;
+}
+
+// Sector en el que se registró una evolución
+function salaDeEvolucion(e){
+  if(!e) return null;
+  if(e.sala) return e.sala;                      // v3_214: lo guarda la evolución
+  const tramos = tramosSectores(e.patientId);
+  const fecha = String(e.date || '');
+  let sala = tramos[0]?.sala || null;
+  for(const t of tramos){ if(fecha >= t.desde) sala = t.sala; else break; }
+  return sala;
+}
+
+// Atajo para los filtros: ¿esta evolución pertenece al sector pedido?
+function evoEnSala(e, sala){
+  if(!sala) return true;
+  return salaDeEvolucion(e) === sala;
+}
+
 function extubaciones(tipo, sala, mesStr){
   // tipo: 'exitosa','fallida','noprogramada','auto','accidental'
   // Se cuentan eventos únicos por paciente+día (la herencia de estado
   // ventilatorio puede repetir el dato en varias evoluciones del mismo día)
   return contarDiasUnicos(e=>{
     if(mesStr && !enPeriodo(e.date, mesStr)) return false;
-    if(sala){
-      const p = patients.find(x=>x.id===e.patientId);
-      if(!p || p.sala!==sala) return false;
-    }
+    if(!evoEnSala(e, sala)) return false;
     if(tipo==='exitosa') return e.extubacion==='Sí — planificada' && e.pveResult==='Exitosa';
     if(tipo==='fallida') return e.extubacion==='Sí — planificada' && e.pveResult?.startsWith('Fallida');
     if(tipo==='noprogramada') return e.extubacion==='Sí — no planificada' || e.extubacion==='autoextubacion' || e.extubacion==='accidental';
@@ -17071,10 +17998,7 @@ function extubaciones(tipo, sala, mesStr){
 function decanulaciones(tipo, sala, mesStr){
   return contarDiasUnicos(e=>{
     if(mesStr && !enPeriodo(e.date, mesStr)) return false;
-    if(sala){
-      const p = patients.find(x=>x.id===e.patientId);
-      if(!p || p.sala!==sala) return false;
-    }
+    if(!evoEnSala(e, sala)) return false;
     return e.decDecanulado === 'Si';
   });
 }
@@ -17083,8 +18007,7 @@ function controlCuffEnMes(sala, mesStr){
   // Días únicos por paciente con al menos un control de cuff registrado
   return contarDiasUnicos(e=>{
     if(mesStr && !enPeriodo(e.date, mesStr)) return false;
-    const p = patients.find(x=>x.id===e.patientId);
-    if(sala && (!p || p.sala!==sala)) return false;
+    if(!evoEnSala(e, sala)) return false;
     return !!(e.cuffM || e.cuffT || e.cuffN);
   });
 }
@@ -17092,8 +18015,7 @@ function controlCuffEnMes(sala, mesStr){
 function deglucionEnMes(sala, mesStr){
   return contarDiasUnicos(e=>{
     if(mesStr && !enPeriodo(e.date, mesStr)) return false;
-    const p = patients.find(x=>x.id===e.patientId);
-    if(sala && (!p || p.sala!==sala)) return false;
+    if(!evoEnSala(e, sala)) return false;
     return !!(e.deglusion && e.deglusion !== 'No realizada');
   });
 }
@@ -17132,8 +18054,7 @@ function esTecnicaEsp(tec){ return _SET_PREST_ESP.has(_normPrest(tec)); }
 // Evoluciones del mes/sector sobre las que se cuenta
 function _evosDelMes(sala, mesStr){
   return evoluciones.filter(e =>
-    !e.tipo && enPeriodo(e.date, mesStr) &&
-    (!sala || patients.find(p => p.id === e.patientId)?.sala === sala)
+    !e.tipo && enPeriodo(e.date, mesStr) && evoEnSala(e, sala)
   );
 }
 
@@ -17145,13 +18066,23 @@ function prestacionesEspTotalEnMes(sala, mesStr){
     .reduce((tot, e) => tot + tecList(e).filter(esTecnicaEsp).length, 0);
 }
 
+// v3_213: el TQT espontáneo hoy se guarda en `interfazEsp` ('TQT_O2' / 'TQT_AA'),
+// no en `interfaz`. La condición vieja solo miraba `interfaz`, así que todos los
+// pacientes traqueostomizados sin ARM se contaban ×2 en vez de ×6: el paciente
+// con vía aérea artificial requiere la misma carga de trabajo esté en ARM o no.
+// Se usa el mismo criterio que `diasInterfazEnMes(..., 'TQT_ESP')`.
+const evoConVAA = e => {
+  const esp = e?.interfazEsp || '';
+  const itf = e?.interfaz || '';
+  if(esp) return esp === 'TQT_O2' || esp === 'TQT_AA';
+  return itf === 'TET' || itf === 'TQT' || itf.includes('TQT espontáneo');
+};
+
 function prestacionesGeneralesEnMes(sala, mesStr){
-  // ARM/TQT → 6 prestaciones por evolución; resto → 2
+  // Vía aérea artificial (TET / TQT, en ARM o espontáneo) → 6 prestaciones por
+  // evolución; el resto → 2
   return _evosDelMes(sala, mesStr)
-    .reduce((total, e)=>{
-      const enARMoTQT = e.interfaz==='TET' || e.interfaz==='TQT' || (e.interfaz||'').includes('TQT espontáneo');
-      return total + (enARMoTQT ? 6 : 2);
-    }, 0);
+    .reduce((total, e) => total + (evoConVAA(e) ? 6 : 2), 0);
 }
 
 // v3_152: procedimientos que el equipo ya deja asentados en la evolución pero
@@ -17201,10 +18132,7 @@ function prestacionesTotalesEnMes(sala, mesStr){
 function evolucionesEnMes(sala, mesStr){
   return evoluciones.filter(e=>{
     if(mesStr && !enPeriodo(e.date, mesStr)) return false;
-    if(sala){
-      const p = patients.find(x=>x.id===e.patientId);
-      if(!p || p.sala!==sala) return false;
-    }
+    if(!evoEnSala(e, sala)) return false;
     return !e.tipo; // excluir traslado/alta/óbito
   }).length;
 }
@@ -17213,10 +18141,7 @@ function pveEnMes(sala, mesStr){
   // Días únicos por paciente con PVE registrada
   return contarDiasUnicos(e=>{
     if(mesStr && !enPeriodo(e.date, mesStr)) return false;
-    if(sala){
-      const p = patients.find(x=>x.id===e.patientId);
-      if(!p || p.sala!==sala) return false;
-    }
+    if(!evoEnSala(e, sala)) return false;
     return e.pve && e.pve !== 'No' && e.pve !== '';
   });
 }
@@ -17238,13 +18163,34 @@ function pacienteEnMes(p, mesStr){
   const egreso = p.fEUTI || null;
   return ingreso <= finMes && (!egreso || egreso >= iniMes);
 }
+// v3_214: con filtro por sector, cuenta el paciente que PASÓ por ese sector en
+// el período, no solo el que está ahí hoy. Si estuvo en dos, aparece en los dos.
+function pacienteEnSalaEnMes(p, mesStr, sala){
+  if(!sala) return true;
+  if(p.sala === sala && !_trasladosDe(p.id).length) return true;
+  // Alguna evolución del período cargada en ese sector
+  if(evoluciones.some(e => e.patientId === p.id && !e.tipo && e.date &&
+       enPeriodo(e.date, mesStr) && salaDeEvolucion(e) === sala)) return true;
+  // O algún tramo de internación en ese sector que se superponga con el período
+  const { desde:iniMes, hasta:finMes } = rangoDe(mesStr);
+  const tramos = tramosSectores(p.id);
+  const fin = p.fEUTI || '9999-12-31';
+  for(let i = 0; i < tramos.length; i++){
+    if(tramos[i].sala !== sala) continue;
+    const desde = tramos[i].desde === '0000-01-01'
+      ? (p.fISector || p.fIUTI || p.fIHosp || '0000-01-01') : tramos[i].desde;
+    const hasta = tramos[i+1] ? tramos[i+1].desde : fin;
+    if(desde <= finMes && hasta >= iniMes) return true;
+  }
+  return false;
+}
 function pacientesDelMes(mesStr, sala){
-  return patients.filter(p => (!sala || p.sala===sala) && pacienteEnMes(p, mesStr));
+  return patients.filter(p => pacienteEnMes(p, mesStr) && pacienteEnSalaEnMes(p, mesStr, sala));
 }
 function evosDelMes(mesStr, sala){
   return evoluciones.filter(e=>{
     if(e.tipo || !e.date || !enPeriodo(e.date, mesStr)) return false;
-    if(sala){ const p=patients.find(x=>x.id===e.patientId); if(!p||p.sala!==sala) return false; }
+    if(!evoEnSala(e, sala)) return false;
     return true;
   });
 }
@@ -17253,7 +18199,7 @@ function egresosDelMes(mesStr, tipo, sala){
   return evoluciones.filter(e=>{
     if(!e.tipo || !e.date || !enPeriodo(e.date, mesStr)) return false;
     if(tipo && e.tipo!==tipo) return false;
-    if(sala){ const p=patients.find(x=>x.id===e.patientId); if(!p||p.sala!==sala) return false; }
+    if(!evoEnSala(e, sala)) return false;
     return true;
   }).length;
 }
@@ -17263,7 +18209,7 @@ function egresosDelMes(mesStr, tipo, sala){
 function obitosDelMes(mesStr, sala, filtro){
   return evoluciones.filter(e=>{
     if(e.tipo !== 'obito' || !e.date || !enPeriodo(e.date, mesStr)) return false;
-    if(sala){ const p=patients.find(x=>x.id===e.patientId); if(!p||p.sala!==sala) return false; }
+    if(!evoEnSala(e, sala)) return false;
     return !filtro || filtro(e);
   }).length;
 }
@@ -17279,11 +18225,44 @@ function tasaDonacion(mesStr, sala){
   return Math.round(don / conCausa * 100) + '%';
 }
 
+// v3_214: el ingreso al sector filtrado puede ser el ingreso original o un
+// traslado que lo trajo desde otro sector dentro del mismo período.
 function ingresosDelMes(mesStr, sala){
-  return patients.filter(p=>{
-    if(sala && p.sala!==sala) return false;
-    const f = p.fISector || p.fIUTI;
-    return f && enPeriodo(f, mesStr);
+  let n = 0;
+  patients.forEach(p => {
+    if(!sala){
+      const f = p.fISector || p.fIUTI;
+      if(f && enPeriodo(f, mesStr)) n++;
+      return;
+    }
+    const tras = _trasladosDe(p.id);
+    // Ingreso original: solo cuenta si el primer tramo es el sector filtrado
+    const primero = tramosSectores(p.id)[0];
+    const fIng = p.fIUTI || p.fISector;
+    if(primero && primero.sala === sala && fIng && enPeriodo(fIng, mesStr)) n++;
+    // Traslados que entraron a este sector durante el período
+    tras.forEach(t => {
+      const { destino } = _sectoresDeTraslado(t);
+      if(destino === sala && enPeriodo(t.date, mesStr)) n++;
+    });
+  });
+  return n;
+}
+
+// ── v3_215: reingresos ──────────────────────────────────
+// Un reingreso es una internación nueva de alguien que ya había egresado.
+// Se cuenta en el mes en que empezó la internación en curso.
+// El reingreso a menos de 30 días es un indicador de calidad clásico: puede
+// señalar altas prematuras o seguimiento insuficiente.
+function reingresosDelMes(mesStr, sala, soloPrecoces){
+  return patients.filter(p => {
+    if(!esReingreso(p)) return false;
+    const ing = ingresoActual(p);
+    if(!ing || !enPeriodo(ing, mesStr)) return false;
+    if(sala && !pacienteEnSalaEnMes(p, mesStr, sala)) return false;
+    if(!soloPrecoces) return true;
+    const d = diasDesdeEgresoPrevio(p);
+    return d !== null && d <= 30;
   }).length;
 }
 
@@ -17303,20 +18282,54 @@ const FRANJAS_EDAD = [
   { label:'60-74',  test:e=>e>=60&&e<75 },
   { label:'75 o más', test:e=>e>=75 },
 ];
-function calcDemografia(mesStr){
-  const ps = pacientesDelMes(mesStr);
+function calcDemografia(mesStr, sala){
+  const ps = pacientesDelMes(mesStr, sala);
   const total = ps.length;
-  const porSector = {}; SECTORES.forEach(s=>porSector[s]=ps.filter(p=>p.sala===s).length);
+  // v3_214: cada paciente cuenta en el sector donde estuvo durante el período
+  const porSector = {}; sectoresVisibles().forEach(sc=>porSector[sc]=ps.filter(p=>pacienteEnSalaEnMes(p, mesStr, sc)).length);
   const sexo = { Masculino:0, Femenino:0, Otro:0, SinDato:0 };
   ps.forEach(p=>{ if(p.genero==='Masculino')sexo.Masculino++; else if(p.genero==='Femenino')sexo.Femenino++; else if(p.genero==='Otro')sexo.Otro++; else sexo.SinDato++; });
   const edadStats = statsNum(ps.map(p=>p.edad));
   const franjas = FRANJAS_EDAD.map(f=>({ label:f.label, n: ps.filter(p=>p.edad!=null && p.edad!=='' && f.test(Number(p.edad))).length }));
-  const imcStats = statsNum(ps.map(p=>p.imc));
+  // ── v3_213: el IMC de los pediátricos no se interpreta con cortes de adulto ──
+  // Antes entraban todos juntos en la misma tabla: un lactante de 7,4 kg y 68 cm
+  // tiene IMC 16 y quedaba clasificado como "bajo peso", y además arrastraba el
+  // promedio del servicio hacia abajo. En pediatría el IMC se lee por percentilo
+  // para la edad y el sexo, así que se calculan por separado.
+  const esPed = p => !!(p.esPediatrico || esSalaPediatrica(p.sala));
+  const psAdultos = ps.filter(p => !esPed(p));
+  const psPed     = ps.filter(esPed);
+
+  // v3_213: el IMC se recalcula desde peso y talla y se descarta si no es un
+  // valor posible. Antes bastaba UNA ficha con la talla en metros para que el
+  // promedio del servicio diera 1806,9.
+  const imcStats = statsNum(psAdultos.map(imcDePaciente));
+  const imcRevisar = psAdultos.filter(imcSospechoso).length;
   const catIMC = { 'Bajo peso (<18.5)':0, 'Normopeso (18.5-24.9)':0, 'Sobrepeso (25-29.9)':0, 'Obesidad I (30-34.9)':0, 'Obesidad II (35-39.9)':0, 'Obesidad III (40 o más)':0 };
-  ps.forEach(p=>{ const v=parseFloat(p.imc); if(isNaN(v))return;
+  psAdultos.forEach(p=>{ const v=imcDePaciente(p); if(v===null)return;
     if(v<18.5)catIMC['Bajo peso (<18.5)']++; else if(v<25)catIMC['Normopeso (18.5-24.9)']++;
     else if(v<30)catIMC['Sobrepeso (25-29.9)']++; else if(v<35)catIMC['Obesidad I (30-34.9)']++;
     else if(v<40)catIMC['Obesidad II (35-39.9)']++; else catIMC['Obesidad III (40 o más)']++; });
+
+  // Percentilos de IMC pediátricos (CDC, válidos desde los 2 años).
+  // Categorías estándar: <P3 bajo peso · P3–P84 normal · P85–P96 sobrepeso · ≥P97 obesidad.
+  const pedIMC = { total: psPed.length, conPercentil:0, sinPercentil:0, menores2a:0,
+    cat: { 'Bajo peso (< P3)':0, 'Normopeso (P3 - P84)':0, 'Sobrepeso (P85 - P96)':0, 'Obesidad (P97 o más)':0 } };
+  pedIMC.revisar = psPed.filter(imcSospechoso).length;
+  psPed.forEach(p => {
+    const imc = imcDePaciente(p);
+    const e = p.fechaNac ? edadDesdeFechaNac(p.fechaNac) : null;
+    const meses = e ? e.meses : (p.edad != null && p.edad !== '' ? Number(p.edad)*12 : null);
+    if(imc === null || meses === null || !isFinite(meses)){ pedIMC.sinPercentil++; return; }
+    if(meses < 24){ pedIMC.menores2a++; return; }   // debajo de los 2 años se usa peso/talla, no IMC
+    const r = percentilIMCPed(imc, meses, p.genero);
+    if(!r){ pedIMC.sinPercentil++; return; }
+    pedIMC.conPercentil++;
+    if(r.p < 3)       pedIMC.cat['Bajo peso (< P3)']++;
+    else if(r.p < 85) pedIMC.cat['Normopeso (P3 - P84)']++;
+    else if(r.p < 97) pedIMC.cat['Sobrepeso (P85 - P96)']++;
+    else              pedIMC.cat['Obesidad (P97 o más)']++;
+  });
   // v3_130: se cuentan los de adultos y los pediátricos (sin repetir claves)
   const listaAnt = [...ANTECEDENTES_LIST];
   ANTECEDENTES_PED_LIST.forEach(a=>{ if(!listaAnt.some(x=>x.key===a.key)) listaAnt.push(a); });
@@ -17334,10 +18347,10 @@ function calcDemografia(mesStr){
     causas[c] = (causas[c]||0)+1;
   };
   ps.forEach(p => sumar(p.causaVM, p.causaVMOtro));
-  evosDelMes(mesStr).forEach(e => sumar(e.motivoVM, e.motivoVMOtro));
+  evosDelMes(mesStr, sala).forEach(e => sumar(e.motivoVM, e.motivoVMOtro));
   const causasTop = Object.entries(causas).sort((a,b)=>b[1]-a[1]).slice(0,10);
   // Egresos del mes
-  const altas = egresosDelMes(mesStr,'alta'), obitos = egresosDelMes(mesStr,'obito'), traslados = egresosDelMes(mesStr,'traslado');
+  const altas = egresosDelMes(mesStr,'alta',sala), obitos = egresosDelMes(mesStr,'obito',sala), traslados = egresosDelMes(mesStr,'traslado',sala);
   const egresosTot = altas + obitos + traslados;
   // v3_169: el traslado de sector NO es un egreso del servicio: el paciente sigue
   // internado y sigue siendo atendido por kinesiología. Contarlo en el
@@ -17345,17 +18358,21 @@ function calcDemografia(mesStr){
   // correcto son los egresos reales del servicio: altas + óbitos.
   const egresosReales = altas + obitos;
   const estancias = ps.filter(p=>p.fIHosp).map(p=>(daysBetween(p.fIHosp, p.fEUTI||today())||0)+1);
-  return { total, porSector, sexo, edadStats, franjas, imcStats, catIMC, antecedentes, grupos, sinGrupo,
+  return { total, porSector, sexo, edadStats, franjas, imcStats, catIMC, pedIMC, imcRevisar,
+           adultos: psAdultos.length, pediatricos: psPed.length,
+           antecedentes, grupos, sinGrupo,
            causasTop, altas, obitos, traslados, egresosTot, egresosReales,
            mortalidad: egresosReales ? pctTxt(obitos, egresosReales) : '—',
            mortalidadDetalle: egresosReales ? `${obitos} de ${egresosReales} egresos` : 'sin egresos registrados',
            estanciaStats: statsNum(estancias),
-           ingresos: ingresosDelMes(mesStr) };
+           ingresos: ingresosDelMes(mesStr, sala),
+           reingresos: reingresosDelMes(mesStr, sala),          // v3_215
+           reingresos30: reingresosDelMes(mesStr, sala, true) };
 }
 
 // ── Actividad del equipo ──
-function calcEquipo(mesStr){
-  const evos = evosDelMes(mesStr);
+function calcEquipo(mesStr, sala){
+  const evos = evosDelMes(mesStr, sala);
   const porKine = {};
   evos.forEach(e=>{ const k=(e.kine||'(sin registrar)').trim(); porKine[k]=(porKine[k]||0)+1; });
   const kines = Object.entries(porKine).sort((a,b)=>b[1]-a[1]);
@@ -17369,7 +18386,7 @@ function calcEquipo(mesStr){
 function diasInterfazEnMes(mesStr, sala, tipo){
   return contarDiasUnicos(e=>{
     if(!enPeriodo(e.date, mesStr)) return false;
-    if(sala){ const p=patients.find(x=>x.id===e.patientId); if(!p||p.sala!==sala) return false; }
+    if(!evoEnSala(e, sala)) return false;
     const esp = e.interfazEsp || '';
     const itf = e.interfaz || '';
     switch(tipo){
@@ -17396,7 +18413,7 @@ function humidDiasEnMes(mesStr, sala){
     if(e.tipo || !e.date) return;
     if(!e.humidificacion) return;
     if(!enPeriodo(e.date, mesStr)) return;
-    if(sala){ const p = patients.find(x=>x.id===e.patientId); if(!p || p.sala!==sala) return; }
+    if(!evoEnSala(e, sala)) return;
     const k = e.patientId + '|' + e.date;
     if(e.humidificacion === 'Activa') activa.add(k); else pasiva.add(k);
   });
@@ -17413,7 +18430,7 @@ function motivosHumidActivaEnMes(mesStr, sala){
     if(e.tipo || !e.date) return;
     if(e.humidificacion !== 'Activa') return;
     if(!enPeriodo(e.date, mesStr)) return;
-    if(sala){ const p = patients.find(x=>x.id===e.patientId); if(!p || p.sala!==sala) return; }
+    if(!evoEnSala(e, sala)) return;
     let m = (e.humidMotivo || '').trim();
     if(!m) m = '(sin motivo registrado)';
     else if(m === 'Otro') m = (e.humidMotivoOtro || '').trim() ? 'Otro: ' + e.humidMotivoOtro.trim() : 'Otro';
@@ -17429,7 +18446,7 @@ function motivosHumidActivaEnMes(mesStr, sala){
 function extubDetalle(mesStr, sala, tipo){
   return contarDiasUnicos(e=>{
     if(!enPeriodo(e.date, mesStr)) return false;
-    if(sala){ const p=patients.find(x=>x.id===e.patientId); if(!p||p.sala!==sala) return false; }
+    if(!evoEnSala(e, sala)) return false;
     switch(tipo){
       case 'planificada':    return e.extubacion==='Sí — planificada';
       case 'exitosa':        return e.extubacion==='Sí — planificada' && e.pveResult==='Exitosa';
@@ -17461,7 +18478,7 @@ function conteoTecnicasEnMes(mesStr, sala){
 function evalEstructuradasEnMes(mesStr, sala){
   const evos = evosDelMes(mesStr, sala);
   const con = fn => evos.filter(fn).length;
-  const enSala = e => !sala || patients.find(p=>p.id===e.patientId)?.sala===sala;
+  const enSala = e => evoEnSala(e, sala);   // v3_214: sector histórico
   return {
     'PVE (prueba de ventilación espontánea)': contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&enSala(e)&&e.pve&&e.pve!=='No'&&e.pve!==''),
     'Evaluación de músculos respiratorios (Pimax/Pemax/CV)': con(e=>e.musResp || e.musPImax || e.musPEmax || e.musCV || tecList(e).some(t=>(t||'').includes('músculos respiratorios'))),
@@ -17478,26 +18495,32 @@ function renderIndMensual(mesStr){
   const body = document.getElementById('indBody');
   if(!body) return;
 
-  const totalEvo = evolucionesEnMes('', mesStr);
-  const totalPrestGen = prestacionesGeneralesEnMes('', mesStr);
-  const totalPrestEsp = prestacionesEspTotalEnMes('', mesStr);
-  const totalPrestTot = totalPrestGen + totalPrestEsp;
+  const totalEvo = evolucionesEnMes(indSectorSel, mesStr);
+  const totalPrestGen = prestacionesGeneralesEnMes(indSectorSel, mesStr);
+  const totalPrestEsp = prestacionesEspTotalEnMes(indSectorSel, mesStr);
+  // v3_213: el total tiene que ser el MISMO número que la fila "Prestaciones
+  // totales del servicio" de la tabla de abajo. Antes el KPI sumaba solo
+  // generales + específicas y la tabla usaba prestacionesTotalesEnMes(), que
+  // además incluye procedimientos y fichas neurológicas: los dos números no
+  // cerraban y la suma parecía mal hecha.
+  const totalPrestProc = procedimientosTotalEnMes(indSectorSel, mesStr) + fichasNeuroEnMes(indSectorSel, mesStr);
+  const totalPrestTot = prestacionesTotalesEnMes(indSectorSel, mesStr);
   const totalARM = patients.reduce((s,p)=>s+diasARMenMes(p,mesStr),0);
   const totalTET = diasTETenMes(mesStr);
   const totalTQTarm = diasTQTarmEnMes(mesStr);
   const totalTQTesp = diasTQTespEnMes(mesStr);
-  const totalCuff = controlCuffEnMes('', mesStr);
-  const totalPVE = pveEnMes('', mesStr);
+  const totalCuff = controlCuffEnMes(indSectorSel, mesStr);
+  const totalPVE = pveEnMes(indSectorSel, mesStr);
 
   const fila = (label, fn) => {
-    const total = fn('');
-    const celdas = SECTORES.map(s=>`<td>${fn(s)||0}</td>`).join('');
+    const total = fn(indSectorSel);   // v3_214: el TOTAL respeta el filtro de sector
+    const celdas = sectoresVisibles().map(s=>`<td>${fn(s)||0}</td>`).join('');
     return `<tr><td style="font-weight:600">${label}</td>${celdas}<td style="font-weight:700;color:var(--blue-700)">${total}</td></tr>`;
   };
 
   const filaARM = (label, fn) => {
-    const celdas = SECTORES.map(s=>`<td>${fn(s)||0}</td>`).join('');
-    const total = SECTORES.reduce((s,sala)=>s+(fn(sala)||0),0);
+    const celdas = sectoresVisibles().map(s=>`<td>${fn(s)||0}</td>`).join('');
+    const total = sectoresVisibles().reduce((s,sala)=>s+(fn(sala)||0),0);
     return `<tr><td style="font-weight:600">${label}</td>${celdas}<td style="font-weight:700;color:var(--blue-700)">${total}</td></tr>`;
   };
 
@@ -17505,18 +18528,18 @@ function renderIndMensual(mesStr){
   // por celda: recorrer todas las evoluciones cuatro veces por sala no hace
   // falta y en instituciones grandes se nota.
   const _humidSalas = {};
-  [''].concat(SECTORES).forEach(s=>{ _humidSalas[s] = humidDiasEnMes(mesStr, s); });
-  const _humidMotivos = motivosHumidActivaEnMes(mesStr, '');
+  [indSectorSel].concat(sectoresVisibles()).forEach(s=>{ _humidSalas[s] = humidDiasEnMes(mesStr, s); });
+  const _humidMotivos = motivosHumidActivaEnMes(mesStr, indSectorSel);
 
   body.innerHTML = `
   <!-- KPIs del mes -->
   <div class="kpi-row" style="margin-bottom:16px">
-    <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-clipboard-check"></i></div><div class="kpi-content"><div class="label">Prestaciones totales</div><div class="value">${totalPrestTot}</div><div class="sub">Gen: ${totalPrestGen} + Esp: ${totalPrestEsp}</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-clipboard-check"></i></div><div class="kpi-content"><div class="label">Prestaciones totales</div><div class="value">${totalPrestTot}</div><div class="sub">Gen ${totalPrestGen} + Esp ${totalPrestEsp} + Proc ${totalPrestProc}</div></div></div>
     <div class="kpi-card"><div class="kpi-icon amber"><i class="ti ti-lungs"></i></div><div class="kpi-content"><div class="label">Días de ARM</div><div class="value">${totalARM}</div><div class="sub">TET: ${totalTET} / TQT ARM: ${totalTQTarm}</div></div></div>
     <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-plug-x"></i></div><div class="kpi-content"><div class="label">TQT espontáneo</div><div class="value">${totalTQTesp}</div><div class="sub">Días sin ARM</div></div></div>
     <div class="kpi-card"><div class="kpi-icon purple"><i class="ti ti-activity"></i></div><div class="kpi-content"><div class="label">PVE realizadas</div><div class="value">${totalPVE}</div><div class="sub">Pruebas de vent. espontánea</div></div></div>
     <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-gauge"></i></div><div class="kpi-content"><div class="label">Controles de cuff</div><div class="value">${totalCuff}</div><div class="sub">Registros con presión</div></div></div>
-    <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-droplet-filled"></i></div><div class="kpi-content"><div class="label">Humidificación activa</div><div class="value">${pctTxt(_humidSalas[''].activa, _humidSalas[''].total)}</div><div class="sub">${_humidSalas[''].activa} de ${_humidSalas[''].total} días con VAA</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-droplet-filled"></i></div><div class="kpi-content"><div class="label">Humidificación activa</div><div class="value">${pctTxt(_humidSalas[indSectorSel].activa, _humidSalas[indSectorSel].total)}</div><div class="sub">${_humidSalas[indSectorSel].activa} de ${_humidSalas[indSectorSel].total} días con VAA</div></div></div>
   </div>
 
   <div class="card" style="margin-bottom:12px;overflow-x:auto">
@@ -17526,22 +18549,22 @@ function renderIndMensual(mesStr){
       <thead>
         <tr style="background:var(--blue-50)">
           <th style="text-align:left;padding:8px 12px;border-bottom:2px solid var(--blue-100)">Indicador</th>
-          ${SECTORES.map(s=>`<th style="padding:8px 8px;border-bottom:2px solid var(--blue-100);white-space:nowrap">${SECTOR_LBL(s)}</th>`).join('')}
+          ${sectoresVisibles().map(s=>`<th style="padding:8px 8px;border-bottom:2px solid var(--blue-100);white-space:nowrap">${SECTOR_LBL(s)}</th>`).join('')}
           <th style="padding:8px 8px;border-bottom:2px solid var(--blue-100);color:var(--blue-700)">TOTAL</th>
         </tr>
       </thead>
       <tbody>
-        <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Prestaciones</td></tr>
+        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Prestaciones</td></tr>
         ${fila('Prestaciones totales del servicio', s=>prestacionesTotalesEnMes(s,mesStr))}
         ${fila('Prestaciones generales (ARM/TQT ×6, resto ×2)', s=>prestacionesGeneralesEnMes(s,mesStr))}
-        <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Prestaciones específicas</td></tr>
+        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Prestaciones específicas</td></tr>
         ${fila('Total de prestaciones específicas', s=>prestacionesEspTotalEnMes(s,mesStr))}
         ${PRESTACIONES_ESP.map(esp => fila(esp, s=>prestacionesEspEnMes(s,mesStr,esp))).join('')}
-        <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Procedimientos y evaluaciones</td></tr>
+        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Procedimientos y evaluaciones</td></tr>
         ${fila('Total de procedimientos', s=>procedimientosTotalEnMes(s,mesStr)+fichasNeuroEnMes(s,mesStr))}
         ${PROCEDIMIENTOS_ESP.map(pr => fila(pr.label, s=>procedimientoEspEnMes(s,mesStr,pr.label))).join('')}
         ${fila('Evaluación neurológica (ficha)', s=>fichasNeuroEnMes(s,mesStr))}
-        <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">ARM / Ventilación mecánica</td></tr>
+        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">ARM / Ventilación mecánica</td></tr>
         ${filaARM('Días de ARM registrados (TET + TQT)', s=>diasARMregistrados(mesStr,s))}
         ${filaARM('— Días de TET', s=>diasTETreg(mesStr,s))}
         ${filaARM('— Días de TQT en ARM', s=>diasTQTARMreg(mesStr,s))}
@@ -17549,42 +18572,44 @@ function renderIndMensual(mesStr){
         ${filaARM('— Días de ARM sin evolución cargada', s=>Math.max(0, patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0) - diasARMregistrados(mesStr,s)))}
         ${filaARM('Días de TQT sin ARM (espontáneo)', s=>diasInterfazEnMes(mesStr,s,'TQT_ESP'))}
         ${filaARM('Pacientes distintos que pasaron por ARM', s=>pacientesEnARMenMes(s,mesStr))}
-        <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Soporte no invasivo / Oxigenoterapia (días)</td></tr>
+        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Soporte no invasivo / Oxigenoterapia (días)</td></tr>
         ${filaARM('Días de VNI', s=>diasInterfazEnMes(mesStr,s,'VNI'))}
         ${filaARM('Días de CNAF', s=>diasInterfazEnMes(mesStr,s,'CNAF'))}
         ${filaARM('Días de VAN con O₂', s=>diasInterfazEnMes(mesStr,s,'VAN_O2'))}
         ${filaARM('Días en aire ambiente', s=>diasInterfazEnMes(mesStr,s,'AA'))}
-        <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Extubaciones</td></tr>
+        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Extubaciones</td></tr>
         ${filaARM('Extubaciones exitosas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.extubacion==='Sí — planificada'&&e.pveResult==='Exitosa'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
         ${filaARM('Extubaciones fallidas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.extubacion?.startsWith('Sí')&&e.pveResult?.startsWith('Fallida')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
         ${filaARM('Extubaciones no programadas (total)', s=>extubDetalle(mesStr,s,'no_programada'))}
         ${filaARM('— Autoextubaciones', s=>extubDetalle(mesStr,s,'autoextubacion'))}
         ${filaARM('— Extubaciones accidentales', s=>extubDetalle(mesStr,s,'accidental'))}
         ${filaARM('Extubaciones sin PVE previa', s=>extubDetalle(mesStr,s,'sin_pve'))}
-        <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Decanulación</td></tr>
+        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Decanulación</td></tr>
         ${filaARM('Decanulaciones exitosas', s=>decanulaciones('',s,mesStr))}
-        <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Movimientos del mes</td></tr>
+        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Movimientos del mes</td></tr>
         ${filaARM('Ingresos al sector', s=>ingresosDelMes(mesStr,s))}
+        ${filaARM('— De los cuales son reingresos', s=>reingresosDelMes(mesStr,s))}
+        ${filaARM('— Reingresos a menos de 30 días', s=>reingresosDelMes(mesStr,s,true))}
         ${filaARM('Altas', s=>egresosDelMes(mesStr,'alta',s))}
         ${filaARM('Óbitos', s=>egresosDelMes(mesStr,'obito',s))}
         ${filaARM('— Por muerte encefálica', s=>obitosDelMes(mesStr,s,_obME))}
         ${filaARM('— Por parada cardíaca', s=>obitosDelMes(mesStr,s,_obPC))}
         ${filaARM('— Sin mecanismo registrado', s=>obitosDelMes(mesStr,s,_obSin))}
         ${filaARM('Traslados internos', s=>egresosDelMes(mesStr,'traslado',s))}
-        <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Donación de órganos</td></tr>
+        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Donación de órganos</td></tr>
         ${filaARM('Donantes', s=>obitosDelMes(mesStr,s,_obDon))}
         ${filaARM('— En muerte encefálica', s=>obitosDelMes(mesStr,s,e=>_obME(e)&&_obDon(e)))}
         ${filaARM('— En asistolia controlada', s=>obitosDelMes(mesStr,s,e=>_obPC(e)&&_obDon(e)))}
-        <tr><td style="font-weight:600">Tasa de donación</td>${SECTORES.map(s=>`<td>${tasaDonacion(mesStr,s)}</td>`).join('')}<td style="font-weight:700;color:var(--blue-700)">${tasaDonacion(mesStr,'')}</td></tr>
-        <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">PVE / Ventilación espontánea</td></tr>
+        <tr><td style="font-weight:600">Tasa de donación</td>${sectoresVisibles().map(s=>`<td>${tasaDonacion(mesStr,s)}</td>`).join('')}<td style="font-weight:700;color:var(--blue-700)">${tasaDonacion(mesStr,indSectorSel)}</td></tr>
+        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">PVE / Ventilación espontánea</td></tr>
         ${filaARM('PVE realizadas', s=>pveEnMes(s,mesStr))}
         ${filaARM('PVE exitosas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.pveResult==='Exitosa'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
-        <tr style="background:var(--gray-50)"><td colspan="${SECTORES.length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Vía aérea artificial</td></tr>
+        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Vía aérea artificial</td></tr>
         ${filaARM('Controles de cuff', s=>controlCuffEnMes(s,mesStr))}
         ${filaARM('Días con humidificación registrada', s=>_humidSalas[s].total)}
         ${filaARM('— Humidificación pasiva (HME)', s=>_humidSalas[s].pasiva)}
         ${filaARM('— Humidificación activa', s=>_humidSalas[s].activa)}
-        <tr><td style="font-weight:600">% de días en humidificación activa</td>${SECTORES.map(s=>`<td>${pctTxt(_humidSalas[s].activa, _humidSalas[s].total)}</td>`).join('')}<td style="font-weight:700;color:var(--blue-700)">${pctTxt(_humidSalas[''].activa, _humidSalas[''].total)}</td></tr>
+        <tr><td style="font-weight:600">% de días en humidificación activa</td>${sectoresVisibles().map(s=>`<td>${pctTxt(_humidSalas[s].activa, _humidSalas[s].total)}</td>`).join('')}<td style="font-weight:700;color:var(--blue-700)">${pctTxt(_humidSalas[indSectorSel].activa, _humidSalas[indSectorSel].total)}</td></tr>
         ${filaARM('Evaluaciones de deglución', s=>deglucionEnMes(s,mesStr))}
       </tbody>
     </table>
@@ -17592,8 +18617,8 @@ function renderIndMensual(mesStr){
   </div>
 
   ${_humidMotivos.length ? indTabla('Motivos del pase a humidificación activa — '+etiquetaPeriodo(mesStr),'ti-droplet-filled',
-    _humidMotivos.map(([m,n])=>indFila2(escapeHTML(m), n, pctTxt(n, _humidSalas[''].activa))).join('') +
-    indFila2('<strong>Días en humidificación activa</strong>', _humidSalas[''].activa, '100%'),
+    _humidMotivos.map(([m,n])=>indFila2(escapeHTML(m), n, pctTxt(n, _humidSalas[indSectorSel].activa))).join('') +
+    indFila2('<strong>Días en humidificación activa</strong>', _humidSalas[indSectorSel].activa, '100%'),
     ['Motivo','Días','% sobre días en activa']) : ''}`;
 }
 
@@ -17602,7 +18627,9 @@ function renderIndPacientes(){
   const body = document.getElementById('indBody');
   if(!body) return;
 
-  const filas = patients.map(p=>{
+  // v3_214: la vista por paciente respeta el filtro de sector (por dónde está hoy)
+  const lista = indSectorSel ? patients.filter(p => p.sala === indSectorSel) : patients;
+  const filas = lista.map(p=>{
     const evos = evoluciones.filter(e=>e.patientId===p.id && !e.tipo);
     // v3_109: días/eventos únicos por fecha (varias evoluciones el mismo día = 1 día)
     const diasU = filtro => new Set(evos.filter(e=>e.date && filtro(e)).map(e=>e.date)).size;
@@ -17626,7 +18653,7 @@ function renderIndPacientes(){
       <td>${p.genero?p.genero[0]:'—'}</td>
       <td>${p.edad||'—'}</td>
       <td style="white-space:nowrap">${p.tipoKine?(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine).replace(/^[^ ]+ /,''):'—'}</td>
-      <td>${p.imc||'—'}</td>
+      <td>${imcDePaciente(p) ?? '—'}</td>
       <td>${diasHosp}</td>
       <td style="font-weight:${diasArm>0?'700':'400'};color:${diasArm>0?'var(--red-600)':'inherit'}">${diasArm||'—'}</td>
       <td>${diasTET||'—'}</td>
@@ -17684,20 +18711,24 @@ function renderIndPacientes(){
 // Un solo archivo, ordenado por secciones, con los mismos cálculos de la pantalla.
 async function exportarIndicadoresCompleto(mesStr){
   mesStr = mesStr || today().slice(0,7);
+  limpiarCacheSectores();
   const rows = [];
   const seccion = t => { rows.push([]); rows.push(['═══ '+t+' ═══']); };
-  const calcFila = (label, fn) => [label, ...SECTORES.map(fn), SECTORES.reduce((s,sala)=>s+(fn(sala)||0),0)];
+  const calcFila = (label, fn) => [label, ...sectoresVisibles().map(fn), sectoresVisibles().reduce((s,sala)=>s+(fn(sala)||0),0)];
 
   rows.push(['KINEXA — INDICADORES COMPLETOS DEL SERVICIO']);
   rows.push(['Período:', etiquetaPeriodo(mesStr), 'Desde:', rangoDe(mesStr).desde, 'Hasta:', rangoDe(mesStr).hasta, 'Generado:', today(), 'Institución:', USER?.institucion_id||'']);
+  rows.push(['Alcance:', indSectorSel ? ('Solo ' + SECTOR_LBL(indSectorSel)) : 'Toda la institución']);
 
   // ── 1. DEMOGRAFÍA ──
-  const d = calcDemografia(mesStr);
+  const d = calcDemografia(mesStr, indSectorSel);
   const T = d.total;
   const pctN = (n)=> T ? Math.round(n/T*1000)/10 : 0;
   seccion('DEMOGRAFÍA Y POBLACIÓN');
   rows.push(['Pacientes del mes', T]);
   rows.push(['Ingresos al sector', d.ingresos]);
+  rows.push(['— De los cuales son reingresos', d.reingresos]);
+  rows.push(['— Reingresos a menos de 30 días', d.reingresos30]);
   rows.push(['Egresos totales', d.egresosTot]);
   rows.push(['— Altas', d.altas]);
   rows.push(['— Óbitos', d.obitos]);
@@ -17710,7 +18741,7 @@ async function exportarIndicadoresCompleto(mesStr){
   rows.push(['Estancia mediana (días)', d.estanciaStats.mediana??'']);
   rows.push([]);
   rows.push(['Pacientes por sector','Cantidad','%']);
-  SECTORES.forEach(s=>rows.push([SECTOR_LBL(s), d.porSector[s]||0, pctN(d.porSector[s]||0)]));
+  sectoresVisibles().forEach(s=>rows.push([SECTOR_LBL(s), d.porSector[s]||0, pctN(d.porSector[s]||0)]));
   rows.push([]);
   rows.push(['Sexo','Cantidad','%']);
   rows.push(['Masculino', d.sexo.Masculino, pctN(d.sexo.Masculino)]);
@@ -17725,10 +18756,19 @@ async function exportarIndicadoresCompleto(mesStr){
   rows.push(['Máxima', d.edadStats.max??'']);
   d.franjas.forEach(f=>rows.push(['Franja '+f.label+' años', f.n, pctN(f.n)]));
   rows.push([]);
-  rows.push(['IMC','Cantidad','%']);
+  rows.push(['IMC (adultos)','Cantidad','%']);
   rows.push(['IMC promedio', d.imcStats.prom??'']);
   Object.entries(d.catIMC).forEach(([k,v])=>rows.push([k, v, d.imcStats.n?Math.round(v/d.imcStats.n*1000)/10:0]));
-  rows.push(['Con IMC registrado', d.imcStats.n, pctN(d.imcStats.n)]);
+  rows.push(['Con IMC registrado', d.imcStats.n, d.adultos?Math.round(d.imcStats.n/d.adultos*1000)/10:0]);
+  if(d.imcRevisar) rows.push(['Con peso o talla mal cargados (revisar ficha)', d.imcRevisar, '']);
+  if(d.pediatricos){
+    rows.push([]);
+    rows.push(['Percentilo de IMC (pediatría)','Cantidad','%']);
+    Object.entries(d.pedIMC.cat).forEach(([k,v])=>rows.push([k, v, d.pedIMC.conPercentil?Math.round(v/d.pedIMC.conPercentil*1000)/10:0]));
+    rows.push(['Con percentilo calculado', d.pedIMC.conPercentil, d.pediatricos?Math.round(d.pedIMC.conPercentil/d.pediatricos*1000)/10:0]);
+    if(d.pedIMC.menores2a) rows.push(['Menores de 2 años (se evalúan por peso/talla)', d.pedIMC.menores2a, '']);
+    if(d.pedIMC.sinPercentil) rows.push(['Sin datos suficientes', d.pedIMC.sinPercentil, '']);
+  }
   rows.push([]);
   rows.push(['Antecedente','Pacientes','%']);
   d.antecedentes.filter(a=>a.n>0).sort((a,b)=>b.n-a.n).forEach(a=>rows.push([a.label, a.n, pctN(a.n)]));
@@ -17743,7 +18783,7 @@ async function exportarIndicadoresCompleto(mesStr){
   }
 
   // ── 2. EQUIPO ──
-  const eq = calcEquipo(mesStr);
+  const eq = calcEquipo(mesStr, indSectorSel);
   seccion('EQUIPO DEL MES');
   rows.push(['Kinesiólogos que brindaron servicio', eq.cantKines]);
   rows.push(['Evoluciones totales', eq.totalEvos]);
@@ -17757,7 +18797,7 @@ async function exportarIndicadoresCompleto(mesStr){
 
   // ── 3. PRESTACIONES ──
   seccion('PRESTACIONES (por sector)');
-  rows.push(['Indicador', ...SECTORES.map(SECTOR_LBL), 'TOTAL']);
+  rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
   rows.push(calcFila('Prestaciones totales', s=>prestacionesTotalesEnMes(s,mesStr)));
   rows.push(calcFila('Prestaciones generales (ARM/TQT ×6, resto ×2)', s=>prestacionesGeneralesEnMes(s,mesStr)));
   rows.push([]);
@@ -17771,7 +18811,7 @@ async function exportarIndicadoresCompleto(mesStr){
 
   // ── 4. VENTILACIÓN ──
   seccion('VENTILACIÓN MECÁNICA Y SOPORTE (por sector)');
-  rows.push(['Indicador', ...SECTORES.map(SECTOR_LBL), 'TOTAL']);
+  rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
   rows.push(calcFila('Días de ARM totales', s=>patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0)));
   rows.push(calcFila('Días de TET', s=>diasInterfazEnMes(mesStr,s,'TET')));
   rows.push(calcFila('Días de TQT en ARM', s=>diasInterfazEnMes(mesStr,s,'TQT_ARM')));
@@ -17784,7 +18824,7 @@ async function exportarIndicadoresCompleto(mesStr){
 
   // ── 5. EXTUBACIONES ──
   seccion('EXTUBACIONES (por sector)');
-  rows.push(['Indicador', ...SECTORES.map(SECTOR_LBL), 'TOTAL']);
+  rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
   rows.push(calcFila('Extubaciones (todas)', s=>extubDetalle(mesStr,s,'todas')));
   rows.push(calcFila('Planificadas', s=>extubDetalle(mesStr,s,'planificada')));
   rows.push(calcFila('Exitosas', s=>extubDetalle(mesStr,s,'exitosa')));
@@ -17797,27 +18837,27 @@ async function exportarIndicadoresCompleto(mesStr){
 
   // ── 6. VÍA AÉREA / DECANULACIÓN ──
   seccion('VÍA AÉREA Y DECANULACIÓN (por sector)');
-  rows.push(['Indicador', ...SECTORES.map(SECTOR_LBL), 'TOTAL']);
+  rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
   rows.push(calcFila('Decanulaciones exitosas', s=>decanulaciones('',s,mesStr)));
   rows.push(calcFila('Controles de cuff (días)', s=>controlCuffEnMes(s,mesStr)));
   rows.push(calcFila('Evaluaciones de deglución (días)', s=>deglucionEnMes(s,mesStr)));
   // v3_209: humidificación de la vía aérea artificial
-  { const H = {}; [''].concat(SECTORES).forEach(s=>{ H[s] = humidDiasEnMes(mesStr, s); });
+  { const H = {}; [indSectorSel].concat(sectoresVisibles()).forEach(s=>{ H[s] = humidDiasEnMes(mesStr, s); });
     rows.push(calcFila('Días con humidificación registrada', s=>H[s].total));
     rows.push(calcFila('  Humidificación pasiva (HME)', s=>H[s].pasiva));
     rows.push(calcFila('  Humidificación activa', s=>H[s].activa));
-    rows.push(['% de días en humidificación activa', ...SECTORES.map(s=>pctTxt(H[s].activa, H[s].total)), pctTxt(H[''].activa, H[''].total)]);
-    const mot = motivosHumidActivaEnMes(mesStr, '');
+    rows.push(['% de días en humidificación activa', ...sectoresVisibles().map(s=>pctTxt(H[s].activa, H[s].total)), pctTxt(H[indSectorSel].activa, H[indSectorSel].total)]);
+    const mot = motivosHumidActivaEnMes(mesStr, indSectorSel);
     if(mot.length){
       rows.push([]);
       rows.push(['Motivo del pase a humidificación activa','Días','% sobre días en activa']);
-      mot.forEach(([m,n])=>rows.push([m, n, pctTxt(n, H[''].activa)]));
+      mot.forEach(([m,n])=>rows.push([m, n, pctTxt(n, H[indSectorSel].activa)]));
     }
   }
 
   // ── 7. MOVIMIENTOS ──
   seccion('MOVIMIENTOS DEL MES (por sector)');
-  rows.push(['Indicador', ...SECTORES.map(SECTOR_LBL), 'TOTAL']);
+  rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
   rows.push(calcFila('Ingresos', s=>ingresosDelMes(mesStr,s)));
   rows.push(calcFila('Altas', s=>egresosDelMes(mesStr,'alta',s)));
   rows.push(calcFila('Óbitos', s=>egresosDelMes(mesStr,'obito',s)));
@@ -17828,11 +18868,11 @@ async function exportarIndicadoresCompleto(mesStr){
 
   // ── 7b. DONACIÓN DE ÓRGANOS ──
   seccion('DONACIÓN DE ÓRGANOS (por sector)');
-  rows.push(['Indicador', ...SECTORES.map(SECTOR_LBL), 'TOTAL']);
+  rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
   rows.push(calcFila('Donantes', s=>obitosDelMes(mesStr,s,_obDon)));
   rows.push(calcFila('  En muerte encefálica', s=>obitosDelMes(mesStr,s,e=>_obME(e)&&_obDon(e))));
   rows.push(calcFila('  En asistolia controlada', s=>obitosDelMes(mesStr,s,e=>_obPC(e)&&_obDon(e))));
-  rows.push(['Tasa de donación', ...SECTORES.map(s=>tasaDonacion(mesStr,s)), tasaDonacion(mesStr,'')]);
+  rows.push(['Tasa de donación', ...sectoresVisibles().map(s=>tasaDonacion(mesStr,s)), tasaDonacion(mesStr,indSectorSel)]);
 
   // ── 8. DETALLE POR PACIENTE ──
   seccion('DETALLE POR PACIENTE (todos los registros)');
@@ -17843,7 +18883,7 @@ async function exportarIndicadoresCompleto(mesStr){
     const diasArm = p.inicioARM ? (daysBetween(p.inicioARM,p.finARM||today())||0)+1 : 0;
     rows.push([
       `${p.apellido}, ${p.nombre}`, p.dni||'', SALA_LABEL[p.sala]||p.sala||'', p.cama||'', p.estado||'',
-      p.genero||'', p.edad||'', p.tipoKine?(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine).replace(/^[^ ]+ /,''):'', p.imc||'',
+      p.genero||'', p.edad||'', p.tipoKine?(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine).replace(/^[^ ]+ /,''):'', imcDePaciente(p)||'',
       p.fIHosp ? (daysBetween(p.fIHosp,p.fEUTI||today())||0)+1 : '',
       diasArm||'', diasU(e=>e.interfaz==='TET'&&!e.interfazEsp)||'',
       diasU(e=>e.interfaz==='TQT'&&!e.interfazEsp)||'',
@@ -17860,19 +18900,14 @@ async function exportarIndicadoresCompleto(mesStr){
     ]);
   });
 
-  // v3_123: separador ';' + decimales con coma + directiva sep=; para que
-  // Excel en configuración regional argentina/española abra las columnas bien.
-  const celda = c => {
-    if(typeof c==='number' && !Number.isInteger(c)) return String(c).replace('.',',');
-    const v = String(c===null||c===undefined?'':c).replace(/\n/g,' ');
-    return (v.includes(';')||v.includes('"')) ? '"'+v.replace(/"/g,'""')+'"' : v;
-  };
-  const csv = 'sep=;\n' + rows.map(r=>r.map(celda).join(';')).join('\n');
-  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `Kinexa_indicadores_completos_${String(mesStr).replace('..','_a_')}.csv`;
-  a.click();
+  // v3_213: .xlsx real. Antes era un CSV con la directiva "sep=;" al principio;
+  // con esa directiva Excel ignora el BOM y lee el archivo en ANSI, así que
+  // todas las tildes y las ñ salían rotas. En un .xlsx la codificación va
+  // declarada adentro del XML y no depende de la configuración de la máquina.
+  const _suf = indSectorSel ? '_' + String(SECTOR_LBL(indSectorSel)).replace(/[^\wÁÉÍÓÚÑáéíóúñ]+/g,'-') : '';
+  descargarXLSX(`Kinexa_indicadores_completos_${String(mesStr).replace('..','_a_')}${_suf}`, [
+    { nombre:'Indicadores', filas: rows.map(r => (r||[]).map(c => (c === null || c === undefined) ? '' : c)) },
+  ]);
   addLog('export','Exportó indicadores completos: '+mesStr);
   showToast('Indicadores completos exportados ✓','success');
 }
@@ -17881,8 +18916,8 @@ async function exportarIndicadoresCompleto(mesStr){
 async function exportarIndicadores(vista, mesStr){
   const rows = [];
   if(vista==='mensual'){
-    rows.push(['Indicador', ...SECTORES.map(SECTOR_LBL), 'TOTAL']);
-    const calcFila = (label, fn) => [label, ...SECTORES.map(fn), SECTORES.reduce((s,sala)=>s+(fn(sala)||0),0)];
+    rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
+    const calcFila = (label, fn) => [label, ...sectoresVisibles().map(fn), sectoresVisibles().reduce((s,sala)=>s+(fn(sala)||0),0)];
     rows.push(['Período:', etiquetaPeriodo(mesStr), '(' + rangoDe(mesStr).desde + ' a ' + rangoDe(mesStr).hasta + ')']);
     rows.push([]);
     rows.push(['PRESTACIONES']);
@@ -17907,11 +18942,11 @@ async function exportarIndicadores(vista, mesStr){
     rows.push(calcFila('No programadas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&(e.extubacion==='Sí — no planificada'||e.extubacion==='autoextubacion'||e.extubacion==='accidental')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
     rows.push(['VÍA AÉREA / CUFF']);
     rows.push(calcFila('Controles de cuff', s=>controlCuffEnMes(s,mesStr)));
-    { const H = {}; [''].concat(SECTORES).forEach(s=>{ H[s] = humidDiasEnMes(mesStr, s); });   // v3_209
+    { const H = {}; [indSectorSel].concat(sectoresVisibles()).forEach(s=>{ H[s] = humidDiasEnMes(mesStr, s); });   // v3_209
       rows.push(calcFila('Días con humidificación registrada', s=>H[s].total));
       rows.push(calcFila('  Humidificación pasiva (HME)', s=>H[s].pasiva));
       rows.push(calcFila('  Humidificación activa', s=>H[s].activa));
-      motivosHumidActivaEnMes(mesStr, '').forEach(([m,n])=>rows.push(['    Motivo: '+m, n]));
+      motivosHumidActivaEnMes(mesStr, indSectorSel).forEach(([m,n])=>rows.push(['    Motivo: '+m, n]));
     }
     rows.push(calcFila('Evaluaciones de deglución', s=>deglucionEnMes(s,mesStr)));
   } else {
@@ -17936,14 +18971,10 @@ async function exportarIndicadores(vista, mesStr){
     });
   }
 
-  const csv = rows.map(r=>r.map(c=>
-    typeof c==='string' && c.includes(',') ? `"${c}"` : c
-  ).join(',')).join('\n');
-  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `indicadores_HBEE_kine_${vista}_${mesStr||today().slice(0,7)}.csv`;
-  a.click();
+  // v3_213: .xlsx real, por el mismo problema de codificación del CSV
+  descargarXLSX(`Kinexa_indicadores_${vista}_${mesStr||today().slice(0,7)}`, [
+    { nombre: String(vista||'Indicadores'), filas: rows.map(r => (r||[]).map(c => (c === null || c === undefined) ? '' : c)) },
+  ]);
   addLog('export','Exportó indicadores: '+vista);
 }
 
@@ -18255,14 +19286,19 @@ function renderBannerDeglusion(patientId){
 // ════════════════════════════════════════════════════════
 function exportarDatos(){
   try {
-  const NL = "\n";
-  const BOM = "\uFEFF";
-
-  const esc = v => {
-    const s = String(v===null||v===undefined?'':v).replace(/\n/g,' ');
-    return (s.includes(',') || s.includes('"')) ? '"' + s.replace(/"/g,'""') + '"' : s;
-  };
-  const fila = arr => arr.map(esc).join(',');
+  // v3_213: se exporta un .xlsx real en vez de un CSV. El CSV lo abría Excel
+  // con la codificación del sistema y las tildes salían como símbolos raros.
+  // Además, ahora Pacientes y Evoluciones van en hojas separadas.
+  const fila = arr => arr.map(v => {
+    if(typeof v === 'number' && isFinite(v)) return v;
+    const t = String(v === null || v === undefined ? '' : v).replace(/\n/g,' ');
+    if(t === '') return '';
+    // Los valores que ya vienen como número en texto se pasan a número real,
+    // salvo los que arrancan con cero (DNI 06771290, cama 03): ahí el cero es
+    // parte del dato y Excel se lo comería.
+    if(/^0\d/.test(t)) return t;
+    return /^-?\d+([.,]\d+)?$/.test(t) ? Number(t.replace(',','.')) : t;
+  });
   const joinArr = v => Array.isArray(v) ? v.join(' | ') : (v || '');
 
   // ── Hoja 1: Pacientes ──
@@ -18276,7 +19312,7 @@ function exportarDatos(){
 
   const filasPac = patients.map(p => fila([
     p.apellido||'', p.nombre||'', p.dni||'', p.edad||'', p.genero||'',
-    p.peso||'', p.talla||'', p.imc||'', gradoObesidad(p.imc)||'',
+    p.peso||'', tallaCm(p.talla)||p.talla||'', imcDePaciente(p)||'', gradoObesidad(imcDePaciente(p))||'',
     SALA_LABEL[p.sala]||p.sala||'', p.cama||'', p.estado||'',
     fmtDate(p.fIHosp), fmtDate(p.fIUTI),
     p.diagnostico||'', antecedentesTexto(p), p.otrosAnt||'',
@@ -18328,21 +19364,11 @@ function exportarDatos(){
     ]);
   });
 
-  const csv = BOM
-    + "PACIENTES" + NL
-    + fila(encPac) + NL
-    + filasPac.join(NL)
-    + NL + NL
-    + "EVOLUCIONES" + NL
-    + fila(encEvo) + NL
-    + filasEvo.join(NL);
-
-  const blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = 'HBEE_Kine_' + today() + '.csv';
-  a.click();
-  addLog('export','Exportacion Excel (' + patients.length + ' pacientes, ' + evoluciones.length + ' evoluciones)');
+  descargarXLSX('Kinexa_datos_' + today(), [
+    { nombre:'Pacientes',   filas:[encPac].concat(filasPac) },
+    { nombre:'Evoluciones', filas:[encEvo].concat(filasEvo) },
+  ]);
+  addLog('export','Exportación Excel (' + patients.length + ' pacientes, ' + evoluciones.length + ' evoluciones)');
   showToast('Exportado: ' + patients.length + ' pacientes, ' + evoluciones.length + ' evoluciones', 'success');
   } catch(err){
     console.error('Error exportando:', err);
