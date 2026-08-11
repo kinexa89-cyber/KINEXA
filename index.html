@@ -6,7 +6,14 @@
      los dedos en la mayoría de los Android, y dejaba a los kinesiólogos que
      no ven de cerca sin poder leer la app. Ahora se puede ampliar hasta 5x. -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
-<title>Pase de Kinesiología · HBEE</title>
+<!-- v3_218: el título quedó del origen del proyecto (la app de un solo hospital).
+     En una app multi-institución la pestaña tiene que decir Kinexa; el nombre de
+     la institución se agrega al iniciar sesión (ver tituloPestana()). -->
+<title>Kinexa — La evolución digital de la kinesiología</title>
+<meta name="description" content="Kinexa — plataforma de gestión clínica para servicios de kinesiología en pacientes internados.">
+<meta property="og:title" content="Kinexa">
+<meta property="og:description" content="La evolución digital de la kinesiología">
+<meta property="og:type" content="website">
 <!-- PWA -->
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#7C3AED">
@@ -800,7 +807,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <p>Esta app puede guardar todos los datos en un archivo compartido de Google Drive para que <strong>todos los kinesiólogos vean los mismos pacientes en tiempo real</strong>. Solo se configura una vez.</p>
       <ol class="setup-steps-list">
         <li>Andá a <a href="https://console.cloud.google.com" target="_blank">console.cloud.google.com</a> e iniciá sesión con tu cuenta Google.</li>
-        <li>Creá un proyecto nuevo (ej: "HBEE Kine").</li>
+        <li>Creá un proyecto nuevo (ej: "Kinexa — [nombre de tu institución]").</li>
         <li>Menú → <strong>APIs y servicios → Biblioteca</strong>. Habilitá <strong>Google Drive API</strong>.</li>
         <li>Andá a <strong>Credenciales → Crear → ID de cliente OAuth 2.0</strong>. Tipo: <em>Aplicación web</em>. En "Orígenes JavaScript autorizados" ingresá la URL desde donde abrís el archivo (o <code>http://localhost</code> para pruebas locales).</li>
         <li>Copiá el <strong>Client ID</strong> (termina en <code>.apps.googleusercontent.com</code>) y hacé clic en "Tengo mi Client ID".</li>
@@ -850,7 +857,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
   <div style="background:#fff;border-radius:20px;padding:2rem;width:420px;max-width:100%;box-shadow:0 24px 64px rgba(0,0,0,.28)">
     <div style="text-align:center;margin-bottom:1.5rem">
       <div style="display:inline-flex;align-items:center;gap:6px;background:var(--teal-50);color:var(--teal-800);font-size:10px;font-weight:700;padding:4px 12px;border-radius:20px;letter-spacing:.8px;text-transform:uppercase;margin-bottom:1rem"><i class="ti ti-map-pin"></i> Guardia de hoy</div>
-      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCI+CiAgPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiByeD0iMjEiIGZpbGw9IiM3QzNBRUQiLz4KICA8ZyBmaWxsPSJub25lIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgICA8cmVjdCB4PSIzMiIgeT0iMjciIHdpZHRoPSI5IiBoZWlnaHQ9IjQ2IiByeD0iNC41IiBmaWxsPSIjRkZGRkZGIiBzdHJva2U9Im5vbmUiLz4KICAgIDxwb2x5bGluZSBwb2ludHM9IjQxLDUwIDY2LDI5IiBzdHJva2Utd2lkdGg9IjguNSIvPgogICAgPHBvbHlsaW5lIHBvaW50cz0iNDEsNTAgNjYsNzMiIHN0cm9rZS13aWR0aD0iOC41Ii8+CiAgPC9nPgogIDxjaXJjbGUgY3g9IjcwLjUiIGN5PSIyNi41IiByPSI0LjUiIGZpbGw9IiNDNEI1RkQiLz4KPC9zdmc+" alt="HBEE" style="width:56px;height:56px;border-radius:12px;object-fit:cover;display:block;margin:0 auto .6rem;box-shadow:0 4px 12px rgba(0,0,0,.15)">
+      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCI+CiAgPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiByeD0iMjEiIGZpbGw9IiM3QzNBRUQiLz4KICA8ZyBmaWxsPSJub25lIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgICA8cmVjdCB4PSIzMiIgeT0iMjciIHdpZHRoPSI5IiBoZWlnaHQ9IjQ2IiByeD0iNC41IiBmaWxsPSIjRkZGRkZGIiBzdHJva2U9Im5vbmUiLz4KICAgIDxwb2x5bGluZSBwb2ludHM9IjQxLDUwIDY2LDI5IiBzdHJva2Utd2lkdGg9IjguNSIvPgogICAgPHBvbHlsaW5lIHBvaW50cz0iNDEsNTAgNjYsNzMiIHN0cm9rZS13aWR0aD0iOC41Ii8+CiAgPC9nPgogIDxjaXJjbGUgY3g9IjcwLjUiIGN5PSIyNi41IiByPSI0LjUiIGZpbGw9IiNDNEI1RkQiLz4KPC9zdmc+" alt="Kinexa" style="width:56px;height:56px;border-radius:12px;object-fit:cover;display:block;margin:0 auto .6rem;box-shadow:0 4px 12px rgba(0,0,0,.15)">
       <h2 style="font-size:18px;font-weight:700;color:var(--blue-900);margin-bottom:4px">¿En qué sector trabajás hoy?</h2>
       <p style="font-size:12px;color:var(--text-muted)" id="sectorGreeting">Seleccioná tu sector para ver solo tus pacientes</p>
     </div>
@@ -890,7 +897,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 <div id="loginScreen" style="display:none">
   <div class="login-card">
     <div class="login-logo">
-      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCI+CiAgPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiByeD0iMjEiIGZpbGw9IiM3QzNBRUQiLz4KICA8ZyBmaWxsPSJub25lIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgICA8cmVjdCB4PSIzMiIgeT0iMjciIHdpZHRoPSI5IiBoZWlnaHQ9IjQ2IiByeD0iNC41IiBmaWxsPSIjRkZGRkZGIiBzdHJva2U9Im5vbmUiLz4KICAgIDxwb2x5bGluZSBwb2ludHM9IjQxLDUwIDY2LDI5IiBzdHJva2Utd2lkdGg9IjguNSIvPgogICAgPHBvbHlsaW5lIHBvaW50cz0iNDEsNTAgNjYsNzMiIHN0cm9rZS13aWR0aD0iOC41Ii8+CiAgPC9nPgogIDxjaXJjbGUgY3g9IjcwLjUiIGN5PSIyNi41IiByPSI0LjUiIGZpbGw9IiNDNEI1RkQiLz4KPC9zdmc+" alt="HBEE" style="width:76px;height:76px;border-radius:18px;object-fit:cover;margin-bottom:.9rem;box-shadow:0 6px 20px rgba(0,0,0,.22)">
+      <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCI+CiAgPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiByeD0iMjEiIGZpbGw9IiM3QzNBRUQiLz4KICA8ZyBmaWxsPSJub25lIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgICA8cmVjdCB4PSIzMiIgeT0iMjciIHdpZHRoPSI5IiBoZWlnaHQ9IjQ2IiByeD0iNC41IiBmaWxsPSIjRkZGRkZGIiBzdHJva2U9Im5vbmUiLz4KICAgIDxwb2x5bGluZSBwb2ludHM9IjQxLDUwIDY2LDI5IiBzdHJva2Utd2lkdGg9IjguNSIvPgogICAgPHBvbHlsaW5lIHBvaW50cz0iNDEsNTAgNjYsNzMiIHN0cm9rZS13aWR0aD0iOC41Ii8+CiAgPC9nPgogIDxjaXJjbGUgY3g9IjcwLjUiIGN5PSIyNi41IiByPSI0LjUiIGZpbGw9IiNDNEI1RkQiLz4KPC9zdmc+" alt="Kinexa" style="width:76px;height:76px;border-radius:18px;object-fit:cover;margin-bottom:.9rem;box-shadow:0 6px 20px rgba(0,0,0,.22)">
       <h1>Kinexa</h1>
       <p style="font-size:13px;font-weight:600;color:var(--blue-600);margin-top:3px">La evolución digital de la kinesiología</p>
     </div>
@@ -1087,7 +1094,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     <div class="nav-brand">
       <div class="nav-pulse"></div>
       <div>
-        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCI+CiAgPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiByeD0iMjEiIGZpbGw9IiM3QzNBRUQiLz4KICA8ZyBmaWxsPSJub25lIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgICA8cmVjdCB4PSIzMiIgeT0iMjciIHdpZHRoPSI5IiBoZWlnaHQ9IjQ2IiByeD0iNC41IiBmaWxsPSIjRkZGRkZGIiBzdHJva2U9Im5vbmUiLz4KICAgIDxwb2x5bGluZSBwb2ludHM9IjQxLDUwIDY2LDI5IiBzdHJva2Utd2lkdGg9IjguNSIvPgogICAgPHBvbHlsaW5lIHBvaW50cz0iNDEsNTAgNjYsNzMiIHN0cm9rZS13aWR0aD0iOC41Ii8+CiAgPC9nPgogIDxjaXJjbGUgY3g9IjcwLjUiIGN5PSIyNi41IiByPSI0LjUiIGZpbGw9IiNDNEI1RkQiLz4KPC9zdmc+" alt="HBEE" style="width:28px;height:28px;border-radius:7px;object-fit:cover;flex-shrink:0">
+        <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCI+CiAgPHJlY3QgeD0iMiIgeT0iMiIgd2lkdGg9Ijk2IiBoZWlnaHQ9Ijk2IiByeD0iMjEiIGZpbGw9IiM3QzNBRUQiLz4KICA8ZyBmaWxsPSJub25lIiBzdHJva2U9IiNGRkZGRkYiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+CiAgICA8cmVjdCB4PSIzMiIgeT0iMjciIHdpZHRoPSI5IiBoZWlnaHQ9IjQ2IiByeD0iNC41IiBmaWxsPSIjRkZGRkZGIiBzdHJva2U9Im5vbmUiLz4KICAgIDxwb2x5bGluZSBwb2ludHM9IjQxLDUwIDY2LDI5IiBzdHJva2Utd2lkdGg9IjguNSIvPgogICAgPHBvbHlsaW5lIHBvaW50cz0iNDEsNTAgNjYsNzMiIHN0cm9rZS13aWR0aD0iOC41Ii8+CiAgPC9nPgogIDxjaXJjbGUgY3g9IjcwLjUiIGN5PSIyNi41IiByPSI0LjUiIGZpbGw9IiNDNEI1RkQiLz4KPC9zdmc+" alt="Kinexa" style="width:28px;height:28px;border-radius:7px;object-fit:cover;flex-shrink:0">
         <div>
           <div class="nav-brand-text">Kinexa</div>
           <div class="nav-brand-sub" id="navBrandSub">Kinesiología</div>
@@ -6111,7 +6118,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_217';
+const APP_VERSION = 'v3_218';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -6261,6 +6268,28 @@ function instNombreActual(){
   return currentUser?.instNombre || nombreInstPorId(currentUser?.institucion_id) || '';
 }
 
+// ── v3_218: título de la pestaña ────────────────────────────────
+// Decía "Pase de Kinesiología · HBEE": el nombre del proyecto original, cuando
+// era la app de un solo hospital. Cualquiera que abriera kinexa-app.com.ar veía
+// el nombre de otra institución en la pestaña y en el historial del navegador.
+// Ahora arranca en "Kinexa" y, con la sesión abierta, suma la institución.
+const TITULO_BASE = 'Kinexa';
+function actualizarTituloPestana(){
+  const inst = instNombreActual();
+  document.title = inst ? `${TITULO_BASE} · ${inst}` : `${TITULO_BASE} — La evolución digital de la kinesiología`;
+}
+
+// Membrete de los informes: nombre real de la institución de la sesión.
+// Antes estaba escrito a mano el del hospital de origen, así que TODAS las
+// instituciones emitían informes con el membrete de otro hospital.
+function membreteInstitucion(){
+  return instNombreActual() || 'Servicio de Kinesiología';
+}
+function firmaServicio(){
+  const inst = instNombreActual();
+  return 'Kinesióloga/o · Servicio de Kinesiología' + (inst ? ' — ' + inst : '');
+}
+
 async function cargarInstitucionesKinexa(){
   try {
     const insts = await rpc('kinexa_instituciones', {});
@@ -6283,6 +6312,7 @@ function completarNombreInstSesion(){
   currentUser.instNombre = n;
   if(USER) USER.instNombre = n;
   try { renderAvisoSuscripcion(); } catch(e){}
+  try { actualizarTituloPestana(); } catch(e){}   // v3_218
 }
 
 // ── Navegación entre pantallas de acceso ──────────────────
@@ -7502,11 +7532,13 @@ let currentEvoPacId = null;
 let editingEvoId = null; // id de la evolución que se está editando (null = carga nueva)
 
 // ════════════════════════════════════════════════════════
-//  ASSET: MEMBRETE HBEE (logo institucional en base64)
+//  ASSET: MEMBRETE INSTITUCIONAL (logo en base64)
 //  Declarado en alcance global para que esté disponible tanto en
 //  descargarInformeWord() como en exportarFichaNeuro()
+//  v3_218: renombrado; el nombre viejo era del hospital de origen
 // ════════════════════════════════════════════════════════
-  const MEMBRETE_HBEE = '';
+  const MEMBRETE_INST = '';
+  const MEMBRETE_HBEE = MEMBRETE_INST;   // alias, por si quedó alguna referencia
 
 let evalDeglusion = LS.get('hbee_eval_deg') || [];
 // ── v3_173: caché local acotada ─────────────────────────────────
@@ -8016,6 +8048,7 @@ function launchApp(){
   { const bp = document.getElementById('btnPlanes');
     if(bp) bp.style.display = (currentUser?.role === 'admin' && !institucionSinCargo()) ? '' : 'none'; }
   cargarSuscripcion();   // v3_198
+  actualizarTituloPestana();   // v3_218
   addLog('login',`Ingresó: ${currentUser.name}${currentSector?' ('+currentSector+')':''}`);
   updateDashHeader();
   setSyncStatus('syncing');
@@ -8024,6 +8057,7 @@ function launchApp(){
 }
 function doLogout(){
   cerrarNotas();   // v3_214: que no quede la libreta abierta para el que entre después
+  try { document.title = TITULO_BASE + ' — La evolución digital de la kinesiología'; } catch(e){}   // v3_218
   notas = []; _notasNube = null;
   if(DEMO){ location.reload(); return; }   // v3_185: la demo no deja rastro
   try { addLog('logout',`Salió: ${currentUser?.name||''}`); } catch(e){}
@@ -10137,7 +10171,8 @@ function descargarInformeWord(p, textoInforme, diasARM, diasTQT){
   const parrafos = [];
 
   // ---- Encabezado ----
-  parrafos.push(para(run('HOSPITAL DE ALTA COMPLEJIDAD DEL BICENTENARIO ESTEBAN ECHEVERRÍA',{b:true,color:'0C447C',sz:25}),{after:0}));
+  // v3_218: el membrete sale de la institución de la sesión, no escrito a mano
+  parrafos.push(para(run(membreteInstitucion().toUpperCase(),{b:true,color:'0C447C',sz:25}),{after:0}));
   parrafos.push(para(run('Servicio de Kinesiología',{b:true,color:'0F6E56',sz:21}),{after:0}));
   parrafos.push(para(run('INFORME KINÉSICO',{b:true,color:'185FA5',sz:30}),{before:120,after:0}));
   parrafos.push(para(run('Fecha de emisión: '+fechaHoy,{color:'666666',sz:18}),{after:160}));
@@ -10179,10 +10214,10 @@ function descargarInformeWord(p, textoInforme, diasARM, diasTQT){
   // ---- Firma ----
   parrafos.push(para(run('____________________________'),{before:700,align:'center',after:0}));
   parrafos.push(para(run(currentUser?.name || '—',{b:true,sz:22}),{align:'center',after:0}));
-  parrafos.push(para(run('Kinesióloga/o · Servicio de Kinesiología HBEE',{color:'666666',sz:20}),{align:'center'}));
+  parrafos.push(para(run(firmaServicio(),{color:'666666',sz:20}),{align:'center'}));
 
   // ---- Pie ----
-  parrafos.push(para(run('Hospital de Alta Complejidad del Bicentenario Esteban Echeverría — Servicio de Kinesiología. Informe generado con asistencia de IA en base a las evoluciones kinésicas registradas. Revisar y completar según criterio profesional antes de su uso clínico formal.',{color:'888888',sz:16,i:true}),{before:400}));
+  parrafos.push(para(run(membreteInstitucion() + ' — Servicio de Kinesiología. Informe generado con asistencia de IA en base a las evoluciones kinésicas registradas. Revisar y completar según criterio profesional antes de su uso clínico formal.',{color:'888888',sz:16,i:true}),{before:400}));
 
   const documentXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${parrafos.join('')}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>`;
@@ -10466,7 +10501,7 @@ function descargarNotaEvolucionIA(){
 </style></head>
 <body>
 <div class="head">
-  <div class="brand-name">HOSPITAL DE ALTA COMPLEJIDAD DEL BICENTENARIO ESTEBAN ECHEVERRÍA</div>
+  <div class="brand-name">${escapeHTML(membreteInstitucion().toUpperCase())}</div>
   <div class="brand-sub">Servicio de Kinesiología — Evolución kinésica</div>
 </div>
 <div class="datos">
@@ -10479,7 +10514,7 @@ function descargarNotaEvolucionIA(){
 <div class="firma">
   <div class="firma-line"></div>
   <div style="font-size:10.5pt;font-weight:700">${escapeHTML(kine)}</div>
-  <div style="font-size:9pt;color:#666">Kinesiólogo/a — Servicio de Kinesiología HBEE</div>
+  <div style="font-size:9pt;color:#666">${escapeHTML(firmaServicio())}</div>
 </div>
 </body></html>`;
   const blob = new Blob(['\ufeff', html], { type: 'application/msword' });
@@ -13942,12 +13977,12 @@ function imprimirFichaNeuroGuardada(fichaId){
 <div class="firma">
   <div class="firma-line"></div>
   <div style="font-size:11px;font-weight:700">${ficha.kine || '—'}</div>
-  <div style="font-size:10px;color:#666">Kinesióloga/o · Servicio de Kinesiología HBEE</div>
+  <div style="font-size:10px;color:#666">${escapeHTML(firmaServicio())}</div>
 </div>
 
 <div class="footer">
-  <span>Hospital de Alta Complejidad del Bicentenario Esteban Echeverría</span>
-  <span>Pase de Kinesiología · ${new Date().getFullYear()} — Año de la Grandeza Argentina</span>
+  <span>${escapeHTML(membreteInstitucion())}</span>
+  <span>Kinexa · ${new Date().getFullYear()}</span>
 </div>
 
 </body></html>`;
@@ -14170,12 +14205,12 @@ async function exportarFichaNeuro(){
 <div class="firma">
   <div class="firma-line"></div>
   <div style="font-size:11px;font-weight:700">${G('neuroKine') || currentUser?.name || '—'}</div>
-  <div style="font-size:10px;color:#666">Kinesióloga/o · Servicio de Kinesiología HBEE</div>
+  <div style="font-size:10px;color:#666">${escapeHTML(firmaServicio())}</div>
 </div>
 
 <div class="footer">
-  <span>Hospital de Alta Complejidad del Bicentenario Esteban Echeverría</span>
-  <span>Pase de Kinesiología · ${new Date().getFullYear()} — Año de la Grandeza Argentina</span>
+  <span>${escapeHTML(membreteInstitucion())}</span>
+  <span>Kinexa · ${new Date().getFullYear()}</span>
 </div>
 
 </body></html>`;
@@ -20036,7 +20071,8 @@ function descargarBackupCompleto(){
   }
   try {
     const backup = {
-      _tipo: 'HBEE_Kine_backup',
+      _tipo: 'Kinexa_backup',
+      _tipoLegacy: 'HBEE_Kine_backup',   // v3_218: compatibilidad con backups viejos
       _version: 1,
       _generadoPor: currentUser.user,
       _fecha: new Date().toISOString(),
@@ -20048,7 +20084,7 @@ function descargarBackupCompleto(){
     const blob = new Blob([json], { type:'application/json;charset=utf-8;' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'HBEE_Kine_BACKUP_' + today() + '.json';
+    a.download = 'Kinexa_BACKUP_' + today() + '.json';
     a.click();
     addLog('backup', `Backup completo descargado (${patients.length} pac, ${evoluciones.length} evo)`);
     showToast(`Backup descargado: ${patients.length} pacientes, ${evoluciones.length} evoluciones`, 'success');
@@ -20073,8 +20109,10 @@ async function restaurarBackupCompleto(event){
     const backup = JSON.parse(texto);
 
     // Validación de estructura
-    if(backup._tipo !== 'HBEE_Kine_backup' || !Array.isArray(backup.pacientes) || !Array.isArray(backup.evoluciones)){
-      showToast('El archivo no es un backup válido de HBEE Kine','error');
+    // v3_218: se aceptan los backups viejos, que llevaban el nombre anterior
+    const _tiposOk = ['Kinexa_backup','HBEE_Kine_backup'];
+    if(!_tiposOk.includes(backup._tipo) || !Array.isArray(backup.pacientes) || !Array.isArray(backup.evoluciones)){
+      showToast('El archivo no es un backup válido de Kinexa','error');
       input.value = '';
       return;
     }
