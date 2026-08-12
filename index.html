@@ -2621,6 +2621,36 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
               <button type="button" class="dec-btn" id="eBtnF_CNAF" onclick="setSoporteFinal('CNAF')"><i class="ti ti-wind"></i> CNAF</button>
               <button type="button" class="dec-btn" id="eBtnF_VNI" onclick="setSoporteFinal('VNI')"><i class="ti ti-mask"></i> VNI</button>
               <button type="button" class="dec-btn" id="eBtnF_VNI_CNAF" onclick="setSoporteFinal('VNI_CNAF')"><i class="ti ti-arrows-shuffle"></i> VNI + CNAF alternado</button>
+              <!-- v3_224: el escalón que faltaba. Si el soporte no invasivo
+                   fracasa y se intuba, esa sesión termina en ARM. -->
+              <button type="button" class="dec-btn" id="eBtnF_ARM" onclick="setSoporteFinal('ARM')" style="border-color:var(--red-200);color:var(--red-700)"><i class="ti ti-lungs"></i> Se intubó — pasa a ARM</button>
+            </div>
+
+            <!-- ARM final (intubación durante la sesión) -->
+            <div id="eSubF_ARM" style="display:none;margin-top:10px" class="dec-sublevel">
+              <div style="background:var(--red-50);border:1px solid var(--red-200);border-radius:8px;padding:9px 12px;margin-bottom:10px;font-size:11.5px;color:var(--red-800);line-height:1.5">
+                <i class="ti ti-alert-triangle"></i> Al marcar la intubación se habilitan los bloques de ARM de esta misma evolución
+                (mecánica ventilatoria, EAB, sedoanalgesia y SOFA) para que cargues lo que quedó después del procedimiento.
+              </div>
+              <div class="form-row three">
+                <div class="form-group"><label>Vía aérea</label>
+                  <select id="eF_ARMVia"><option value="">-</option><option>TET</option><option>TQT</option></select></div>
+                <div class="form-group"><label>Modo</label>
+                  <select id="eF_ARMModo"><option value="">-</option><option>VC-CMV</option><option>PC-CMV</option><option>PC-CSV</option></select></div>
+                <div class="form-group"><label>FiO₂ (%)</label>
+                  <input type="text" id="eF_ARMFio2" inputmode="numeric" maxlength="3" placeholder="21–100" oninput="filtrarFiO2(this)" onblur="normalizarFiO2(this)"></div>
+              </div>
+              <div class="form-row three">
+                <div class="form-group"><label>Vt (mL)</label><input type="number" id="eF_ARMVt" inputmode="numeric" placeholder="mL"></div>
+                <div class="form-group"><label>FR (rpm)</label><input type="number" id="eF_ARMFr" inputmode="numeric" placeholder="rpm"></div>
+                <div class="form-group"><label>PEEP (cmH₂O)</label><input type="number" id="eF_ARMPeep" inputmode="decimal" placeholder="cmH₂O"></div>
+              </div>
+              <div class="form-row">
+                <div class="form-group"><label>¿Quién intubó?</label>
+                  <input type="text" id="eF_ARMQuien" placeholder="Ej: médico de guardia, con asistencia kinésica"></div>
+                <div class="form-group"><label>Hora de la intubación</label>
+                  <input type="time" id="eF_ARMHora"></div>
+              </div>
             </div>
 
             <!-- VAN con O2 final -->
@@ -6342,7 +6372,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_223';
+const APP_VERSION = 'v3_224';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -12619,7 +12649,9 @@ function setARMStatus(enARM){
   document.getElementById('eBtnArmNo').className = 'dec-btn' + (!enARM ? ' dec-arm-no' : '');
   document.getElementById('eSubArmSi').style.display = enARM ? 'block' : 'none';
   document.getElementById('eSubArmNo').style.display = !enARM ? 'block' : 'none';
-  document.getElementById('armOnlyBlock').style.display = enARM ? 'block' : 'none';
+  // v3_224: si se intubó durante la sesión, el bloque de ARM sigue disponible
+  const _intubEnSesion = (document.getElementById('eSoporteFinalTipo')?.value || '') === 'ARM';
+  document.getElementById('armOnlyBlock').style.display = (enARM || _intubEnSesion) ? 'block' : 'none';
   // El Proceso de Decanulación solo aplica a TQT sin ARM: se oculta al tocar
   // este botón y se vuelve a mostrar únicamente si eligen TQT en setInterfazEsp
   actualizarSeccionDecanulacion(false);
@@ -13141,11 +13173,40 @@ function calcIndicesOxigenacion(){
 //   1) La evolución más reciente donde se registró la extubación/desconexión.
 //   2) El campo finARM de la ficha del paciente.
 //   3) La primera evolución en ventilación espontánea posterior a la última en ARM.
+// v3_224: clave de orden cronológico. La anterior concatenaba fecha + hora sin
+// normalizar, así que "9:35" quedaba después de "10:35" del mismo día
+// (comparación de texto: '9' > '1').
+function _claveCrono(e){
+  const h = String(e?.hora || '');
+  const m = h.match(/^(\d{1,2}):(\d{2})/);
+  const hh = m ? String(m[1]).padStart(2,'0') + ':' + m[2] : '00:00';
+  return String(e?.date || '') + ' ' + hh;
+}
+
+// ════════════════════════════════════════════════════════
+//  v3_224 — DESDE CUÁNDO ESTÁ SIN ARM
+// ════════════════════════════════════════════════════════
+// Antes se preguntaba, en este orden: última extubación → `finARM` de la ficha
+// → primera evolución espontánea después de la última en ARM. Ese orden falla
+// en dos casos que aparecen todo el tiempo:
+//
+//   · El traqueostomizado que se desconecta del ventilador no se "extuba", así
+//     que caía en `finARM`. Si ese campo quedaba cargado con una fecha que no
+//     era la real (o se editaba después), el conteo salía mal.
+//   · Si las evoluciones viejas todavía no se cargaron desde la nube, no se
+//     encuentra ninguna en ARM y se tomaba la PRIMERA espontánea disponible,
+//     que podía ser la de hoy: de ahí el "Día 0, salió de ARM hoy" en un
+//     paciente que estaba en espontáneo desde hacía dos días.
+//
+// Ahora se calcula al revés y desde lo más confiable: se busca la RACHA de
+// evoluciones espontáneas que llega hasta hoy y se toma su inicio. Los otros
+// dos datos (extubación y `finARM`) solo se usan si son anteriores a esa racha,
+// donde la afinan; si son posteriores, están mal y se descartan.
 function fechaSalidaARM(patientId){
   const p = patients.find(x => x.id === patientId);
   const evos = evoluciones
     .filter(e => e.patientId === patientId && !e.tipo)
-    .sort((a,b) => String(a.date + (a.hora||'')).localeCompare(String(b.date + (b.hora||''))));
+    .sort((a,b) => _claveCrono(a).localeCompare(_claveCrono(b)));
 
   const enARM = e => !e.interfazEsp && (e.interfaz === 'TET' || e.interfaz === 'TQT');
   const espontanea = e => !!e.interfazEsp;
@@ -13154,28 +13215,29 @@ function fechaSalidaARM(patientId){
   const huboARM = !!(p && p.inicioARM) || evos.some(enARM);
   if(!huboARM) return null;
 
-  // 1) Última extubación registrada
-  const conExtub = evos.filter(e => esEvoConExtubacion(e));
-  if(conExtub.length) return conExtub[conExtub.length-1].date;
+  // ── Inicio de la racha espontánea que llega hasta la última evolución ──
+  const conDatoVent = evos.filter(e => e.interfaz || e.interfazEsp);
+  if(!conDatoVent.length) return (p && p.finARM) ? p.finARM : null;
+  const ultima = conDatoVent[conDatoVent.length - 1];
+  if(!espontanea(ultima)) return null;   // la última evolución lo muestra en ARM
 
-  // 2) Fin de ARM cargado en la ficha
-  if(p && p.finARM) return p.finARM;
-
-  // 3) Primera evolución espontánea después de la última en ARM
-  let idxUltARM = -1;
-  evos.forEach((e,i)=>{ if(enARM(e)) idxUltARM = i; });
-  if(idxUltARM >= 0){
-    for(let i = idxUltARM+1; i < evos.length; i++){
-      if(espontanea(evos[i])) return evos[i].date;
-    }
-    return null; // sigue en ARM
+  let inicioRacha = ultima.date;
+  for(let i = conDatoVent.length - 1; i >= 0; i--){
+    if(!espontanea(conDatoVent[i])) break;
+    inicioRacha = conDatoVent[i].date;
   }
-  // v3_171: ingresó en ARM según la ficha, pero ninguna evolución lo muestra en
-  // ARM invasiva. Es el caso del paciente que se extubó antes de la primera
-  // evolución: sin esto seguía contando días de ARM para siempre.
-  const primeraEsp = evos.find(espontanea);
-  if(primeraEsp) return primeraEsp.date;
-  return null;
+
+  // ── Datos que pueden precisar el momento exacto de la salida ──
+  // Solo valen si son ANTERIORES o iguales al inicio de la racha: si dicen una
+  // fecha posterior, contradicen a las evoluciones y no se usan.
+  const candidatos = [];
+  const conExtub = evos.filter(e => esEvoConExtubacion(e));
+  if(conExtub.length) candidatos.push(conExtub[conExtub.length-1].date);
+  if(p && p.finARM) candidatos.push(p.finARM);
+  const validos = candidatos.filter(f => f && String(f) <= String(inicioRacha));
+  if(validos.length) return validos.sort().pop();   // el más cercano a la racha
+
+  return inicioRacha;
 }
 
 // Días de ventilación espontánea a hoy (el día de la salida cuenta como día 1)
@@ -13252,10 +13314,19 @@ function actualizarAccesoDeglusion(){
 function actualizarBloquesRespiratorios(){
   const enARM = document.getElementById('eBtnArmSi')?.classList.contains('dec-arm-si');
   const esp = String(document.getElementById('eInterfazEsp')?.value || '');
+  // v3_224: si durante la sesión se intubó, el paciente TERMINA en ARM aunque
+  // haya empezado en soporte no invasivo. Los bloques de ARM tienen que estar
+  // disponibles en esta misma evolución para cargar lo de después del
+  // procedimiento: mecánica ventilatoria, EAB de control, sedoanalgesia y SOFA.
+  const intubadoEnSesion = (document.getElementById('eSoporteFinalTipo')?.value || '') === 'ARM';
+  const conARM = enARM || intubadoEnSesion;
+
   const eab = document.getElementById('eabWrap');
-  if(eab) eab.style.display = (enARM || esp.startsWith('CNAF') || esp.startsWith('VNI')) ? 'block' : 'none';
+  if(eab) eab.style.display = (conARM || esp.startsWith('CNAF') || esp.startsWith('VNI')) ? 'block' : 'none';
   const sec = document.getElementById('secrecionesWrap');
-  if(sec) sec.style.display = (enARM || esp.startsWith('TQT')) ? 'block' : 'none';
+  if(sec) sec.style.display = (conARM || esp.startsWith('TQT')) ? 'block' : 'none';
+  const armBox = document.getElementById('armOnlyBlock');
+  if(armBox && intubadoEnSesion) armBox.style.display = 'block';
   actualizarCuffLeak();   // v3_207
   actualizarAccesoDeglusion();   // v3_211
 }
@@ -13652,15 +13723,17 @@ function limpiarSoporteFinal(){
 }
 
 function setSoporteFinal(tipo){
-  ['eBtnF_VAN_AA','eBtnF_VAN_O2','eBtnF_CNAF','eBtnF_VNI','eBtnF_VNI_CNAF'].forEach(id => {
+  ['eBtnF_VAN_AA','eBtnF_VAN_O2','eBtnF_CNAF','eBtnF_VNI','eBtnF_VNI_CNAF','eBtnF_ARM'].forEach(id => {
     const b = document.getElementById(id); if(b) b.classList.remove('dec-sel');
   });
-  const btn = document.getElementById({ VAN_AA:'eBtnF_VAN_AA', VAN_O2:'eBtnF_VAN_O2', CNAF:'eBtnF_CNAF', VNI:'eBtnF_VNI', VNI_CNAF:'eBtnF_VNI_CNAF' }[tipo]);
+  const btn = document.getElementById({ VAN_AA:'eBtnF_VAN_AA', VAN_O2:'eBtnF_VAN_O2', CNAF:'eBtnF_CNAF', VNI:'eBtnF_VNI', VNI_CNAF:'eBtnF_VNI_CNAF', ARM:'eBtnF_ARM' }[tipo]);
   if(btn) btn.classList.add('dec-sel');
   const h = document.getElementById('eSoporteFinalTipo'); if(h) h.value = tipo;
   document.getElementById('eSubF_VANO2').style.display = tipo === 'VAN_O2' ? 'block' : 'none';
   document.getElementById('eSubF_CNAF').style.display  = (tipo === 'CNAF' || tipo === 'VNI_CNAF') ? 'block' : 'none';
   document.getElementById('eSubF_VNI').style.display   = (tipo === 'VNI'  || tipo === 'VNI_CNAF') ? 'block' : 'none';
+  document.getElementById('eSubF_ARM').style.display   = tipo === 'ARM' ? 'block' : 'none';
+  actualizarBloquesRespiratorios();   // v3_224: la intubación abre los bloques de ARM
   marcarModalSucio('modalEvo');
 }
 
@@ -13693,6 +13766,11 @@ function leerSoporteFinal(){
     o.vniModo = G('eF_VNIModo'); o.vniPi = G('eF_VNIPi'); o.vniPeep = G('eF_VNIPeep');
     o.vniFr = G('eF_VNIFr'); o.vniFio2 = G('eF_VNIFio2'); o.vniMascara = G('eF_VNIMascara');
   }
+  if(tipo === 'ARM'){   // v3_224
+    o.armVia = G('eF_ARMVia'); o.armModo = G('eF_ARMModo'); o.armFio2 = G('eF_ARMFio2');
+    o.armVt = G('eF_ARMVt'); o.armFr = G('eF_ARMFr'); o.armPeep = G('eF_ARMPeep');
+    o.armQuien = G('eF_ARMQuien'); o.armHora = G('eF_ARMHora');
+  }
   return o;
 }
 
@@ -13715,6 +13793,10 @@ function precargarSoporteFinal(sf){
   M('eF_CNAFflujo', sf.cnafFlujo); M('eF_CNAFfio2', sf.cnafFio2);
   M('eF_VNIModo', sf.vniModo); M('eF_VNIPi', sf.vniPi); M('eF_VNIPeep', sf.vniPeep);
   M('eF_VNIFr', sf.vniFr); M('eF_VNIFio2', sf.vniFio2); M('eF_VNIMascara', sf.vniMascara);
+  // v3_224
+  M('eF_ARMVia', sf.armVia); M('eF_ARMModo', sf.armModo); M('eF_ARMFio2', sf.armFio2);
+  M('eF_ARMVt', sf.armVt); M('eF_ARMFr', sf.armFr); M('eF_ARMPeep', sf.armPeep);
+  M('eF_ARMQuien', sf.armQuien); M('eF_ARMHora', sf.armHora);
   actualizarResumenSoporteInicial();
 }
 
@@ -13733,6 +13815,16 @@ function textoSoporteFinal(sf){
   if(t === 'CNAF') return cnaf;
   if(t === 'VNI')  return vni;
   if(t === 'VNI_CNAF') return `${vni} alternado con ${cnaf}`;
+  if(t === 'ARM'){   // v3_224
+    return `ARM — se intubó${sf.armVia ? ' ('+sf.armVia+')' : ''}`
+      + (sf.armModo ? ' · '+sf.armModo : '')
+      + (sf.armVt ? ' · Vt '+sf.armVt : '')
+      + (sf.armFr ? ' · FR '+sf.armFr : '')
+      + (sf.armPeep ? ' · PEEP '+sf.armPeep : '')
+      + (sf.armFio2 ? ' · FiO₂ '+sf.armFio2+'%' : '')
+      + (sf.armHora ? ' · '+sf.armHora+' hs' : '')
+      + (sf.armQuien ? ' · intubó: '+sf.armQuien : '');
+  }
   return SOPORTE_LABEL[t] || t;
 }
 
