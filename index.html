@@ -1887,17 +1887,14 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         </div><!-- fin fGrupoPostUTI -->
       </div><!-- fin fGrupoEspecifico -->
 
-      <div class="form-group" id="fEstFxRow">
-        <label>Estado funcional previo</label>
-        <select id="fEstFx">
-          <option value="">-</option>
-          <option>Independiente sin ayuda</option>
-          <option>Independiente con ayuda técnica (bastón/andador)</option>
-          <option>Necesita ayuda de 1 persona</option>
-          <option>Necesita ayuda de 2 personas</option>
-          <option>Postrado / dependiente total</option>
-        </select>
-      </div>
+      <!-- v3_222: "Estado funcional previo" se retiró del ingreso. Medía lo
+           mismo que la Escala de Fragilidad Clínica (cómo se manejaba el
+           paciente antes de enfermarse) pero con categorías propias y sin
+           validación, así que había dos campos que podían contradecirse.
+           Queda solo el CFS, que además está desarrollado con la guía de
+           preguntas. El campo `estFx` sigue existiendo en los datos: las
+           fichas viejas conservan lo que se cargó y se sigue exportando. -->
+      <input type="hidden" id="fEstFx">
       <div class="form-row" id="fTQTMinRow">
         <div class="form-group">
           <label>¿Traqueostomizado?</label>
@@ -1985,6 +1982,29 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         Escala de Fragilidad Clínica (Rockwood). Se puntúa el estado <strong>habitual del paciente en las 2 semanas previas</strong> a
         enfermarse, no cómo está ahora: alguien que caminaba solo y hoy está en ARM por una neumonía se puntúa por cómo caminaba antes.
       </div>
+      <!-- v3_221: se puede llegar al nivel respondiendo preguntas, en vez de
+           tener que saber de memoria a qué corresponde cada número -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <button type="button" class="btn btn-sm btn-primary" id="btnCFSGuia" onclick="iniciarGuiaCFS()">
+          <i class="ti ti-list-search"></i> Responder preguntas
+        </button>
+        <button type="button" class="btn btn-sm btn-ghost" id="btnCFSManual" onclick="cerrarGuiaCFS()" style="display:none">
+          <i class="ti ti-x"></i> Cerrar la guía y elegir a mano
+        </button>
+      </div>
+
+      <!-- Guía paso a paso -->
+      <div id="fCFSGuia" style="display:none;border:1.5px solid var(--purple-200);border-radius:10px;padding:12px 14px;margin-bottom:11px;background:var(--purple-50)">
+        <div style="font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--purple-700);margin-bottom:3px" id="fCFSPaso"></div>
+        <div style="font-size:13.5px;font-weight:700;color:var(--blue-900);line-height:1.4;margin-bottom:3px" id="fCFSPregunta"></div>
+        <div style="font-size:11.5px;color:var(--text-muted);line-height:1.45;margin-bottom:10px" id="fCFSAyuda"></div>
+        <div style="display:flex;flex-direction:column;gap:7px" id="fCFSOpciones"></div>
+        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+          <button type="button" class="btn btn-sm btn-ghost" onclick="volverGuiaCFS()" id="btnCFSVolver" style="display:none"><i class="ti ti-arrow-left"></i> Volver</button>
+          <button type="button" class="btn btn-sm btn-ghost" onclick="iniciarGuiaCFS()"><i class="ti ti-refresh"></i> Empezar de nuevo</button>
+        </div>
+      </div>
+
       <div class="form-row">
         <div class="form-group">
           <label>Nivel de fragilidad (opcional)</label>
@@ -2950,7 +2970,11 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
               <label class="multisel-opt"><input type="checkbox" value="Midazolam">Midazolam</label>
               <label class="multisel-opt"><input type="checkbox" value="Propofol">Propofol</label>
               <label class="multisel-opt"><input type="checkbox" value="Lorazepam">Lorazepam</label>
-              <label class="multisel-opt"><input type="checkbox" value="Quetamina">Quetamina</label>
+              <label class="multisel-opt"><input type="checkbox" value="Ketamina">Ketamina</label>
+              <!-- v3_221: la dexmedetomidina pasó de Analgesia a Sedación. Es un
+                   agonista alfa-2 con efecto sedante como acción principal; la
+                   analgesia que aporta es secundaria y no reemplaza a un opioide. -->
+              <label class="multisel-opt"><input type="checkbox" value="Dexmedetomidina">Dexmedetomidina</label>
             </div>
           </div>
         </div>
@@ -2963,7 +2987,6 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
               <label class="multisel-opt"><input type="checkbox" value="Fentanilo">Fentanilo</label>
               <label class="multisel-opt"><input type="checkbox" value="Morfina">Morfina</label>
               <label class="multisel-opt"><input type="checkbox" value="Remifentanilo">Remifentanilo</label>
-              <label class="multisel-opt"><input type="checkbox" value="Dexmedetomidina">Dexmedetomidina</label>
             </div>
           </div>
         </div>
@@ -4197,6 +4220,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <span class="tag" onclick="toggleTag(this)">Traslado a TAC</span>
           <span class="tag" onclick="toggleTag(this)">Traslado a QX</span>
           <span class="tag" onclick="toggleTag(this)">Traslado a otro sector</span>
+          <span class="tag" onclick="toggleTag(this)">Traslado a otra cama</span>
           <span class="tag" onclick="toggleTag(this)">Evaluación de deglución</span>
           <span class="tag" onclick="toggleTag(this)">Rehabilitación de la deglución</span>
           <span class="tag" onclick="toggleTag(this)">Toma de aspirado traqueal</span>
@@ -6120,6 +6144,14 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <div class="form-section-title"><i class="ti ti-arrows-transfer-up"></i> Tipo de movimiento</div>
       <div style="display:flex;flex-direction:column;gap:8px" id="egresoBtns">
 
+        <!-- v3_220: cambio de cama dentro del mismo sector. Antes había que
+             editar la ficha a mano, así que el movimiento no quedaba registrado
+             en ningún lado y el pase impreso quedaba con la cama vieja. -->
+        <div class="egreso-option" id="egresoOptCama" onclick="selectEgresoTipo('cama')">
+          <div class="egreso-icon" style="background:var(--purple-50);color:var(--purple-600)"><i class="ti ti-bed"></i></div>
+          <div><div class="egreso-label">Cambio de cama</div><div class="egreso-sub">Sigue en el mismo sector, se mueve de cama</div></div>
+        </div>
+
         <div class="egreso-option" id="egresoOptTraslado" onclick="selectEgresoTipo('traslado')">
           <div class="egreso-icon" style="background:var(--blue-50);color:var(--blue-600)"><i class="ti ti-arrows-transfer-up"></i></div>
           <div><div class="egreso-label">Traslado interno</div><div class="egreso-sub">El paciente continúa en el hospital, cambia de sector</div></div>
@@ -6135,6 +6167,19 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <div><div class="egreso-label">Óbito</div><div class="egreso-sub">Fallecimiento del paciente</div></div>
         </div>
 
+      </div>
+    </div>
+
+    <!-- v3_220: cambio de cama -->
+    <div id="egresoCama" style="display:none">
+      <div class="form-section">
+        <div class="form-section-title"><i class="ti ti-bed"></i> Nueva cama</div>
+        <div class="form-group">
+          <div style="font-size:12px;color:var(--text-muted);margin-bottom:7px" id="egresoCamaActual"></div>
+          <select id="egresoCamaNueva">
+            <option value="">Seleccioná la cama...</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -6252,7 +6297,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_219';
+const APP_VERSION = 'v3_222';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -8636,7 +8681,7 @@ async function generarPaseSector(){
 
   // Egresos de las últimas 24 hs, que en un pase se mencionan
   const egresos = evoluciones
-    .filter(e => ['alta','traslado','obito'].includes(e.tipo) && !e._borrada && _tsEvo(e) >= desdeMs)
+    .filter(e => ['alta','traslado','obito','cama'].includes(e.tipo) && !e._borrada && _tsEvo(e) >= desdeMs)   // v3_220
     .map(e => ({ evo: e, pac: patients.find(x => x.id === e.patientId) }))
     .filter(x => x.pac && x.pac.sala === sector);
 
@@ -8797,7 +8842,7 @@ async function construirPDFPase(datos){
     parrafo('Movimientos de las últimas 24 horas', 10, 'bold', VIOLETA);
     y += 1;
     datos.egresos.forEach(({ evo, pac }) => {
-      const tipo = evo.tipo === 'obito' ? 'Óbito' : evo.tipo === 'alta' ? 'Alta' : 'Traslado';
+      const tipo = { obito:'Óbito', alta:'Alta', cama:'Cambio de cama' }[evo.tipo] || 'Traslado';   // v3_220
       parrafo(`${tipo} — ${pac.apellido}, ${pac.nombre} (cama ${pac.cama || '—'}): ${evo.obs || ''}`, 8.5, 'normal', NEGRO, 3);
     });
   }
@@ -10047,7 +10092,7 @@ async function generarInformeAlta(patientId){
   // Armar texto completo de TODAS las evoluciones, en orden cronológico
   const evosTexto = todasEvos.map(e => {
     const partes = [`— ${fmtDate(e.date)} (${e.turno||'—'}, kine: ${e.kine||'—'}):`];
-    if(e.tipo==='traslado'||e.tipo==='alta'||e.tipo==='obito'||e.tipo==='reingreso'){
+    if(e.tipo==='traslado'||e.tipo==='alta'||e.tipo==='obito'||e.tipo==='reingreso'||e.tipo==='cama'){
       partes.push(`[EVENTO: ${e.tipo.toUpperCase()}] ${e.obs||''}`);
       return partes.join(' ');
     }
@@ -10075,7 +10120,7 @@ async function generarInformeAlta(patientId){
       if(e.humidificacion) partes.push(`Humidificación: ${fmtHumidificacion(e)}.`);   // v3_209
       if(e.pafi) partes.push(`PAFI: ${e.pafi}.`);
       if(e.rass) partes.push(`RASS: ${e.rass}, CPOT: ${e.cpot||'—'}.`);
-      if((e.sedacion||[]).length || (e.analgesia||[]).length) partes.push(`Sedoanalgesia: ${[...(e.sedacion||[]),...(e.analgesia||[])].join(', ')}.`);
+      if((e.sedacion||[]).length || (e.analgesia||[]).length) partes.push(`Sedoanalgesia: ${[...sedacionDe(e), ...analgesiaDe(e)].join(', ')}.`);   // v3_221
       if(e.akm1) partes.push(`AKM: ${e.akm1}.`);
       if(e.mrc) partes.push(`MRC: ${e.mrc}.`);
       if(e.pve==='Sí'||e.pve==='Si') partes.push(`PVE realizada (${e.pveTipo||'—'}, ${e.pveMin||'—'}min): ${e.pveResult||'sin resultado'}.`);
@@ -10464,7 +10509,7 @@ function construirTextoEvo(evo, p){
     add('CAPD (delirium)', evo.capd); add('SOPHIA/SOS (abstinencia)', evo.sophia);
     add('Ventana de sedación', evo.ventSed);
     add('Dolor (autorreporte)', evo.dolorAuto); add('Escala de dolor', evo.dolorEscala);
-    add('Sedación', evo.sedacion); add('Analgesia', evo.analgesia); add('BNM', evo.bnm);
+    add('Sedación', sedacionDe(evo)); add('Analgesia', analgesiaDe(evo)); add('BNM', evo.bnm);   // v3_221
     add('Vasoactivos', evo.vasoact); add('Otros fármacos', evo.otrosFarmacos);
     add('AKM', evo.akm1); add('MRC', evo.mrc); add('MRC total (score)', evo.mrcTotal);
     if(evo.pve && evo.pve !== '' && evo.pve !== 'No'){
@@ -10824,6 +10869,16 @@ const MODALES_PROTEGIDOS = ['modalPaciente','modalEvo','modalEvoMin','modalNeuro
 const modalSucio = {};
 
 function marcarModalLimpio(id){ modalSucio[id] = false; }
+
+// v3_221: marca un modal como "con datos sin guardar" por su id.
+// Existían dos llamadas a esta función (una desde v3_216, en el cambio de
+// soporte no invasivo) pero la función nunca se había escrito: la de v3_216
+// estaba dentro de un try/catch y fallaba en silencio, así que elegir el
+// soporte final con los botones NO marcaba el modal como sucio y se podía
+// cerrar perdiendo lo cargado sin ningún aviso.
+function marcarModalSucio(id){
+  if(MODALES_PROTEGIDOS.includes(id)) modalSucio[id] = true;
+}
 function marcarModalSucioDesde(target){
   if(!target || !target.closest) return;
   const m = target.closest('.modal-overlay');
@@ -12214,7 +12269,7 @@ function aplicarModoFichaPorSala(sala){
   mostrar('fPercentilosWrap', ped);
   mostrar('antGridPed', ped);
   mostrar('antGrid', !ped);
-  mostrar('fEstFxRow', !ped);   // v3_135: no aplica en pediatría
+  // v3_222: el campo ya no se muestra en ningún caso (lo reemplaza el CFS)
   // En pediatría la edad sale de la fecha de nacimiento
   const wrapEdad = document.getElementById('fEdad')?.closest('.form-group');
   if(wrapEdad) wrapEdad.style.display = ped ? 'none' : '';
@@ -12959,7 +13014,9 @@ function aplicarModoEvoPorSala(patientId){
   if(selAds){
     const act = selAds.value;
     selAds.innerHTML = '<option value="">-</option>' +
-      (ped ? ADS_PED : ADS_ADULTO).map(v=>`<option value="${v}">${v} cm</option>`).join('');
+      (ped ? ADS_PED : ADS_ADULTO).map(v=>`<option value="${v}">${String(v).replace('.', ',')} cm</option>`).join('');
+    // v3_222: si venía un valor entero cargado como "9" y ahora la lista es de
+    // medios centímetros, "9" sigue existiendo, así que la selección se conserva
     selAds.value = act;
   }
   // Tamaños de tubo: en pediatría desde 2 mm
@@ -12974,7 +13031,16 @@ function aplicarModoEvoPorSala(patientId){
 }
 const DIAMETROS_ADULTO = ['6','6.5','7','7.5','8','8.5','9'];
 const ADS_ADULTO = ['16','17','18','19','20','21','22','23','24','25','26','27','28'];
-const ADS_PED = ['4','5','6','7','8','9','10','11','12','13','14','15','16','17','18','19','20','21','22','23','24','25','26','27','28'];
+// v3_222: en pediatría la progresión del TET a la arcada dentaria va de a medio
+// centímetro. En un lactante con el tubo a 9 cm, medio centímetro es más del 5%
+// de la profundidad: redondear al centímetro entero borra el ajuste real y puede
+// dejar el registro con una posición que no es la que quedó.
+// Se genera de 4,0 a 28,0 en pasos de 0,5. En adultos se mantiene el paso de 1 cm.
+const ADS_PED = (() => {
+  const out = [];
+  for(let v = 4; v <= 28.0001; v += 0.5) out.push(String(Math.round(v * 10) / 10));
+  return out;
+})();
 const DIAMETROS_PED = ['2','2.5','3','3.5','4','4.5','5','5.5','6','6.5','7','7.5','8','8.5','9'];
 
 // ── v3_133: índices de oxigenación pediátricos ──
@@ -13502,7 +13568,7 @@ function setSoporteFinal(tipo){
   document.getElementById('eSubF_VANO2').style.display = tipo === 'VAN_O2' ? 'block' : 'none';
   document.getElementById('eSubF_CNAF').style.display  = (tipo === 'CNAF' || tipo === 'VNI_CNAF') ? 'block' : 'none';
   document.getElementById('eSubF_VNI').style.display   = (tipo === 'VNI'  || tipo === 'VNI_CNAF') ? 'block' : 'none';
-  try { marcarModalSucio('modalEvo'); } catch(e){}
+  marcarModalSucio('modalEvo');
 }
 
 function setVANO2tipoFinal(tipo){
@@ -14386,6 +14452,28 @@ function poblarCamasDestino(){
   ).join('');
 }
 
+// v3_220: camas libres del sector donde ya está el paciente
+function poblarCamasMismoSector(){
+  const p = patients.find(x => x.id === egresoPacId);
+  const sel = document.getElementById('egresoCamaNueva');
+  const info = document.getElementById('egresoCamaActual');
+  if(!p || !sel) return;
+  if(info) info.innerHTML = `Está en <strong>${escapeHTML(SALA_LABEL[p.sala] || p.sala || '—')}</strong>, cama <strong>${escapeHTML(String(p.cama || '—'))}</strong>.`;
+  const camas = camasDeSector(p.sala);
+  if(!camas.length){
+    sel.innerHTML = '<option value="">Este sector no tiene camas configuradas</option>';
+    return;
+  }
+  const ocupadas = {};
+  patients.forEach(pp => {
+    if(pp.estado === 'Activo' && pp.sala === p.sala && pp.cama && pp.id !== egresoPacId) ocupadas[String(pp.cama)] = pp.apellido;
+  });
+  sel.innerHTML = '<option value="">Seleccioná la cama...</option>' + camas
+    .filter(c => String(c) !== String(p.cama))   // la cama actual no es un destino
+    .map(c => `<option value="${c}">Cama ${c}${ocupadas[c] ? ' — ocupada (' + escapeHTML(ocupadas[c]) + ')' : ''}</option>`)
+    .join('');
+}
+
 function openEgreso(patientId){
   const p = patients.find(x=>x.id===patientId);
   if(!p) return;
@@ -14405,10 +14493,13 @@ function openEgreso(patientId){
   document.getElementById('egresoTraslado').style.display = 'none';
   document.getElementById('egresoAlta').style.display = 'none';
   document.getElementById('egresoObito').style.display = 'none';
+  document.getElementById('egresoCama').style.display = 'none';        // v3_220
   document.getElementById('egresoComun').style.display = 'none';
   document.getElementById('egresoConfirmBtn').disabled = true;
-  ['egresoOptTraslado','egresoOptAlta','egresoOptObito'].forEach(id=>{
-    document.getElementById(id).className = 'egreso-option';
+  const _camaNueva = document.getElementById('egresoCamaNueva');
+  if(_camaNueva) _camaNueva.value = '';
+  ['egresoOptTraslado','egresoOptAlta','egresoOptObito','egresoOptCama'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.className = 'egreso-option';
   });
   openModal('modalEgreso');
 }
@@ -14436,15 +14527,18 @@ function abrirTrasladoDesdeAlta(patientId, sectorDestino, camaDestino){
 
 function selectEgresoTipo(tipo){
   egresoTipo = tipo;
-  document.getElementById('egresoOptTraslado').className = 'egreso-option';
-  document.getElementById('egresoOptAlta').className = 'egreso-option';
-  document.getElementById('egresoOptObito').className = 'egreso-option';
+  ['egresoOptTraslado','egresoOptAlta','egresoOptObito','egresoOptCama'].forEach(id=>{
+    const el = document.getElementById(id); if(el) el.className = 'egreso-option';
+  });
   if(tipo==='traslado') document.getElementById('egresoOptTraslado').className = 'egreso-option selected';
   if(tipo==='alta') document.getElementById('egresoOptAlta').className = 'egreso-option selected-teal';
   if(tipo==='obito') document.getElementById('egresoOptObito').className = 'egreso-option selected-red';
+  if(tipo==='cama') document.getElementById('egresoOptCama').className = 'egreso-option selected';   // v3_220
   document.getElementById('egresoTraslado').style.display = tipo==='traslado'?'block':'none';
   document.getElementById('egresoAlta').style.display = tipo==='alta'?'block':'none';
   document.getElementById('egresoObito').style.display = tipo==='obito'?'block':'none';   // v3_182
+  document.getElementById('egresoCama').style.display = tipo==='cama'?'block':'none';      // v3_220
+  if(tipo==='cama') poblarCamasMismoSector();
   document.getElementById('egresoComun').style.display = 'block';
   // v3_182: el botón de óbito se toca cuando el paciente SALE de la habitación,
   // que en muerte encefálica puede ser días después de la certificación. La
@@ -14513,7 +14607,30 @@ async function confirmarEgreso(){
   // Se arma todo en borrador: nada se aplica hasta que la nube confirme.
   let cambios = null, evo = null, logTipo = '', logMsg = '', okMsg = '', okTono = 'success';
 
-  if(egresoTipo === 'traslado'){
+  if(egresoTipo === 'cama'){
+    // v3_220: movimiento dentro del mismo sector. No es un egreso ni un
+    // traslado: el paciente sigue Activo, no cambia la fecha de ingreso al
+    // sector y la estadística no lo cuenta como movimiento entre servicios.
+    const nueva = (document.getElementById('egresoCamaNueva')?.value || '').trim();
+    if(!nueva){ showToast('Seleccioná la cama nueva','error'); return; }
+    if(String(nueva) === String(p.cama)){ showToast('Es la misma cama en la que ya está','error'); return; }
+    const ocupante = patients.find(x => x.estado === 'Activo' && x.sala === p.sala
+      && String(x.cama) === String(nueva) && x.id !== p.id);
+    if(ocupante && !confirm(`La cama ${nueva} figura ocupada por ${ocupante.apellido}, ${ocupante.nombre}.\n\n¿Mover igual? Van a quedar dos pacientes en la misma cama hasta que corrijas al otro.`)) return;
+    const camaAnterior = p.cama || '—';
+    cambios = { cama: nueva };
+    evo = {
+      id:Date.now(), patientId:egresoPacId, date:fecha,
+      turno:currentShift(), kine:currentUser.name, kineUser: currentUser?.user || '',
+      tipo:'cama', sala: p.sala,
+      obs:`CAMBIO DE CAMA: ${SALA_LABEL[p.sala]||p.sala} C${camaAnterior} → C${nueva}${obs?'. '+obs:''}`,
+      tecnicas:[], tolerancia:'',
+    };
+    logTipo = 'edit';
+    logMsg  = `Cambio de cama ${p.apellido}, ${p.nombre}: C${camaAnterior} → C${nueva} (${SALA_LABEL[p.sala]||p.sala})`;
+    okMsg   = `Movido a la cama ${nueva}`;
+
+  } else if(egresoTipo === 'traslado'){
     const destino = document.getElementById('egresoSectorDestino').value;
     const nuevaCama = document.getElementById('egresoNuevaCama').value.trim();
     if(!destino){ showToast('Seleccioná el sector destino','error'); return; }
@@ -14938,9 +15055,9 @@ function badgeReingreso(p){
 
 function evoCardHTML(e, i){
   // Eventos especiales (traslado, alta, óbito, reingreso)
-  if(e.tipo==='traslado'||e.tipo==='alta'||e.tipo==='obito'||e.tipo==='reingreso'){
-    const cm={traslado:'var(--blue-400)',alta:'var(--teal-400)',obito:'var(--red-400)',reingreso:'var(--purple-500,#8b5cf6)'};
-    const im={traslado:'ti-arrows-transfer-up',alta:'ti-home-check',obito:'ti-heart-off',reingreso:'ti-rotate-clockwise'};
+  if(e.tipo==='traslado'||e.tipo==='alta'||e.tipo==='obito'||e.tipo==='reingreso'||e.tipo==='cama'){
+    const cm={traslado:'var(--blue-400)',alta:'var(--teal-400)',obito:'var(--red-400)',reingreso:'var(--purple-500,#8b5cf6)',cama:'var(--purple-400)'};
+    const im={traslado:'ti-arrows-transfer-up',alta:'ti-home-check',obito:'ti-heart-off',reingreso:'ti-rotate-clockwise',cama:'ti-bed'};
     return `<div class="evo-entry"><div class="evo-card" style="border-left:3px solid ${cm[e.tipo]}">
       <div class="evo-card-header"><div style="display:flex;align-items:center;gap:6px">
         <i class="ti ${im[e.tipo]}" style="color:${cm[e.tipo]};font-size:16px"></i>
@@ -15019,7 +15136,7 @@ function evoCardHTML(e, i){
     [e.comfortB,'COMFORT-B'], [e.sbs,'SBS'], [e.nrs,'NRS (dolor)'], [e.ops,'OPS'],
     [e.flacc,'FLACC'], [e.capd,'CAPD'], [e.sophia,'SOPHIA / SOS'],
     [e.ventSed,'Ventana de sedación'],
-    [dolorTxt,'Dolor'], [e.sedacion,'Sedación'], [e.analgesia,'Analgesia'], [e.bnm,'BNM'],
+    [dolorTxt,'Dolor'], [sedacionDe(e),'Sedación'], [analgesiaDe(e),'Analgesia'], [e.bnm,'BNM'],   // v3_221
     [e.vasoact,'Vasoactivos'], [e.otrosFarmacos,'Otros fármacos']
   ]);
   // 4) Mecánica ventilatoria — setting inicial
@@ -15584,9 +15701,14 @@ function renderTabla(){
       <td>${p.estado==='Activo' ? ventBadgeHTML(estVent) : '<span class="badge badge-gray">—</span>'}</td>
       <td>${estadoBadge(p.estado)}</td>
       <td>
-        <div style="display:flex;gap:5px">
+        <div style="display:flex;gap:5px;flex-wrap:wrap">
           <button class="btn-evolve" onclick="openEvolucion(${p.id})"><i class="ti ti-stethoscope"></i> <span class="evo-count">${nEvo}</span></button>
           <button class="btn btn-icon btn-sm" onclick="openEditPaciente(${p.id})" title="Editar"><i class="ti ti-pencil"></i></button>
+          <!-- v3_220: los movimientos (alta, óbito, traslado, cambio de cama) se
+               podían cargar solo desde Inicio. Desde Pacientes había que ir a
+               buscar al paciente a la otra solapa, o editar la ficha a mano. -->
+          ${p.estado==='Activo' ? `<button class="btn btn-icon btn-sm" onclick="openEgreso(${p.id})" title="Movimientos: alta, óbito, traslado o cambio de cama" style="color:var(--amber-600)"><i class="ti ti-logout"></i></button>` : ''}
+          <button class="btn btn-icon btn-sm" onclick="openHistorialRapido(${p.id})" title="Ver evoluciones" style="color:var(--purple-400)"><i class="ti ti-history"></i></button>
           ${currentUser?.role==='admin' ? `<button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarPaciente(${p.id})" title="Eliminar"><i class="ti ti-trash"></i></button>` : ''}
         </div>
       </td>
@@ -15829,7 +15951,7 @@ function _fusionResultado(){
 function _previewFusion(){
   const { tomados } = _fusionResultado();
   const evosB = evoluciones.filter(e => e.patientId === _fusionB.id);
-  const egresos = evosB.filter(e => ['alta','obito','traslado'].includes(e.tipo)).length;
+  const egresos = evosB.filter(e => ['alta','obito','traslado'].includes(e.tipo)).length;   // el cambio de cama no es un egreso
   const egresosA = evoluciones.filter(e => e.patientId === _fusionA.id && ['alta','obito'].includes(e.tipo)).length;
   const egresosB = evosB.filter(e => ['alta','obito'].includes(e.tipo)).length;
   return `<div class="fus-prev">
@@ -15992,6 +16114,7 @@ function openNuevoPaciente(){
   document.getElementById('fTipoKine').value = '';
   document.getElementById('fFrecAtencion').value = '1'; // v3_140: default todos los días
   resetGrupoFields();
+  cerrarGuiaCFS();        // v3_221: la guía arranca cerrada en cada ficha
   onFragilidadChange();   // v3_219: limpia la descripción del nivel
   document.getElementById('fEstFx').value = '';
   document.getElementById('fTQTMin').value = '';
@@ -16043,6 +16166,7 @@ function openEditPaciente(id){
   M('fDiag',p.diagnostico);
   M('fAlertaImportante',p.alertaImportante);
   M('fFragilidad', p.fragilidad); M('fFragilidadFuente', p.fragilidadFuente);   // v3_219
+  cerrarGuiaCFS();   // v3_221
   onFragilidadChange();
   // v3_184: primero se arma el menú que corresponde a la sala; si no, al cargar
   // un paciente pediátrico el grupo no existiría todavía entre las opciones y
@@ -16640,6 +16764,39 @@ function getMultiselectValues(id){
   if(!el) return [];
   return [...el.querySelectorAll('input:checked')].map(c=>c.value);
 }
+
+// ── v3_221: compatibilidad con lo ya cargado ────────────────────
+// Cambios de esta versión:
+//   · "Quetamina" pasa a escribirse "Ketamina"
+//   · La dexmedetomidina pasa de Analgesia a Sedación
+// Los registros viejos siguen en la base con la forma anterior, así que se
+// traducen al leerlos. Nada se reescribe en el histórico: la evolución vieja
+// queda como se firmó y solo se muestra con el nombre y el grupo correctos.
+function normalizarFarmacos(sedacion, analgesia){
+  const sed = [...(Array.isArray(sedacion) ? sedacion : [])];
+  const ana = [...(Array.isArray(analgesia) ? analgesia : [])];
+  const salida = { sedacion: [], analgesia: [] };
+
+  sed.forEach(f => {
+    const v = String(f || '').trim();
+    if(/^quetamina$/i.test(v)) { salida.sedacion.push('Ketamina'); return; }
+    salida.sedacion.push(v);
+  });
+  ana.forEach(f => {
+    const v = String(f || '').trim();
+    if(/^dexmedetomidina$/i.test(v)) { salida.sedacion.push('Dexmedetomidina'); return; }
+    if(/^quetamina$/i.test(v)) { salida.sedacion.push('Ketamina'); return; }
+    salida.analgesia.push(v);
+  });
+  // Sin duplicados, por si alguien la tenía cargada en los dos lados
+  salida.sedacion = [...new Set(salida.sedacion.filter(Boolean))];
+  salida.analgesia = [...new Set(salida.analgesia.filter(Boolean))];
+  return salida;
+}
+
+// Listas ya normalizadas, para mostrar en tarjetas, informes y el pase
+const sedacionDe  = e => normalizarFarmacos(e?.sedacion, e?.analgesia).sedacion;
+const analgesiaDe = e => normalizarFarmacos(e?.sedacion, e?.analgesia).analgesia;
 
 function setMultiselectValues(id, values){
   const el = document.getElementById(id);
@@ -17589,6 +17746,152 @@ function fmtSOFA(e){
   return `${n}/24 — ${categoriaSOFA(n).txt.toLowerCase()}`;
 }
 
+
+// ════════════════════════════════════════════════════════
+//  v3_221 — GUÍA PASO A PASO PARA LA ESCALA DE FRAGILIDAD
+// ════════════════════════════════════════════════════════
+// Antes había que saber de memoria a qué corresponde cada número, así que en la
+// práctica se cargaba a ojo o no se cargaba. Ahora se llega al nivel
+// respondiendo sobre lo que el paciente HACÍA antes de enfermarse, que es lo
+// que el kine puede preguntarle a la familia sin conocer la escala.
+//
+// El recorrido va del cuadro más grave al más leve, porque la primera pregunta
+// que corta define el nivel y evita seguir preguntando de más.
+const CFS_GUIA = {
+  terminal: {
+    paso: 'Paso 1 de 4',
+    q: '¿Tiene una enfermedad terminal con expectativa de vida menor a 6 meses?',
+    ayuda: 'Por ejemplo, una enfermedad oncológica avanzada en cuidados paliativos. Solo corresponde si, más allá de eso, se manejaba bien en el día a día.',
+    ops: [
+      { txt:'Sí, y por lo demás se manejaba bien', nivel:9 },
+      { txt:'No, o su deterioro no es solo por la enfermedad terminal', next:'cuidadoPersonal' },
+    ],
+  },
+  cuidadoPersonal: {
+    paso: 'Paso 2 de 4',
+    q: '¿Necesitaba ayuda de otra persona para el cuidado personal?',
+    ayuda: 'Cuidado personal es bañarse, vestirse, ir al baño o comer. Vale tanto si la ayuda era por lo físico como por deterioro cognitivo.',
+    ops: [
+      { txt:'Sí, era dependiente para el cuidado personal', next:'finVida' },
+      { txt:'No, se arreglaba solo para eso', next:'fueraDeCasa' },
+    ],
+  },
+  finVida: {
+    paso: 'Paso 3 de 4',
+    q: '¿Estaba cerca del final de la vida o no lograba recuperarse ni de enfermedades leves?',
+    ayuda: 'Se trata de un paciente totalmente dependiente, en el que una infección menor o una descompensación lo dejaba peor de lo que estaba.',
+    ops: [
+      { txt:'Sí, totalmente dependiente y sin margen de recuperación', nivel:8 },
+      { txt:'No, era dependiente pero estaba clínicamente estable', nivel:7 },
+    ],
+  },
+  fueraDeCasa: {
+    paso: 'Paso 3 de 4',
+    q: '¿Necesitaba ayuda para bañarse, para las escaleras o para todas las actividades fuera de la casa?',
+    ayuda: 'Es el paciente que todavía se viste y come solo, pero ya no sale sin acompañante ni maneja la casa por su cuenta.',
+    ops: [
+      { txt:'Sí, necesitaba ayuda para eso', nivel:6 },
+      { txt:'No, salía y se bañaba sin ayuda', next:'instrumentales' },
+    ],
+  },
+  instrumentales: {
+    paso: 'Paso 4 de 4',
+    q: '¿Necesitaba ayuda para las tareas más complejas del día a día?',
+    ayuda: 'Manejar el dinero, tomar la medicación sin que se la preparen, viajar solo, hacer las compras grandes o las tareas pesadas de la casa.',
+    ops: [
+      { txt:'Sí, para alguna de esas cosas necesitaba ayuda', nivel:5 },
+      { txt:'No, hacía todo eso solo', next:'sintomas' },
+    ],
+  },
+  sintomas: {
+    paso: 'Última pregunta',
+    q: 'Siendo independiente, ¿los síntomas le limitaban la actividad?',
+    ayuda: 'Andaba más lento, se cansaba antes, había dejado actividades que antes hacía, aunque no necesitara ayuda de nadie.',
+    ops: [
+      { txt:'Sí, andaba lento o cansado y había dejado actividades', nivel:4 },
+      { txt:'No, hacía su vida sin limitaciones', next:'actividad' },
+    ],
+  },
+  actividad: {
+    paso: 'Última pregunta',
+    q: '¿Cuánta actividad física hacía habitualmente?',
+    ayuda: 'Sin limitaciones en la vida diaria, lo que separa los tres primeros niveles es cuánto se movía.',
+    ops: [
+      { txt:'Ejercicio con regularidad, de los más activos para su edad', nivel:1 },
+      { txt:'Activo pero sin entrenar: ejercicio ocasional o por temporadas', nivel:2 },
+      { txt:'Solo la caminata habitual; tiene problemas de salud controlados', nivel:3 },
+    ],
+  },
+};
+
+let _cfsPaso = 'terminal';
+let _cfsHistorial = [];
+
+function iniciarGuiaCFS(){
+  _cfsPaso = 'terminal';
+  _cfsHistorial = [];
+  const g = document.getElementById('fCFSGuia');
+  if(g) g.style.display = 'block';
+  const bG = document.getElementById('btnCFSGuia');
+  const bM = document.getElementById('btnCFSManual');
+  if(bG) bG.style.display = 'none';
+  if(bM) bM.style.display = 'inline-flex';
+  pintarPasoCFS();
+}
+
+function cerrarGuiaCFS(){
+  const g = document.getElementById('fCFSGuia');
+  if(g) g.style.display = 'none';
+  const bG = document.getElementById('btnCFSGuia');
+  const bM = document.getElementById('btnCFSManual');
+  if(bG) bG.style.display = 'inline-flex';
+  if(bM) bM.style.display = 'none';
+}
+
+function pintarPasoCFS(){
+  const paso = CFS_GUIA[_cfsPaso];
+  if(!paso) return;
+  const set = (id, txt) => { const e = document.getElementById(id); if(e) e.textContent = txt; };
+  set('fCFSPaso', paso.paso);
+  set('fCFSPregunta', paso.q);
+  set('fCFSAyuda', paso.ayuda);
+  const cont = document.getElementById('fCFSOpciones');
+  if(cont){
+    cont.innerHTML = paso.ops.map((o, i) => `<button type="button" onclick="responderCFS(${i})"
+      style="text-align:left;background:#fff;border:1.5px solid var(--purple-200);border-radius:9px;
+             padding:10px 12px;cursor:pointer;font-family:var(--font);font-size:13px;color:var(--text);line-height:1.35">
+      ${escapeHTML(o.txt)}</button>`).join('');
+  }
+  const bV = document.getElementById('btnCFSVolver');
+  if(bV) bV.style.display = _cfsHistorial.length ? 'inline-flex' : 'none';
+}
+
+function responderCFS(i){
+  const paso = CFS_GUIA[_cfsPaso];
+  const op = paso?.ops?.[i];
+  if(!op) return;
+  if(op.nivel){
+    const sel = document.getElementById('fFragilidad');
+    if(sel) sel.value = String(op.nivel);
+    onFragilidadChange();
+    const fuente = document.getElementById('fFragilidadFuente');
+    if(fuente && !fuente.value) fuente.value = 'Estimación del equipo';
+    cerrarGuiaCFS();
+    marcarModalSucio('modalPaciente');
+    showToast(`Fragilidad: ${fmtFragilidad(op.nivel)}`, 'success');
+    return;
+  }
+  _cfsHistorial.push(_cfsPaso);
+  _cfsPaso = op.next;
+  pintarPasoCFS();
+}
+
+function volverGuiaCFS(){
+  if(!_cfsHistorial.length) return;
+  _cfsPaso = _cfsHistorial.pop();
+  pintarPasoCFS();
+}
+
 function setPosicionARM(pos){
   document.getElementById('ePosicionARM').value = pos;
   document.getElementById('eBtnSupino').className = 'dec-btn' + (pos==='supino'?' dec-sel':'');
@@ -17663,7 +17966,7 @@ const VENTANA_EDICION_EVO_MS = 24 * 60 * 60 * 1000;
 
 function puedeEditarEvolucion(evo){
   if(!evo || !currentUser) return false;
-  if(['traslado','alta','obito','reingreso','reactivacion'].includes(evo.tipo)) return false;
+  if(['traslado','alta','obito','reingreso','reactivacion','cama'].includes(evo.tipo)) return false;
   if(currentUser.role === 'admin') return true;         // jefatura: sin ventana
   return (Date.now() - evo.id) <= VENTANA_EDICION_EVO_MS;
 }
@@ -17718,7 +18021,7 @@ function edicionesTextoHTML(evo){
 // asiento que explique por qué.
 function puedeEliminarEvolucion(evo){
   if(!evo || !currentUser) return false;
-  if(['traslado','alta','obito','reingreso','reactivacion'].includes(evo.tipo)) return false;
+  if(['traslado','alta','obito','reingreso','reactivacion','cama'].includes(evo.tipo)) return false;
   // Jefatura y administradores: cualquier evolución, sin límite de tiempo
   if(currentUser.role === 'admin') return true;
   // v3_149: el resto del equipo puede borrar únicamente las propias,
@@ -17933,8 +18236,12 @@ function precargarCamposEvolucion(evo){
   }
 
   // Multiselects
-  setMultiselectValues('msSedacion', evo.sedacion);
-  setMultiselectValues('msAnalgesia', evo.analgesia);
+  // v3_221: las evoluciones viejas guardaron "Quetamina" (con Q) y la
+  // dexmedetomidina bajo Analgesia. Se normalizan al abrirlas para editar, así
+  // los tildes aparecen marcados donde corresponde y no se pierde el dato.
+  { const { sedacion, analgesia } = normalizarFarmacos(evo.sedacion, evo.analgesia);
+    setMultiselectValues('msSedacion', sedacion);
+    setMultiselectValues('msAnalgesia', analgesia); }
   setMultiselectValues('msBNM', evo.bnm);
   setMultiselectValues('msVasoact', evo.vasoact);
 
@@ -19001,6 +19308,7 @@ const PRESTACIONES_ESP = [
   'Traslado a TAC',
   'Traslado a QX',
   'Traslado a otro sector',
+  'Traslado a otra cama',   // v3_220
   'Evaluación de deglución',
   'Rehabilitación de la deglución',
   'Toma de aspirado traqueal',
@@ -19683,6 +19991,7 @@ function renderIndMensual(mesStr){
         ${filaARM('— Por parada cardíaca', s=>obitosDelMes(mesStr,s,_obPC))}
         ${filaARM('— Sin mecanismo registrado', s=>obitosDelMes(mesStr,s,_obSin))}
         ${filaARM('Traslados internos', s=>egresosDelMes(mesStr,'traslado',s))}
+        ${filaARM('Cambios de cama (mismo sector)', s=>egresosDelMes(mesStr,'cama',s))}
         <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Donación de órganos</td></tr>
         ${filaARM('Donantes', s=>obitosDelMes(mesStr,s,_obDon))}
         ${filaARM('— En muerte encefálica', s=>obitosDelMes(mesStr,s,e=>_obME(e)&&_obDon(e)))}
@@ -19972,6 +20281,7 @@ async function exportarIndicadoresCompleto(mesStr){
   rows.push(calcFila('  Por parada cardíaca', s=>obitosDelMes(mesStr,s,_obPC)));
   rows.push(calcFila('  Sin mecanismo registrado', s=>obitosDelMes(mesStr,s,_obSin)));
   rows.push(calcFila('Traslados internos', s=>egresosDelMes(mesStr,'traslado',s)));
+  rows.push(calcFila('Cambios de cama (mismo sector)', s=>egresosDelMes(mesStr,'cama',s)));
 
   // ── 7b. DONACIÓN DE ÓRGANOS ──
   seccion('DONACIÓN DE ÓRGANOS (por sector)');
@@ -20457,7 +20767,7 @@ function exportarDatos(){
       e.ph||'', e.pco2||'', e.po2||'', e.spo2||'', e.pafi||'',
       e.fc||'', e.tas||'', e.tad||'', e.tam||'', e.temp||'', e.spo2Mon||'', e.frMon||'', e.pic||'', e.etco2||'',
       e.rass||'', e.cpot||'', e.camicu||'', e.dolorAuto||'', e.dolorEscala||'',
-      joinArr(e.sedacion), joinArr(e.analgesia),
+      joinArr(sedacionDe(e)), joinArr(analgesiaDe(e)),   // v3_221
       joinArr(e.bnm), joinArr(e.vasoact), e.otrosFarmacos||'',
       e.akm1||'', e.mrc||'', e.pve||'', e.pveTipo||'', e.pveMin||'', e.pveResult||'',
       e.extubacion||'', e.nPVE||'',
