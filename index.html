@@ -1962,6 +1962,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <label class="ant-chip"><input type="checkbox" id="fAntP_neumonia" value="neumonia">Neumonía</label>
         <label class="ant-chip"><input type="checkbox" id="fAntP_neumonia_derr" value="neumonia_derr">Neumonía con derrame</label>
         <label class="ant-chip"><input type="checkbox" id="fAntP_fq" value="fq">Fibrosis quística</label>
+        <label class="ant-chip"><input type="checkbox" id="fAntP_coqueluche" value="coqueluche">Coqueluche</label>
         <div class="ant-subtitulo">Otros</div>
         <label class="ant-chip"><input type="checkbox" id="fAntP_arm_previa" value="arm_previa">ARM previamente</label>
         <label class="ant-chip"><input type="checkbox" id="fAntP_otras" value="otras">Otras</label>
@@ -3359,10 +3360,12 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           </div>
           <div class="form-group">
             <label>Tipo de PVE</label>
-            <select id="ePVETipo">
+            <select id="ePVETipo" onchange="onPVETipoChange()">
               <option value="">-</option>
               <option>Tubo en T convencional</option>
               <option>Tubo en T electrónico</option>
+              <!-- v3_223: opción pediátrica -->
+              <option id="optPVEtuboTO2">Tubo en T con modo oxigenoterapia</option>
               <option>CPAP</option>
               <option>PC-CSV</option>
             </select>
@@ -3375,6 +3378,33 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
               <option value="Fallida">Falló</option>
             </select>
           </div>
+        </div>
+
+        <!-- v3_223: flujo del tubo en T con modo oxigenoterapia (pediatría).
+             Se calcula sobre el peso corporal predicho, no sobre el peso real. -->
+        <div id="pveFlujoBox" style="display:none;margin-top:6px" class="dec-sublevel">
+          <div class="dec-label">Flujo del tubo en T</div>
+          <div class="dec-row" style="margin-top:6px">
+            <button type="button" class="dec-btn" id="eBtnPVEFlujo2" onclick="setPVEFlujo('2')">
+              <i class="ti ti-wind"></i> 2 L/kg de PCP
+            </button>
+            <button type="button" class="dec-btn" id="eBtnPVEFlujo05" onclick="setPVEFlujo('0.5')">
+              <i class="ti ti-wind"></i> 0,5 L/kg de PCP
+            </button>
+          </div>
+          <input type="hidden" id="ePVEFlujoRel">
+          <div class="form-row" style="margin-top:9px">
+            <div class="form-group">
+              <label>PCP del paciente (kg)</label>
+              <input type="text" id="ePVEPcp" readonly placeholder="—" style="background:var(--gray-50);color:var(--text-muted)">
+              <div class="form-hint">Peso corporal predicho, calculado desde la talla en la ficha</div>
+            </div>
+            <div class="form-group">
+              <label>Flujo resultante (L/min)</label>
+              <input type="text" id="ePVEFlujoCalc" readonly placeholder="—" style="background:var(--teal-50);color:var(--teal-800);font-weight:700">
+            </div>
+          </div>
+          <div id="ePVEFlujoAviso" style="display:none;font-size:11.5px;color:var(--amber-600);margin-top:4px;line-height:1.45"></div>
         </div>
 
         <!-- PVE Exitosa -->
@@ -3690,7 +3720,20 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         </button>
       </div>
       <input type="hidden" id="eHumidificacion" value="Pasiva (HME)">
-      <div class="form-hint" style="margin-top:6px">Por defecto queda en pasiva (HME), que es lo que se coloca casi siempre.</div>
+      <div class="form-hint" style="margin-top:6px" id="eHumidHint">Por defecto queda en pasiva (HME), que es lo que se coloca casi siempre.</div>
+
+      <!-- v3_223: en pediatría el arranque es al revés (activa por defecto), y
+           lo que hay que justificar es haber elegido la pasiva. -->
+      <div id="eHumidMotivoPasivaBox" style="display:none;margin-top:10px;background:var(--amber-50);border:1.5px solid var(--amber-100);border-radius:8px;padding:11px 13px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--amber-800);margin-bottom:8px">
+          <i class="ti ti-help-circle"></i> ¿Por qué se usa humidificación pasiva?
+        </div>
+        <div class="form-group">
+          <label>Motivo</label>
+          <input type="text" id="eHumidMotivoPasiva" placeholder="Ej: traslado a TAC / no hay humidificador disponible en la unidad">
+          <div class="form-hint">En pediatría lo habitual es la humidificación activa: dejá anotado por qué en este paciente se optó por la pasiva.</div>
+        </div>
+      </div>
 
       <div id="eHumidMotivoBox" style="display:none;margin-top:10px;background:var(--amber-50);border:1.5px solid var(--amber-100);border-radius:8px;padding:11px 13px">
         <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--amber-800);margin-bottom:8px">
@@ -4091,6 +4134,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             <span class="tag" onclick="toggleTag(this)">Higiene Oral</span>
             <span class="tag" onclick="toggleTag(this)">Cambio de fijación</span>
             <span class="tag" onclick="toggleTag(this)">Estimulación con aire por puerto subglótico</span>
+            <span class="tag" onclick="toggleTag(this)">Cambio del circuito ventilatorio</span>
           </div>
         </div>
       </div>
@@ -4102,6 +4146,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <span class="tag" id="tagTitulacionPEEP" onclick="toggleTag(this)" style="display:none">Titulación de PEEP</span>
           <!-- v3_219 -->
           <span class="tag" onclick="toggleTag(this)">Monitoreo de la mecánica ventilatoria</span>
+          <span class="tag" onclick="toggleTag(this)">Maniobra de apertura alveolar</span>
           <span class="tag" onclick="toggleTag(this)">Aceleración del flujo espiratorio</span>
           <span class="tag" onclick="toggleTag(this)">Tos asistida</span>
           <span class="tag" onclick="toggleTag(this)">Tos dirigida</span>
@@ -6297,7 +6342,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_222';
+const APP_VERSION = 'v3_223';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -10514,6 +10559,7 @@ function construirTextoEvo(evo, p){
     add('AKM', evo.akm1); add('MRC', evo.mrc); add('MRC total (score)', evo.mrcTotal);
     if(evo.pve && evo.pve !== '' && evo.pve !== 'No'){
       add('PVE realizada', 'Sí'); add('Tipo de PVE', evo.pveTipo);
+      add('Flujo del tubo en T', fmtPVEFlujo(evo));   // v3_223
       add('Duración de PVE (min)', evo.pveMin); add('Resultado de PVE', evo.pveResult);
       add('Motivo de no extubación', evo.pveExitNoExtubMotivo);
     } else if(evo.pve === 'No'){
@@ -12248,6 +12294,7 @@ const ANTECEDENTES_PED_LIST = [
   {key:'neumonia',       label:'Neumonía'},
   {key:'neumonia_derr',  label:'Neumonía con derrame'},
   {key:'fq',             label:'Fibrosis quística'},
+  {key:'coqueluche',     label:'Coqueluche'},   // v3_223
   // v3_184
   {key:'arm_previa',     label:'ARM previamente'},
   {key:'otras',          label:'Otras'},
@@ -12530,6 +12577,8 @@ function precargarVentilacionUltimaEvo(patientId){
       const m = document.getElementById('eHumidMotivo'); if(m) m.value = ult.humidMotivo || '';
       const o = document.getElementById('eHumidMotivoOtro'); if(o) o.value = ult.humidMotivoOtro || '';
       onHumidMotivoChange();
+    } else {
+      const mp = document.getElementById('eHumidMotivoPasiva'); if(mp) mp.value = ult.humidMotivoPasiva || '';   // v3_223
     }
   }
 
@@ -13009,6 +13058,20 @@ function aplicarModoEvoPorSala(patientId){
       (ped ? DIAMETROS_PED : DIAMETROS_ADULTO).map(d=>`<option value="${d}">${d} mm</option>`).join('');
     sd.value = act;
   });
+  // v3_223: el tubo en T con modo oxigenoterapia se usa en pediatría
+  { const opt = document.getElementById('optPVEtuboTO2');
+    const sel = document.getElementById('ePVETipo');
+    if(opt){
+      opt.style.display = ped ? '' : 'none';
+      opt.disabled = !ped;
+      // Si la evolución era pediátrica y se pasa a adultos, no queda seleccionada
+      // una opción que ya no se muestra
+      if(!ped && sel && sel.value === 'Tubo en T con modo oxigenoterapia'){
+        sel.value = '';
+        onPVETipoChange();
+      }
+    } }
+
   // Progresión del TET a la arcada dentaria: en pediatría desde 4 cm
   const selAds = document.getElementById('eTETads');
   if(selAds){
@@ -13216,15 +13279,31 @@ function actualizarCuffLeak(){
 // Aplica a todo paciente con TET o TQT, esté en ARM o respirando espontáneamente.
 // Arranca siempre en pasiva (HME), que es lo que se coloca en la mayoría de los
 // casos; si alguien la pasa a activa, se pide el motivo del cambio.
+// v3_223: ¿la evolución que se está cargando es de un paciente pediátrico?
+// En pediatría la humidificación activa es la norma (los circuitos son de bajo
+// volumen y el HME agrega espacio muerto que un lactante no tolera), así que
+// el valor por defecto se invierte y lo que hay que justificar es la pasiva.
+function _evoEsPediatrica(){
+  const p = patients.find(x => x.id === currentEvoPacId);
+  return !!(p && (p.esPediatrico || esSalaPediatrica(p.sala)));
+}
+const humidPorDefecto = () => _evoEsPediatrica() ? 'Activa' : 'Pasiva (HME)';
+
 function actualizarHumidificacion(){
   const box = document.getElementById('humidBlock');
   if(!box) return;
   const iface = String(document.getElementById('eInterfazPrincipal')?.value || '');
   const conVAA = iface === 'TET' || iface.includes('TQT');   // TQT en ARM y TQT espontáneo
   box.style.display = conVAA ? 'block' : 'none';
+  const hint = document.getElementById('eHumidHint');
+  if(hint){
+    hint.textContent = _evoEsPediatrica()
+      ? 'En pediatría queda en activa por defecto. Si ponés pasiva, aclará el motivo.'
+      : 'Por defecto queda en pasiva (HME), que es lo que se coloca casi siempre.';
+  }
   if(conVAA){
     const h = document.getElementById('eHumidificacion');
-    if(!h || !h.value) setHumidificacion('Pasiva (HME)');    // valor por defecto
+    if(!h || !h.value) setHumidificacion(humidPorDefecto());
   } else {
     resetHumidificacion();   // sin vía aérea artificial no se guarda nada
   }
@@ -13238,20 +13317,31 @@ function resetHumidificacion(){
   const m = document.getElementById('eHumidMotivo'); if(m) m.value = '';
   const o = document.getElementById('eHumidMotivoOtro'); if(o) o.value = '';
   const w = document.getElementById('eHumidMotivoOtroWrap'); if(w) w.style.display = 'none';
+  // v3_223
+  const bp = document.getElementById('eHumidMotivoPasivaBox'); if(bp) bp.style.display = 'none';
+  const mp = document.getElementById('eHumidMotivoPasiva'); if(mp) mp.value = '';
 }
 
 function setHumidificacion(tipo){
   const activa = tipo === 'Activa';
+  const ped = _evoEsPediatrica();
   const h = document.getElementById('eHumidificacion'); if(h) h.value = tipo;
   document.getElementById('eBtnHumidPasiva')?.classList.toggle('dec-sel', !activa);
   document.getElementById('eBtnHumidActiva')?.classList.toggle('dec-sel', activa);
+
+  // En adultos se justifica la activa (es lo excepcional); en pediatría, la pasiva.
   const box = document.getElementById('eHumidMotivoBox');
-  if(box) box.style.display = activa ? 'block' : 'none';
+  if(box) box.style.display = (activa && !ped) ? 'block' : 'none';
+  const boxP = document.getElementById('eHumidMotivoPasivaBox');
+  if(boxP) boxP.style.display = (!activa && ped) ? 'block' : 'none';
+
   if(!activa){
     // Al volver a pasiva no queda colgado el motivo del cambio anterior
     const m = document.getElementById('eHumidMotivo'); if(m) m.value = '';
     const o = document.getElementById('eHumidMotivoOtro'); if(o) o.value = '';
     const w = document.getElementById('eHumidMotivoOtroWrap'); if(w) w.style.display = 'none';
+  } else {
+    const mp = document.getElementById('eHumidMotivoPasiva'); if(mp) mp.value = '';
   }
 }
 
@@ -13271,7 +13361,10 @@ function _humidVisible(){
 // Texto legible de la humidificación, para historial e informes
 function fmtHumidificacion(e){
   if(!e || !e.humidificacion) return '';
-  if(e.humidificacion !== 'Activa') return e.humidificacion;
+  if(e.humidificacion !== 'Activa'){
+    // v3_223: en pediatría la pasiva lleva su justificación
+    return e.humidificacion + (e.humidMotivoPasiva ? ' — ' + e.humidMotivoPasiva : '');
+  }
   const mot = e.humidMotivo === 'Otro' ? (e.humidMotivoOtro || 'Otro') : (e.humidMotivo || '');
   return 'Activa' + (mot ? ' — ' + mot : '');
 }
@@ -14803,6 +14896,7 @@ const EVO_LABELS = {
   interfaz:'Interfaz', interfazEsp:'Detalle de interfaz', armDiametro:'Diámetro TET/cánula (mm)', tetADS:'TET a ADS (cm)',
   posicionARM:'Posición', pronoCiclo:'Ciclo de prono', cuffLeak:'Cuff leak test',
   humidificacion:'Humidificación', humidMotivo:'Motivo de humidificación activa', humidMotivoOtro:'Motivo (otro)',
+  humidMotivoPasiva:'Motivo de humidificación pasiva',   // v3_223
   cnFlujo:'Cánula nasal (L/min)', mvFio2:'Máscara Venturi FiO₂ (%)', mrFlujo:'Máscara reservorio (L/min)',
   cnafFlujo:'CNAF flujo (L/min)', cnafFio2:'CNAF FiO₂ (%)',
   roxSpo2:'SpO₂ con CNAF (%)', roxFr:'FR con CNAF (rpm)', rox:'Índice ROX',
@@ -14906,6 +15000,7 @@ function fmtPVEResumen(e){
   const it = (k,v)=> items.push(`<div class="evo-item"><div class="k">${k}</div><div class="v">${escapeHTML(fmtValorEvo(v))}</div></div>`);
   if(e.pve==='Si' || e.pve==='Sí'){
     if(e.pveTipo) it('Tipo', e.pveTipo);
+    if(fmtPVEFlujo(e)) it('Flujo', fmtPVEFlujo(e));   // v3_223
     if(e.pveMin!=null && e.pveMin!=='') it('Duración', e.pveMin+' min');
     if(e.pveResult) it('Resultado', e.pveResult);
     if(e.pveResult==='Exitosa'){
@@ -17892,6 +17987,72 @@ function volverGuiaCFS(){
   pintarPasoCFS();
 }
 
+
+// ════════════════════════════════════════════════════════
+//  v3_223 — TUBO EN T CON MODO OXIGENOTERAPIA (pediatría)
+// ════════════════════════════════════════════════════════
+// El flujo se prescribe por kilo de PESO CORPORAL PREDICHO, no de peso real: en
+// un paciente edematizado o con sobrepeso el peso de balanza sobreestimaría el
+// flujo. El PCP ya está calculado en la ficha a partir de la talla.
+//   · 2 L/kg   → flujo alto, arrastra el CO₂ del circuito
+//   · 0,5 L/kg → flujo bajo, exige más al paciente y se usa como prueba exigente
+function onPVETipoChange(){
+  const tipo = document.getElementById('ePVETipo')?.value || '';
+  const box = document.getElementById('pveFlujoBox');
+  const aplica = tipo === 'Tubo en T con modo oxigenoterapia';
+  if(box) box.style.display = aplica ? 'block' : 'none';
+  if(!aplica){
+    // Al cambiar de tipo no queda colgado un flujo que ya no corresponde
+    const h = document.getElementById('ePVEFlujoRel'); if(h) h.value = '';
+    ['eBtnPVEFlujo2','eBtnPVEFlujo05'].forEach(id => document.getElementById(id)?.classList.remove('dec-sel'));
+    ['ePVEPcp','ePVEFlujoCalc'].forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
+    const av = document.getElementById('ePVEFlujoAviso'); if(av) av.style.display = 'none';
+    return;
+  }
+  calcPVEFlujo();
+}
+
+function setPVEFlujo(rel){
+  const h = document.getElementById('ePVEFlujoRel'); if(h) h.value = rel;
+  document.getElementById('eBtnPVEFlujo2')?.classList.toggle('dec-sel', rel === '2');
+  document.getElementById('eBtnPVEFlujo05')?.classList.toggle('dec-sel', rel === '0.5');
+  marcarModalSucio('modalEvo');
+  calcPVEFlujo();
+}
+
+function calcPVEFlujo(){
+  const p = patients.find(x => x.id === currentEvoPacId);
+  const pcp = pcpDePaciente(p);
+  const rel = parseFloat(document.getElementById('ePVEFlujoRel')?.value);
+  const elPcp = document.getElementById('ePVEPcp');
+  const elCalc = document.getElementById('ePVEFlujoCalc');
+  const av = document.getElementById('ePVEFlujoAviso');
+
+  if(elPcp) elPcp.value = (pcp !== null && pcp !== undefined) ? (Math.round(pcp * 10) / 10) + ' kg' : '';
+  if(av) av.style.display = 'none';
+
+  if(pcp === null || pcp === undefined){
+    if(elCalc) elCalc.value = '';
+    if(av){
+      av.style.display = 'block';
+      av.innerHTML = '<i class="ti ti-alert-triangle"></i> No se puede calcular el PCP: falta la talla en la ficha del paciente. Cargala y volvé a entrar.';
+    }
+    return;
+  }
+  if(!isFinite(rel)){ if(elCalc) elCalc.value = ''; return; }
+  const flujo = Math.round(pcp * rel * 10) / 10;
+  if(elCalc) elCalc.value = flujo + ' L/min';
+}
+
+// Texto legible para la tarjeta y los informes
+function fmtPVEFlujo(e){
+  if(!e || e.pveTipo !== 'Tubo en T con modo oxigenoterapia') return '';
+  const rel = e.pveFlujoRel;
+  if(!rel) return '';
+  const relTxt = String(rel) === '0.5' ? '0,5 L/kg de PCP' : rel + ' L/kg de PCP';
+  return relTxt + (e.pveFlujoCalc ? ' — ' + e.pveFlujoCalc + ' L/min' : '');
+}
+
 function setPosicionARM(pos){
   document.getElementById('ePosicionARM').value = pos;
   document.getElementById('eBtnSupino').className = 'dec-btn' + (pos==='supino'?' dec-sel':'');
@@ -18093,6 +18254,7 @@ const EVO_FIELD_MAP = {
   hacorPh:'eHACORPh', hacorPafi:'eHACORPafi', hacorFr:'eHACORFr', hacor:'eHACORTotal',
   posicionARM:'ePosicionARM', pronoCiclo:'ePronoCiclo', cuffLeak:'eCuffLeak',
   humidMotivo:'eHumidMotivo', humidMotivoOtro:'eHumidMotivoOtro',   // v3_209
+  humidMotivoPasiva:'eHumidMotivoPasiva',   // v3_223
   cnFlujo:'eCNflujo', mvFio2:'eMVfio2', mrFlujo:'eMRflujo',
   cnafFlujo:'eCNAFflujo', cnafFio2:'eCNAFfio2',
   roxSpo2:'eROXSpo2', roxFr:'eROXFr',   // v3_217
@@ -18118,6 +18280,7 @@ const EVO_FIELD_MAP = {
   mp2:'eMP2', er2:'eER2', ct2:'eCT2', p012:'eP012', deltaPocc2:'eDeltaPocc2',
   vm2:'eVM2', pmi2:'ePMI2',   // v3_211
   pve:'ePVE', pveTipo:'ePVETipo', pveMin:'ePVEtmin', pveResult:'ePVEresult',
+  pveFlujoRel:'ePVEFlujoRel',   // v3_223
   pveNoExtubTipo:'ePVENoExtubTipo', pveNoInterfaz:'ePVENoInterfaz',
   pveNoReIOT:'ePVENoReIOT', pveNoReIOTMotivo:'ePVENoReIOTMotivo',
   pveExitExtub:'ePVEExitExtub', pveExtubTipo:'ePVEExtubTipo', pveFallidaExtub:'ePVEFallidaExtub',
@@ -18215,6 +18378,8 @@ function precargarCamposEvolucion(evo){
     calcHACOR();
   }
   actualizarHintMotivoVNI();
+  onPVETipoChange();   // v3_223: muestra el flujo del tubo en T si corresponde
+  if(evo.pveFlujoRel) setPVEFlujo(String(evo.pveFlujoRel));
 
   // v3_209: humidificación. Va después del mapa de campos porque hay que pintar
   // los botones y abrir el motivo según lo que se había guardado.
@@ -18225,6 +18390,9 @@ function precargarCamposEvolucion(evo){
       const m = document.getElementById('eHumidMotivo'); if(m) m.value = evo.humidMotivo || '';
       const o = document.getElementById('eHumidMotivoOtro'); if(o) o.value = evo.humidMotivoOtro || '';
       onHumidMotivoChange();
+    } else {
+      // v3_223: justificación de la pasiva en pediatría
+      const mp = document.getElementById('eHumidMotivoPasiva'); if(mp) mp.value = evo.humidMotivoPasiva || '';
     }
   }
 
@@ -18495,6 +18663,8 @@ async function guardarEvolucion(){
     // dato no corresponde.
     humidificacion: _humidVisible() ? G('eHumidificacion') : '',
     humidMotivo: (_humidVisible() && G('eHumidificacion') === 'Activa') ? G('eHumidMotivo') : '',
+    // v3_223: justificación de la pasiva (pediatría)
+    humidMotivoPasiva: (_humidVisible() && G('eHumidificacion') !== 'Activa') ? G('eHumidMotivoPasiva') : '',
     humidMotivoOtro: (_humidVisible() && G('eHumidificacion') === 'Activa' && G('eHumidMotivo') === 'Otro')
                        ? G('eHumidMotivoOtro') : '',
     diasVE: (['TQT_O2','TQT_AA'].includes(G('eInterfazEsp'))
@@ -18536,6 +18706,10 @@ async function guardarEvolucion(){
     p012:GN('eP012'), deltaPocc2:GN('eDeltaPocc2'),
     vm2:GN('eVM2'), pmi2:GN('ePMI2'),   // v3_211
     pve:G('ePVE'), pveTipo:G('ePVETipo'), pveMin:GN('ePVEtmin'), pveResult:G('ePVEresult'),
+    // v3_223: tubo en T con modo oxigenoterapia — flujo por kg de PCP
+    pveFlujoRel: G('ePVETipo') === 'Tubo en T con modo oxigenoterapia' ? G('ePVEFlujoRel') : '',
+    pveFlujoCalc: G('ePVETipo') === 'Tubo en T con modo oxigenoterapia'
+      ? parseFloat(String(G('ePVEFlujoCalc')).replace(' L/min','')) || '' : '',
     pveNoExtubTipo:G('ePVENoExtubTipo'), pveNoInterfaz:G('ePVENoInterfaz'),
     pveNoReIOT:G('ePVENoReIOT'), pveNoReIOTMotivo:G('ePVENoReIOTMotivo'),
     pveExitExtub:G('ePVEExitExtub'), pveExtubTipo:G('ePVEExtubTipo'),
