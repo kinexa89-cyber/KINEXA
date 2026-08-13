@@ -2704,6 +2704,11 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         </div>
       </div>
 
+      <div id="evoAvisoReIOT" style="display:none;margin-top:10px;background:var(--red-50);border:1.5px solid var(--red-200);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--red-800);line-height:1.5">
+        <i class="ti ti-lungs"></i> <strong>Reintubación registrada.</strong> El paciente queda como <strong>ARM TET</strong> en el tablero y en el pase.
+        Si además cambió el setting del ventilador, cargalo en Mecánica ventilatoria.
+      </div>
+
       <input type="hidden" id="eInterfazPrincipal">
       <input type="hidden" id="eInterfazEsp">
       <input type="hidden" id="eSoporteFinalTipo">
@@ -6372,7 +6377,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_226';
+const APP_VERSION = 'v3_227';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -11447,6 +11452,7 @@ function onPVEChange(val){
 }
 
 function onReIOTChange(context, val){
+  avisarReintubacion(val === 'Si');   // v3_227
   const box = document.getElementById('pveSinPVEReIOTMotivo');
   if(box) box.style.display = val==='Si' ? 'block' : 'none';
   if(val!=='Si'){ const el=document.getElementById('ePVENoReIOTMotivo'); if(el)el.value=''; }
@@ -11479,6 +11485,7 @@ function onPVEExitExtubChange(val){
 function onPVEExitReIOTChange(val){
   document.getElementById('pveExitReIOTMotivo').style.display = val==='Si' ? 'block' : 'none';
   if(val!=='Si'){ const el=document.getElementById('ePVEExitReIOTMotivo'); if(el) el.value=''; }
+  avisarReintubacion(val === 'Si');   // v3_227
 }
 
 // ── Árbol PVE — TQT/T (destete vía traqueostomía/tubo en T, no extubación) ──
@@ -13210,18 +13217,30 @@ function fechaSalidaARM(patientId){
     .filter(e => e.patientId === patientId && !e.tipo)
     .sort((a,b) => _claveCrono(a).localeCompare(_claveCrono(b)));
 
-  const enARM = e => !e.interfazEsp && (e.interfaz === 'TET' || e.interfaz === 'TQT');
-  const espontanea = e => !!e.interfazEsp;
+  // v3_227: una evolución en la que se reintubó (o en la que se intubó durante
+  // la sesión) deja al paciente EN ARM, aunque los campos de interfaz muestren
+  // el soporte con el que arrancó. Sin esto, un paciente reintubado seguía
+  // contando días de ventilación espontánea.
+  const enARM = e => evoTerminaEnARM(e) ||
+    (!e.interfazEsp && (e.interfaz === 'TET' || e.interfaz === 'TQT'));
+  const espontanea = e => !!e.interfazEsp && !evoTerminaEnARM(e);
 
   // ¿Estuvo alguna vez en ARM?
   const huboARM = !!(p && p.inicioARM) || evos.some(enARM);
   if(!huboARM) return null;
 
   // ── Inicio de la racha espontánea que llega hasta la última evolución ──
-  const conDatoVent = evos.filter(e => e.interfaz || e.interfazEsp);
+  const conDatoVent = evos.filter(e => e.interfaz || e.interfazEsp || evoTerminaEnARM(e));
   if(!conDatoVent.length) return (p && p.finARM) ? p.finARM : null;
   const ultima = conDatoVent[conDatoVent.length - 1];
-  if(!espontanea(ultima)) return null;   // la última evolución lo muestra en ARM
+  // v3_227: si la última evolución ES la de la extubación (y no se reintubó),
+  // el paciente salió de ARM ese día aunque todavía no haya una evolución
+  // espontánea posterior. Antes ese caso devolvía null y el contador de días
+  // sin ARM no arrancaba hasta el día siguiente.
+  if(!espontanea(ultima)){
+    if(esEvoConExtubacion(ultima) && !esEvoConReintubacion(ultima)) return ultima.date;
+    return null;   // la última evolución lo muestra en ARM
+  }
 
   let inicioRacha = ultima.date;
   for(let i = conDatoVent.length - 1; i >= 0; i--){
@@ -15793,6 +15812,42 @@ function renderDashboard(){
 function esEvoConExtubacion(e){
   return !!(e && (e.extubacion?.startsWith('Sí') || ['autoextubacion','accidental','sin_pve'].includes(e.extubacion)));
 }
+
+// ════════════════════════════════════════════════════════
+//  v3_227 — REINTUBACIÓN
+// ════════════════════════════════════════════════════════
+// El árbol de la PVE pregunta "¿Se reIOT?" y guarda la respuesta, pero ningún
+// cálculo la leía. Resultado: un paciente que se extubó, falló y volvió a
+// intubarse en la misma evolución figuraba como VAN en el tablero y en la
+// tarjeta, cuando en realidad está intubado. Es el peor error posible en el
+// tablero: el turno entrante ve "vía aérea natural" en un paciente en ARM.
+//
+// La reintubación se registra en dos ramas distintas del árbol según cómo se
+// llegó a la extubación, así que se leen las dos.
+function esEvoConReintubacion(e){
+  if(!e) return false;
+  return e.pveExitReIOT === 'Si' || e.pveNoReIOT === 'Si';
+}
+
+// Motivo de la reintubación, venga de la rama que venga
+function motivoReintubacion(e){
+  if(!e) return '';
+  return (e.pveExitReIOT === 'Si' ? e.pveExitReIOTMotivo : '')
+      || (e.pveNoReIOT === 'Si' ? e.pveNoReIOTMotivo : '') || '';
+}
+
+// ¿La evolución deja al paciente en ARM al terminar?
+// Contempla los tres caminos: seguía en ARM, se intubó durante la sesión
+// (v3_224) o se extubó pero hubo que reintubar.
+function evoTerminaEnARM(e){
+  if(!e) return false;
+  if(e.soporteFinal?.tipo === 'ARM') return true;      // se intubó en la sesión
+  if(esEvoConReintubacion(e)) return true;             // se extubó y se reintubó
+  const esp = e.interfazEsp || '';
+  if(esp) return false;                                 // quedó en soporte no invasivo
+  if(e.interfaz === 'TET' || e.interfaz === 'TQT') return !esEvoConExtubacion(e);
+  return false;
+}
 function ultimaEvoVentilatoria(patientId){
   return evoluciones
     .filter(e => e.patientId === patientId && !e.tipo && (e.interfaz || e.interfazEsp))
@@ -15802,6 +15857,23 @@ function estadoVentPaciente(p){
   const ult = ultimaEvoVentilatoria(p.id);
   if(ult){
     const esp = ult.interfazEsp || '';
+
+    // v3_227: la reintubación manda sobre todo lo demás. Si en la última
+    // evolución se extubó y hubo que volver a intubar, el paciente terminó
+    // EN ARM, aunque el resto de los campos digan otra cosa.
+    if(esEvoConReintubacion(ult)){
+      const mot = motivoReintubacion(ult);
+      return { cod:'ARM_TET', label:'ARM TET', cls:'badge-red', icon:'ti-lungs',
+        title:'Reintubado tras extubación fallida' + (mot ? ' — ' + mot : '') };
+    }
+    // v3_224: se intubó durante la sesión (venía de soporte no invasivo)
+    if(ult.soporteFinal?.tipo === 'ARM'){
+      const via = ult.soporteFinal.armVia === 'TQT' ? 'ARM_TQT' : 'ARM_TET';
+      return via === 'ARM_TQT'
+        ? { cod:'ARM_TQT', label:'ARM TQT', cls:'badge-purple', icon:'ti-lungs', title:'Intubado durante la última sesión' }
+        : { cod:'ARM_TET', label:'ARM TET', cls:'badge-red',    icon:'ti-lungs', title:'Intubado durante la última sesión' };
+    }
+
     if(!esp && (ult.interfaz === 'TET' || ult.interfaz === 'TQT')){
       // Estaba en ARM: chequear si en esa misma evolución se extubó
       if(ult.interfaz === 'TET' && esEvoConExtubacion(ult)){
@@ -17148,6 +17220,7 @@ function openEvolucion(patientId){
    'eSOFAResp','eSOFACoag','eSOFAHep','eSOFACardio','eSOFANeuro','eSOFARenal','eSOFATotal'
   ].forEach(id=>{ const e=document.getElementById(id); if(e) e.value=''; });
   { const t=document.getElementById('tagSOFA'); if(t) t.classList.remove('active'); }
+  avisarReintubacion(false);   // v3_227
   { const pnl=document.getElementById('eSOFAPanel'); if(pnl) pnl.style.display='none'; }
   { const h=document.getElementById('eVNIMotivoHint'); if(h) h.textContent=''; }
   { const b=document.getElementById('accVent2Box'); if(b) b.style.display='none'; }
@@ -18307,10 +18380,41 @@ function _extubEnMes(mesStr, sala, filtro){
 }
 
 // ── Control de cuff y otros conteos que estaban duplicados ──────────
+// v3_227: reintubaciones. La tasa de reintubación a 48-72 h es el indicador
+// clásico de calidad del destete y hasta ahora el dato se cargaba pero no se
+// contaba en ningún lado.
+function reintubacionesEnMes(mesStr, sala, motivo){
+  return contarDiasUnicos(e => {
+    if(!enPeriodo(e.date, mesStr) || !evoEnSala(e, sala)) return false;
+    if(!esEvoConReintubacion(e)) return false;
+    return !motivo || motivoReintubacion(e) === motivo;
+  });
+}
+
+// Motivos de reintubación del período, ordenados de mayor a menor
+function motivosReintubacionEnMes(mesStr, sala){
+  const map = {};
+  evoluciones.forEach(e => {
+    if(e.tipo || !e.date || !enPeriodo(e.date, mesStr)) return;
+    if(!evoEnSala(e, sala) || !esEvoConReintubacion(e)) return;
+    const m = motivoReintubacion(e) || 'Sin motivo registrado';
+    map[m] = (map[m] || 0) + 1;
+  });
+  return Object.entries(map).sort((a,b) => b[1] - a[1]);
+}
+
 function controlCuffDiasEnMes(mesStr, sala){
   return contarDiasUnicos(e =>
     enPeriodo(e.date, mesStr) && evoEnSala(e, sala) && !!(e.cuffM || e.cuffT || e.cuffN)
   );
+}
+
+// v3_227: aviso al marcar una reintubación. Deja explícito que el paciente
+// queda en ARM, que es lo que el tablero va a mostrar a partir de ahora.
+function avisarReintubacion(hay){
+  const box = document.getElementById('evoAvisoReIOT');
+  if(box) box.style.display = hay ? 'block' : 'none';
+  if(hay) showToast('Reintubado: el paciente vuelve a figurar en ARM','info');
 }
 
 function setPosicionARM(pos){
@@ -18638,6 +18742,7 @@ function precargarCamposEvolucion(evo){
     calcHACOR();
   }
   actualizarHintMotivoVNI();
+  avisarReintubacion(esEvoConReintubacion(evo));   // v3_227
   onPVETipoChange();   // v3_223: muestra el flujo del tubo en T si corresponde
   if(evo.pveFlujoRel) setPVEFlujo(String(evo.pveFlujoRel));
 
@@ -19540,11 +19645,19 @@ const SECTOR_LBL = s => SALA_LABEL[s]||s;
 // v3_207: días de ARM contados desde las evoluciones, un día por paciente y
 // fecha. Así el total es exactamente TET + TQT y el desglose siempre cierra.
 function _enSector(e, s){ return evoEnSala(e, s); }   // v3_214: sector histórico
+// v3_227: el día en que se reintuba, o en que se intuba durante la sesión, es
+// un día de ARM aunque la evolución haya arrancado con otro soporte.
+const _diaTET = e => (e.interfaz === 'TET' && !e.interfazEsp)
+  || (esEvoConReintubacion(e))
+  || (e.soporteFinal?.tipo === 'ARM' && e.soporteFinal.armVia !== 'TQT');
+const _diaTQTARM = e => (e.interfaz === 'TQT' && !e.interfazEsp)
+  || (e.soporteFinal?.tipo === 'ARM' && e.soporteFinal.armVia === 'TQT');
+
 function diasTETreg(mesStr, s){
-  return contarDiasUnicos(e => enPeriodo(e.date, mesStr) && e.interfaz === 'TET' && _enSector(e, s));
+  return contarDiasUnicos(e => enPeriodo(e.date, mesStr) && _diaTET(e) && _enSector(e, s));
 }
 function diasTQTARMreg(mesStr, s){
-  return contarDiasUnicos(e => enPeriodo(e.date, mesStr) && e.interfaz === 'TQT' && _enSector(e, s));
+  return contarDiasUnicos(e => enPeriodo(e.date, mesStr) && _diaTQTARM(e) && !_diaTET(e) && _enSector(e, s));
 }
 function diasARMregistrados(mesStr, s){
   return diasTETreg(mesStr, s) + diasTQTARMreg(mesStr, s);
@@ -20387,6 +20500,11 @@ function catalogoIndicadores(mesStr){
     { l:'— No programadas (total)',      f:s=>extubDetalle(mesStr,s,'no_programada'), sub:true },
     { l:'   · Autoextubaciones',         f:s=>extubDetalle(mesStr,s,'autoextubacion'), sub:true },
     { l:'   · Accidentales',             f:s=>extubDetalle(mesStr,s,'accidental'), sub:true },
+    { l:'Reintubaciones', f:s=>reintubacionesEnMes(mesStr,s), destacar:true },
+    { l:'Tasa de reintubación (sobre extubaciones)', unidad:'%', tot:'propio', f:s=>{
+        const ext = extubDetalle(mesStr,s,'todas');
+        return ext ? Math.round(reintubacionesEnMes(mesStr,s) / ext * 1000)/10 : 0;
+      } },
     { l:'Controles de presión de cuff (días)', f:s=>controlCuffDiasEnMes(mesStr,s) },
     { l:'Decanulaciones exitosas',       f:s=>decanulaciones('',s,mesStr) },
   ]},
@@ -20472,6 +20590,8 @@ function renderIndMensual(mesStr){
   const _humidSalas = {};
   [indSectorSel].concat(sectoresVisibles()).forEach(s=>{ _humidSalas[s] = humidDiasEnMes(mesStr, s); });
   const _humidMotivos = motivosHumidActivaEnMes(mesStr, indSectorSel);
+  const _reiotMotivos = motivosReintubacionEnMes(mesStr, indSectorSel);   // v3_227
+  const _totalReiot = reintubacionesEnMes(mesStr, indSectorSel);
 
   body.innerHTML = `
   <!-- KPIs del mes -->
@@ -20512,6 +20632,11 @@ function renderIndMensual(mesStr){
     </div>
   </div>
 
+  ${_reiotMotivos.length ? indTabla('Motivos de reintubación — '+etiquetaPeriodo(mesStr),'ti-lungs',
+    _reiotMotivos.map(([m,n])=>indFila2(escapeHTML(m), n, pctTxt(n, _totalReiot))).join('') +
+    indFila2('<strong>Total de reintubaciones</strong>', _totalReiot, '100%'),
+    ['Motivo','Casos','% sobre reintubaciones']) : ''}
+
   ${_humidMotivos.length ? indTabla('Motivos del pase a humidificación activa — '+etiquetaPeriodo(mesStr),'ti-droplet-filled',
     _humidMotivos.map(([m,n])=>indFila2(escapeHTML(m), n, pctTxt(n, _humidSalas[indSectorSel].activa))).join('') +
     indFila2('<strong>Días en humidificación activa</strong>', _humidSalas[indSectorSel].activa, '100%'),
@@ -20538,6 +20663,7 @@ function datosPorPaciente(p){
     pves:      diasU(e => e.pve && e.pve !== 'No' && e.pve !== ''),
     pvesEx:    diasU(e => e.pveResult === 'Exitosa'),
     extub:     diasU(e => esEvoConExtubacion(e)),
+    reiot:     diasU(e => esEvoConReintubacion(e)),   // v3_227
     // Misma regla unificada que el indicador: una por día, por cualquier vía
     deg:       (() => {
       const set = new Set();
@@ -20746,6 +20872,14 @@ async function exportarIndicadoresCompleto(mesStr){
     });
   });
 
+  { const mr = motivosReintubacionEnMes(mesStr, indSectorSel);
+    if(mr.length){
+      seccion('MOTIVOS DE REINTUBACIÓN');
+      rows.push(['Motivo','Casos','% sobre reintubaciones']);
+      const tot = reintubacionesEnMes(mesStr, indSectorSel);
+      mr.forEach(([m,n]) => rows.push([m, n, pctTxt(n, tot)]));
+    } }
+
   // Detalle de la humidificación activa
   { const H0 = humidDiasEnMes(mesStr, indSectorSel);
     const mot = motivosHumidActivaEnMes(mesStr, indSectorSel);
@@ -20762,14 +20896,14 @@ async function exportarIndicadoresCompleto(mesStr){
 
   // ── 8. DETALLE POR PACIENTE ──
   seccion('DETALLE POR PACIENTE (todos los registros)');
-  rows.push(['Paciente','DNI','Sala','Cama','Estado','Sexo','Edad','Grupo','IMC','Días hosp.','Días ARM','Días TET','Días TQT ARM','Días TQT esp.','Días VNI','Días CNAF','PVE','PVE exitosas','Extubaciones','Eval. deglución','Ctrl. cuff','Días humid. activa','SOFA máx.','Decanulado','Evoluciones','Mecanismo del óbito','Donante']);
+  rows.push(['Paciente','DNI','Sala','Cama','Estado','Sexo','Edad','Grupo','IMC','Días hosp.','Días ARM','Días TET','Días TQT ARM','Días TQT esp.','Días VNI','Días CNAF','PVE','PVE exitosas','Extubaciones','Reintubaciones','Eval. deglución','Ctrl. cuff','Días humid. activa','SOFA máx.','Decanulado','Evoluciones','Mecanismo del óbito','Donante']);
   patients.forEach(p=>{
     const d = datosPorPaciente(p);   // v3_226: mismas definiciones que la pantalla
     rows.push([
       `${p.apellido}, ${p.nombre}`, p.dni||'', SALA_LABEL[p.sala]||p.sala||'', p.cama||'', p.estado||'',
       p.genero||'', p.edad||'', p.tipoKine?(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine).replace(/^[^ ]+ /,''):'', imcDePaciente(p)||'',
       d.diasHosp||'', d.diasArm||'', d.diasTET||'', d.diasTQTarm||'', d.diasTQTesp||'',
-      d.vni||'', d.cnaf||'', d.pves||'', d.pvesEx||'', d.extub||'', d.deg||'', d.cuff||'',
+      d.vni||'', d.cnaf||'', d.pves||'', d.pvesEx||'', d.extub||'', d.reiot||'', d.deg||'', d.cuff||'',
       d.humActiva||'', d.sofaMax ?? '', d.decanulado ? 'Sí' : '',
       d.evos.length,
       p.causaObito||'', p.donanteObito||''       // v3_183
@@ -20822,13 +20956,13 @@ async function exportarIndicadores(vista, mesStr){
       ...sectoresVisibles().map(s => procedimientoEspEnMes(s,mesStr,pr.label)),
       sectoresVisibles().reduce((a,s)=>a+procedimientoEspEnMes(s,mesStr,pr.label),0)]));
   } else {
-    rows.push(['Paciente','DNI','Sala','Cama','Estado','Días hosp.','Días ARM','Días TET','Días TQT ARM','Días TQT esp.','Días VNI','Días CNAF','PVE','PVE exitosas','Extubaciones','Eval. deglución','Ctrl. cuff','SOFA máx.','Evoluciones']);
+    rows.push(['Paciente','DNI','Sala','Cama','Estado','Días hosp.','Días ARM','Días TET','Días TQT ARM','Días TQT esp.','Días VNI','Días CNAF','PVE','PVE exitosas','Extubaciones','Reintubaciones','Eval. deglución','Ctrl. cuff','SOFA máx.','Evoluciones']);
     (indSectorSel ? patients.filter(p=>p.sala===indSectorSel) : patients).forEach(p=>{
       const d = datosPorPaciente(p);   // v3_226
       rows.push([
         `${p.apellido}, ${p.nombre}`, p.dni||'', SALA_LABEL[p.sala]||p.sala||'', p.cama||'', p.estado||'',
         d.diasHosp||'', d.diasArm||'', d.diasTET||'', d.diasTQTarm||'', d.diasTQTesp||'',
-        d.vni||'', d.cnaf||'', d.pves||'', d.pvesEx||'', d.extub||'', d.deg||'', d.cuff||'',
+        d.vni||'', d.cnaf||'', d.pves||'', d.pvesEx||'', d.extub||'', d.reiot||'', d.deg||'', d.cuff||'',
         d.sofaMax ?? '', d.evos.length
       ]);
     });
