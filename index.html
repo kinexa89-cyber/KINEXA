@@ -4130,7 +4130,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <div id="eGrupoAmputado" style="display:none">
         <div class="form-row three" style="margin-top:8px">
           <div class="form-group"><label>Nivel de amputación</label>
-            <select id="eAmpNivel"><option value="">-</option><option>Transtibial</option><option>Transfemoral</option><option>Transmetatarsiana</option><option>Desarticulación de cadera</option><option>MMSS — especificar en obs.</option></select>
+            <select id="eAmpNivel"><option value="">-</option><option>Transtibial</option><option>Transfemoral</option><option>Amputación de dedo / dedos</option><option>Transmetatarsiana</option><option>Desarticulación de cadera</option><option>MMSS — especificar en obs.</option></select>
           </div>
           <div class="form-group"><label>Estado del muñón</label>
             <select id="eAmpMunon"><option value="">-</option><option>Sin particularidades</option><option>Dolor en muñón</option><option>Dolor miembro fantasma</option><option>Edema</option><option>Infección / secreción</option></select>
@@ -5764,7 +5764,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <div class="form-section-title"><i class="ti ti-tools"></i> Amputado</div>
       <div class="form-row three">
         <div class="form-group"><label>Nivel de amputación</label>
-          <select id="emNivelAmp"><option value="">-</option><option>Transtibial</option><option>Transfemoral</option><option>Transmetatarsiana</option><option>Desarticulación de cadera</option><option>MMSS — especificar en obs.</option></select>
+          <select id="emNivelAmp"><option value="">-</option><option>Transtibial</option><option>Transfemoral</option><option>Amputación de dedo / dedos</option><option>Transmetatarsiana</option><option>Desarticulación de cadera</option><option>MMSS — especificar en obs.</option></select>
         </div>
         <div class="form-group"><label>Estado del muñón</label>
           <select id="emMunon"><option value="">-</option><option>Sin particularidades</option><option>Dolor en muñón</option><option>Dolor miembro fantasma</option><option>Edema</option><option>Infección / secreción</option></select>
@@ -5954,7 +5954,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <textarea id="alertaImpTexto" rows="3"
         placeholder="Ej: NO cargar peso en MID / Vía aérea dificultosa: Cormack III"
         style="border:1.5px solid var(--red-200);background:var(--red-50);border-radius:8px;width:100%;padding:8px 10px;font-family:var(--font);font-size:13px;resize:vertical"></textarea>
-      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Si lo dejás vacío, el alerta se saca.</div>
+      <div style="font-size:11px;color:var(--text-muted);margin-top:6px">Si lo dejás vacío, el alerta se saca. La fecha se guarda sola: si escribís algo como "mañana va a quirófano", el resto del equipo va a saber a qué día te referías.</div>
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalAlertaImp')">Cancelar</button>
@@ -6372,7 +6372,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_224';
+const APP_VERSION = 'v3_226';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -8892,7 +8892,9 @@ async function construirPDFPase(datos){
     dato('Antecedentes', antecedentesTexto(p) || 'sin antecedentes cargados');
     if(p.fragilidad) dato('Fragilidad clínica previa', fmtFragilidad(p.fragilidad));   // v3_219
     dato('Ventilación', vent.detalle);
-    if(p.alertaImportante) parrafo(`⚠ ${p.alertaImportante}`, 8.5, 'bold', [180, 30, 40], 3);
+    if(p.alertaImportante) parrafo(`⚠ ${p.alertaImportante}`
+      + (p.alertaFecha ? ` (cargado el ${fmtDate(String(p.alertaFecha).slice(0,10))})` : ''),
+      8.5, 'bold', [180, 30, 40], 3);   // v3_225
 
     y += 1.5;
     if(!fila.evos.length){
@@ -15059,6 +15061,16 @@ const EVO_SKIP_CAMPOS = new Set([
   'interfaz','interfazEsp','diasVE','motivoVM','motivoVMOtro','balon','map','io','osi',
   'comfortB','sbs','nrs','ops','flacc','capd','sophia','tal','woodDownes','armDiametro','tetADS','posicionARM','pronoCiclo','cuffLeak',
   'humidificacion','humidMotivo','humidMotivoOtro',   // v3_209: van en la sección Ventilación
+  // ── v3_225: campos agregados entre v3_216 y v3_223 ──────────────
+  // Ya se muestran en secciones propias; sin esto se repetían acá abajo, y
+  // `soporteFinal`, que es un objeto, se imprimía como "[object Object]".
+  'soporteFinal',                                                    // sección "Cambio de soporte en la sesión"
+  'vniMotivo','vniHoras',                                            // sección Ventilación / Interfaz
+  'hacor','hacorMomento','hacorGcs','hacorFc','hacorPh','hacorPafi','hacorFr',
+  'sofa','sofaResp','sofaCoag','sofaHep','sofaCardio','sofaNeuro','sofaRenal',  // sección SOFA
+  'roxSpo2','roxFr','rox',                                           // sección Ventilación / Interfaz
+  'humidMotivoPasiva',                                               // va con la humidificación
+  'pveFlujoRel','pveFlujoCalc',                                      // sección PVE
   'cnFlujo','mvFio2','mrFlujo','cnafFlujo','cnafFio2',
   'vniModo','vniPi','vniVt','vniFr','vniPeep','vniFio2','vniMascara',
   // Neurológico / Sedoanalgesia
@@ -15083,6 +15095,10 @@ function fmtValorEvo(v){
   if(Array.isArray(v)) return v.join(', ');
   if(v==='Si') return 'Sí';
   if(v==='No') return 'No';
+  // v3_225: red de seguridad. Un campo que guarde un objeto (como soporteFinal)
+  // imprimía "[object Object]" en la tarjeta. Si alguna vez se agrega otro
+  // campo así y se olvida excluirlo, al menos no se muestra un texto roto.
+  if(v && typeof v === 'object') return '';
   return String(v);
 }
 
@@ -15170,6 +15186,7 @@ function otrosDatosEvoHTML(e){  const items = [];
     let v = e[k];
     if(v===null || v===undefined || v==='') return;
     if(Array.isArray(v) && v.length===0) return;
+    if(typeof v === 'object' && !Array.isArray(v)) return;   // v3_225: nunca "[object Object]"
     // TA combinada (si ambas presentes) se arma aparte más abajo
     items.push(`<div class="evo-item"><div class="k">${EVO_LABELS[k]}</div><div class="v">${escapeHTML(fmtValorEvo(v))}</div></div>`);
   });
@@ -15593,6 +15610,15 @@ function today(){
   const p = n => String(n).padStart(2,'0');
   return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`;
 }
+// v3_225: fecha y hora local en formato "YYYY-MM-DD HH:MM".
+// No se usa toISOString() porque devuelve UTC y en Argentina adelantaría el día
+// a partir de las 21 hs: un alerta cargado el lunes a la noche figuraría martes.
+function nowISOLocal(){
+  const d = new Date();
+  const p = n => String(n).padStart(2,'0');
+  return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
 function fmtDate(d){
   if(!d) return '—';
   const [y,m,day]=d.split('-');
@@ -15857,7 +15883,7 @@ function renderPatientRow(p, todayStr){
       <button class="btn btn-icon btn-sm" onclick="generarInformeAlta(${p.id})" title="Informe kinésico (Word)" style="color:var(--blue-700)"><i class="ti ti-file-text-ai"></i></button>
       <button class="btn btn-icon btn-sm" onclick="openEgreso(${p.id})" title="Egreso / Traslado" style="color:var(--amber-600)"><i class="ti ti-logout"></i></button>
     </div>
-    ${p.alertaImportante && p.alertaImportante.trim() ? `<div class="p-alerta"><i class="ti ti-alert-triangle"></i><span>${escapeHTML(p.alertaImportante)}</span></div>` : ''}
+    ${p.alertaImportante && p.alertaImportante.trim() ? `<div class="p-alerta"><i class="ti ti-alert-triangle"></i><span>${escapeHTML(p.alertaImportante)}${p.alertaFecha ? ` <span style="opacity:.75;font-weight:600">(${escapeHTML(fmtDate(String(p.alertaFecha).slice(0,10)))})</span>` : ''}</span></div>` : ''}
     ${egPendHTML}
   </div>`;
 }
@@ -15946,7 +15972,7 @@ function filterDash(q){
         <button class="btn btn-icon btn-sm" onclick="openResumenIA(${p.id})" title="Resumen IA" style="color:var(--teal-600)"><i class="ti ti-sparkles"></i></button>
         <button class="btn btn-icon btn-sm" onclick="generarInformeAlta(${p.id})" title="Informe kinésico (Word)" style="color:var(--blue-700)"><i class="ti ti-file-text-ai"></i></button>
       </div>
-      ${p.alertaImportante && p.alertaImportante.trim() ? `<div class="p-alerta"><i class="ti ti-alert-triangle"></i><span>${escapeHTML(p.alertaImportante)}</span></div>` : ''}
+      ${p.alertaImportante && p.alertaImportante.trim() ? `<div class="p-alerta"><i class="ti ti-alert-triangle"></i><span>${escapeHTML(p.alertaImportante)}${p.alertaFecha ? ` <span style="opacity:.75;font-weight:600">(${escapeHTML(fmtDate(String(p.alertaFecha).slice(0,10)))})</span>` : ''}</span></div>` : ''}
     </div>`;
   }).join('') || '<div class="empty"><i class="ti ti-search-off"></i><p>Sin resultados</p></div>';
 }
@@ -16662,6 +16688,14 @@ async function guardarPaciente(){
     diagnostico:G('fDiag'),
     frecAtencion: parseInt(G('fFrecAtencion'))||1, // v3_140
     alertaImportante:G('fAlertaImportante'),
+    // v3_225: si el texto del alerta cambió, se vuelve a sellar la fecha
+    ...(function(){
+      const nuevo = G('fAlertaImportante').trim();
+      const previo = (idEdicion ? (patients.find(x=>String(x.id)===idEdicion)?.alertaImportante || '') : '').trim();
+      if(!nuevo) return { alertaFecha:'', alertaKine:'' };
+      if(nuevo === previo) return {};   // no cambió: se conserva la fecha original
+      return { alertaFecha: nowISOLocal(), alertaKine: currentUser?.name || '' };
+    })(),
     // v3_219: fragilidad clínica al ingreso
     fragilidad: G('fFragilidad') ? parseInt(G('fFragilidad')) : null,
     fragilidadFuente: G('fFragilidadFuente') || null,
@@ -17326,6 +17360,32 @@ function openEvolucion(patientId){
 
 let _alertaImpPacId = null;
 
+// ── v3_225: cuándo se cargó el alerta ───────────────────────────
+// Sin la fecha, un alerta que dice "mañana va a quirófano" es inservible: no se
+// sabe si ese "mañana" fue ayer o hace una semana. Se guarda al escribirlo y se
+// muestra siempre al lado del texto.
+function textoFechaAlerta(p){
+  const f = p?.alertaFecha;
+  if(!f) return '';
+  const soloDia = String(f).slice(0,10);
+  const hora = String(f).length > 10 ? String(f).slice(11,16) : '';
+  const dias = daysBetween(soloDia, today());
+  let cuando;
+  if(dias === 0) cuando = 'hoy';
+  else if(dias === 1) cuando = 'ayer';
+  else if(dias > 1) cuando = `hace ${dias} días`;
+  else cuando = '';
+  return `Cargado el ${fmtDate(soloDia)}${hora ? ' a las ' + hora : ''}${cuando ? ' · ' + cuando : ''}`
+    + (p.alertaKine ? ` · ${p.alertaKine}` : '');
+}
+
+// Un alerta con fecha vieja probablemente ya no aplique: conviene destacarlo
+function alertaDesactualizada(p){
+  if(!p?.alertaFecha) return false;
+  const d = daysBetween(String(p.alertaFecha).slice(0,10), today());
+  return d !== null && d >= 3;
+}
+
 function renderBannerAlertaEvo(patientId){
   const ba = document.getElementById('evoBannerAlerta');
   if(!ba) return;
@@ -17342,9 +17402,14 @@ function renderBannerAlertaEvo(patientId){
     ba.style.display = 'flex';
     ba.style.background = 'var(--red-50)';
     ba.style.borderColor = 'var(--red-400)';
+    const fechaTxt = textoFechaAlerta(p);
+    const viejo = alertaDesactualizada(p);
     ba.innerHTML = `<i class="ti ti-alert-triangle" style="font-size:24px;color:var(--red-600);flex-shrink:0"></i>
-      <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800;color:var(--red-600);letter-spacing:.5px">⚠ IMPORTANTE — TODO EL EQUIPO</div>
-      <div style="font-size:13px;color:var(--red-800);font-weight:700">${escapeHTML(txt)}</div></div>${lapiz}`;
+      <div style="flex:1;min-width:0"><div style="font-size:12px;font-weight:800;color:var(--red-600);letter-spacing:.5px">⚠ IMPORTANTE</div>
+      <div style="font-size:13px;color:var(--red-800);font-weight:700">${escapeHTML(txt)}</div>
+      ${fechaTxt ? `<div style="font-size:11px;color:${viejo ? 'var(--amber-600)' : 'var(--red-600)'};font-weight:600;margin-top:3px">
+        <i class="ti ti-clock"></i> ${escapeHTML(fechaTxt)}${viejo ? ' — verificá si sigue vigente' : ''}</div>` : ''}
+      </div>${lapiz}`;
   } else {
     // Sin alerta cargado: se ofrece agregarlo, discreto para no competir con el formulario
     ba.style.display = 'flex';
@@ -17363,7 +17428,11 @@ function openAlertaImportante(patientId){
   if(!p){ showToast('No se encontró el paciente','error'); return; }
   _alertaImpPacId = patientId;
   const sub = document.getElementById('alertaImpSub');
-  if(sub) sub.textContent = `${p.apellido}, ${p.nombre} · ${SALA_LABEL[p.sala]||p.sala||'—'} cama ${p.cama||'—'}`;
+  if(sub){
+    const f = textoFechaAlerta(p);   // v3_225
+    sub.textContent = `${p.apellido}, ${p.nombre} · ${SALA_LABEL[p.sala]||p.sala||'—'} cama ${p.cama||'—'}`
+      + (f ? ` · ${f}` : '');
+  }
   const ta = document.getElementById('alertaImpTexto');
   if(ta) ta.value = p.alertaImportante || '';
   openModal('modalAlertaImp');
@@ -17383,7 +17452,10 @@ async function guardarAlertaImportante(){
   const html = btn ? btn.innerHTML : '';
   if(btn){ btn.disabled = true; btn.innerHTML = '<span class="ocr-spinner"></span>Guardando…'; }
 
-  const actualizado = { ...p, alertaImportante: nuevo };
+  // v3_225: se sella cuándo y quién lo cargó. Si se borra el alerta, se limpian.
+  const actualizado = nuevo
+    ? { ...p, alertaImportante: nuevo, alertaFecha: nowISOLocal(), alertaKine: currentUser?.name || '' }
+    : { ...p, alertaImportante: '', alertaFecha: '', alertaKine: '' };
   try {
     if(!DEMO){
       await rpc('kinexa_registro_guardar', { p_token:TOKEN, p_tipo:'paciente', p_id:String(p.id), p_data:_limpiarObj(actualizado) });
@@ -18143,6 +18215,102 @@ function fmtPVEFlujo(e){
   if(!rel) return '';
   const relTxt = String(rel) === '0.5' ? '0,5 L/kg de PCP' : rel + ' L/kg de PCP';
   return relTxt + (e.pveFlujoCalc ? ' — ' + e.pveFlujoCalc + ' L/min' : '');
+}
+
+
+// ════════════════════════════════════════════════════════════════════
+//  v3_226 — INDICADORES: DEFINICIÓN ÚNICA
+// ════════════════════════════════════════════════════════════════════
+// Antes cada indicador estaba escrito tres veces: en la tabla de la pantalla,
+// en el Excel completo y en el Excel por vista. Las tres copias se fueron
+// desincronizando y quedaron números distintos para lo mismo. Ejemplos que
+// aparecieron en la auditoría:
+//
+//   · "Días de TQT sin ARM" en el Excel por vista buscaba el texto
+//     'TQT espontáneo' dentro de `interfaz`, que es el formato viejo: hoy el
+//     dato vive en `interfazEsp`, así que esa fila daba 0 siempre.
+//   · Las extubaciones y las PVE exitosas filtraban por `paciente.sala`, o sea
+//     por dónde está el paciente HOY, salteando la atribución histórica de
+//     sector de v3_214. Con el filtro por sector daban mal.
+//   · "Total de procedimientos" ya incluye las fichas neurológicas, pero
+//     "Evaluación neurológica (ficha)" figuraba abajo como si fuera otra cosa.
+//   · La evaluación de deglución se contaba de dos maneras incompatibles
+//     (ver `evaluacionesDeglucionEnMes`).
+//
+// Desde acá hay UNA sola definición por indicador y las tres salidas la usan.
+
+// ── Deglución: una evaluación por paciente y día ────────────────────
+// Se puede registrar de tres formas distintas y todas significan lo mismo:
+//   1. el campo "Deglución" de la evolución,
+//   2. el tag "Evaluación de deglución" de prestaciones específicas,
+//   3. una evaluación formal del módulo (GUSS-ICU o evaluación formal).
+// Antes se contaban por separado: la tabla de técnicas mostraba 7 (los tags) y
+// el bloque de evaluaciones mostraba 0 (solo el campo). Si alguien marcaba el
+// tag Y además cargaba el GUSS, sumaba dos veces.
+// Ahora se unifica por paciente + fecha: haya usado una vía o las tres, es
+// UNA evaluación de deglución de ese paciente ese día.
+function evaluacionesDeglucionEnMes(mesStr, sala){
+  const set = new Set();
+  evoluciones.forEach(e => {
+    if(e.tipo || !e.date || !enPeriodo(e.date, mesStr)) return;
+    if(!evoEnSala(e, sala)) return;
+    const porCampo = !!(e.deglusion && e.deglusion !== 'No realizada');
+    const porTag   = tecList(e).some(t => _normPrest(t) === _normPrest('Evaluación de deglución'));
+    if(porCampo || porTag) set.add(e.patientId + '|' + e.date);
+  });
+  // Evaluaciones formales: viven fuera de la evolución, en su propio módulo
+  (evalDeglusion || []).forEach(ev => {
+    if(!ev || !ev.fecha || ev._borrada) return;
+    if(!enPeriodo(ev.fecha, mesStr)) return;
+    if(sala){
+      // No tienen sector propio: se ubican por dónde estaba el paciente ese día
+      const evosDia = evoluciones.filter(x => x.patientId === ev.patientId && x.date === ev.fecha && !x.tipo);
+      const enSala = evosDia.length
+        ? evosDia.some(x => salaDeEvolucion(x) === sala)
+        : (patients.find(x => x.id === ev.patientId)?.sala === sala);
+      if(!enSala) return;
+    }
+    set.add(ev.patientId + '|' + ev.fecha);
+  });
+  return set.size;
+}
+
+// Desglose por vía de registro (la suma puede superar el total: es a propósito,
+// un mismo paciente-día puede estar registrado por más de una vía)
+function deglucionPorViaEnMes(mesStr, sala, via){
+  if(via === 'formal'){
+    return (evalDeglusion || []).filter(ev => {
+      if(!ev || !ev.fecha || ev._borrada) return false;
+      if(!enPeriodo(ev.fecha, mesStr)) return false;
+      if(!sala) return true;
+      const evosDia = evoluciones.filter(x => x.patientId === ev.patientId && x.date === ev.fecha && !x.tipo);
+      return evosDia.length
+        ? evosDia.some(x => salaDeEvolucion(x) === sala)
+        : (patients.find(x => x.id === ev.patientId)?.sala === sala);
+    }).length;
+  }
+  return contarDiasUnicos(e => {
+    if(!enPeriodo(e.date, mesStr) || !evoEnSala(e, sala)) return false;
+    if(via === 'campo') return !!(e.deglusion && e.deglusion !== 'No realizada');
+    if(via === 'tag')   return tecList(e).some(t => _normPrest(t) === _normPrest('Evaluación de deglución'));
+    return false;
+  });
+}
+
+// ── Extubaciones: una definición para toda la app ───────────────────
+// Antes había tres criterios distintos dando números distintos. Se centraliza
+// acá y todo usa `extubDetalle`, que ya respeta el sector histórico.
+function _extubEnMes(mesStr, sala, filtro){
+  return contarDiasUnicos(e =>
+    enPeriodo(e.date, mesStr) && evoEnSala(e, sala) && esEvoConExtubacion(e) && (!filtro || filtro(e))
+  );
+}
+
+// ── Control de cuff y otros conteos que estaban duplicados ──────────
+function controlCuffDiasEnMes(mesStr, sala){
+  return contarDiasUnicos(e =>
+    enPeriodo(e.date, mesStr) && evoEnSala(e, sala) && !!(e.cuffM || e.cuffT || e.cuffN)
+  );
 }
 
 function setPosicionARM(pos){
@@ -20131,13 +20299,146 @@ function evalEstructuradasEnMes(mesStr, sala){
     'PVE (prueba de ventilación espontánea)': contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&enSala(e)&&e.pve&&e.pve!=='No'&&e.pve!==''),
     'Evaluación de músculos respiratorios (Pimax/Pemax/CV)': con(e=>e.musResp || e.musPImax || e.musPEmax || e.musCV || tecList(e).some(t=>(t||'').includes('músculos respiratorios'))),
     'Evaluación de fuerza muscular (MRC)': con(e=>e.mrcCompleto==='Si' || e.mrcTotal || e.mrc),
-    'Control de presión de cuff (días)': contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&enSala(e)&&(e.cuffM||e.cuffT||e.cuffN)),
-    'Evaluación de deglución (días)': contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&enSala(e)&&e.deglusion&&e.deglusion!=='No realizada'),
+    // v3_226: las dos usan la definición única. La de deglución antes solo miraba
+    // el campo de la evolución, así que daba 0 mientras la tabla de técnicas
+    // mostraba 7 por los tags: eran dos formas de registrar lo mismo.
+    'Control de presión de cuff (días)': controlCuffDiasEnMes(mesStr, sala),
+    'Evaluación de deglución (paciente-día)': evaluacionesDeglucionEnMes(mesStr, sala),
     'Cambios de setting ventilatorio': con(e=>e.modSetting),
     'EAB registrados': con(e=>e.ph||e.pco2||e.po2) + evos.reduce((s,e)=>s+((Array.isArray(e.eabExtra)?e.eabExtra.length:0)),0),
   };
 }
 
+
+// ════════════════════════════════════════════════════════════════════
+//  v3_226 — CATÁLOGO DE INDICADORES
+// ════════════════════════════════════════════════════════════════════
+// Una sola lista, agrupada por tema y en orden clínico. La usan la tabla de la
+// pantalla y los dos exportadores, así que ya no puede haber tres versiones
+// distintas del mismo indicador.
+//
+// Cada fila: { l:etiqueta, f:(sala)=>valor, sub:true si es un desglose,
+//              tot:'suma'|'propio', pct:{de,sobre} para porcentajes }
+//   tot:'suma'   → el TOTAL es la suma de las columnas (conteos por sector)
+//   tot:'propio' → el TOTAL se recalcula sobre toda la institución (evita
+//                  contar dos veces al paciente que pasó por dos sectores)
+function catalogoIndicadores(mesStr){
+  const H = {};
+  [''].concat(SECTORES).forEach(s => { H[s] = humidDiasEnMes(mesStr, s); });
+  const h = s => H[s] || { total:0, pasiva:0, activa:0 };
+
+  return [
+  { g:'Actividad del servicio', icono:'ti-clipboard-check', filas:[
+    { l:'Evoluciones registradas',                 f:s=>evolucionesEnMes(s,mesStr) },
+    { l:'Prestaciones totales',                    f:s=>prestacionesTotalesEnMes(s,mesStr), destacar:true },
+    { l:'Prestaciones generales (VAA ×6, resto ×2)', f:s=>prestacionesGeneralesEnMes(s,mesStr), sub:true },
+    { l:'Prestaciones específicas (tags)',         f:s=>prestacionesEspTotalEnMes(s,mesStr), sub:true },
+    { l:'Procedimientos',                          f:s=>procedimientosTotalEnMes(s,mesStr), sub:true },
+    { l:'Fichas neurológicas',                     f:s=>fichasNeuroEnMes(s,mesStr), sub:true },
+  ]},
+
+  { g:'Movimiento de pacientes', icono:'ti-arrows-exchange', filas:[
+    { l:'Pacientes atendidos',      f:s=>pacientesDelMes(mesStr,s).length, tot:'propio' },
+    { l:'Ingresos al sector',       f:s=>ingresosDelMes(mesStr,s) },
+    { l:'— Reingresos',             f:s=>reingresosDelMes(mesStr,s), sub:true },
+    { l:'— Reingresos a menos de 30 días', f:s=>reingresosDelMes(mesStr,s,true), sub:true },
+    { l:'Altas',                    f:s=>egresosDelMes(mesStr,'alta',s) },
+    { l:'Óbitos',                   f:s=>egresosDelMes(mesStr,'obito',s) },
+    { l:'— Por muerte encefálica',  f:s=>obitosDelMes(mesStr,s,_obME), sub:true },
+    { l:'— Por parada cardíaca',    f:s=>obitosDelMes(mesStr,s,_obPC), sub:true },
+    { l:'— Sin mecanismo registrado', f:s=>obitosDelMes(mesStr,s,_obSin), sub:true },
+    { l:'Traslados a otro sector',  f:s=>egresosDelMes(mesStr,'traslado',s) },
+    { l:'Cambios de cama (mismo sector)', f:s=>egresosDelMes(mesStr,'cama',s) },
+    { l:'Mortalidad (óbitos / altas + óbitos)', f:s=>{
+        const a = egresosDelMes(mesStr,'alta',s), o = egresosDelMes(mesStr,'obito',s);
+        return (a + o) ? Math.round(o / (a + o) * 1000) / 10 : 0;
+      }, unidad:'%', tot:'propio' },
+    { l:'Donantes',                 f:s=>obitosDelMes(mesStr,s,_obDon) },
+    { l:'— En muerte encefálica',   f:s=>obitosDelMes(mesStr,s,e=>_obME(e)&&_obDon(e)), sub:true },
+    { l:'— En asistolia controlada',f:s=>obitosDelMes(mesStr,s,e=>_obPC(e)&&_obDon(e)), sub:true },
+  ]},
+
+  { g:'Ventilación mecánica invasiva', icono:'ti-lungs', filas:[
+    { l:'Días de ARM registrados (TET + TQT)', f:s=>diasARMregistrados(mesStr,s), destacar:true },
+    { l:'— Días de TET',           f:s=>diasTETreg(mesStr,s), sub:true },
+    { l:'— Días de TQT en ARM',    f:s=>diasTQTARMreg(mesStr,s), sub:true },
+    { l:'Días de ARM según fechas de la ficha', f:s=>patients.filter(p=>!s||p.sala===s).reduce((a,p)=>a+diasARMenMes(p,mesStr),0) },
+    { l:'— Días de ARM sin evolución cargada',  f:s=>Math.max(0, patients.filter(p=>!s||p.sala===s).reduce((a,p)=>a+diasARMenMes(p,mesStr),0) - diasARMregistrados(mesStr,s)), sub:true },
+    { l:'Pacientes distintos que pasaron por ARM', f:s=>pacientesEnARMenMes(s,mesStr), tot:'propio' },
+    { l:'Cambios de setting ventilatorio', f:s=>evosDelMes(mesStr,s).filter(e=>e.modSetting).length },
+  ]},
+
+  { g:'Gravedad', icono:'ti-alert-triangle', filas:[
+    { l:'SOFA — evaluaciones cargadas',   f:s=>sofaDelMes(mesStr,s) },
+    { l:'— Pacientes con SOFA evaluado',  f:s=>sofaDelMes(mesStr,s,'pacientes'), sub:true, tot:'propio' },
+    { l:'— Con SOFA máximo ≥ 10 (disfunción grave)', f:s=>sofaDelMes(mesStr,s,'graves'), sub:true, tot:'propio' },
+    { l:'— SOFA máximo promedio',         f:s=>sofaDelMes(mesStr,s,'promedio'), sub:true, tot:'propio' },
+  ]},
+
+  { g:'Destete y vía aérea', icono:'ti-plug-x', filas:[
+    { l:'Días de TQT sin ARM (espontáneo)', f:s=>diasInterfazEnMes(mesStr,s,'TQT_ESP') },
+    { l:'PVE realizadas',                f:s=>pveEnMes(s,mesStr), destacar:true },
+    { l:'— PVE exitosas',                f:s=>contarDiasUnicos(e=>enPeriodo(e.date,mesStr)&&evoEnSala(e,s)&&e.pveResult==='Exitosa'), sub:true },
+    { l:'Extubaciones (todas)',          f:s=>extubDetalle(mesStr,s,'todas'), destacar:true },
+    { l:'— Planificadas',                f:s=>extubDetalle(mesStr,s,'planificada'), sub:true },
+    { l:'— Planificadas con PVE exitosa',f:s=>extubDetalle(mesStr,s,'exitosa'), sub:true },
+    { l:'— Con PVE fallida',             f:s=>extubDetalle(mesStr,s,'fallida'), sub:true },
+    { l:'— Sin PVE previa',              f:s=>extubDetalle(mesStr,s,'sin_pve'), sub:true },
+    { l:'— No programadas (total)',      f:s=>extubDetalle(mesStr,s,'no_programada'), sub:true },
+    { l:'   · Autoextubaciones',         f:s=>extubDetalle(mesStr,s,'autoextubacion'), sub:true },
+    { l:'   · Accidentales',             f:s=>extubDetalle(mesStr,s,'accidental'), sub:true },
+    { l:'Controles de presión de cuff (días)', f:s=>controlCuffDiasEnMes(mesStr,s) },
+    { l:'Decanulaciones exitosas',       f:s=>decanulaciones('',s,mesStr) },
+  ]},
+
+  { g:'Soporte no invasivo y oxigenoterapia', icono:'ti-mask', filas:[
+    { l:'Días de VNI',                   f:s=>diasInterfazEnMes(mesStr,s,'VNI'), destacar:true },
+    { l:'— Electiva (1ª línea)',         f:s=>vniPorMotivoEnMes(mesStr,s,'electiva'), sub:true },
+    { l:'— Cambio de interfaz (sin PVE)',f:s=>vniPorMotivoEnMes(mesStr,s,'cambio_interfaz'), sub:true },
+    { l:'— Prevención de falla de extubación', f:s=>vniPorMotivoEnMes(mesStr,s,'prevencion'), sub:true },
+    { l:'— Rescate post-extubación',     f:s=>vniPorMotivoEnMes(mesStr,s,'rescate'), sub:true },
+    { l:'Horas totales de VNI',          f:s=>horasVNIEnMes(mesStr,s), unidad:'h' },
+    { l:'HACOR evaluados',               f:s=>hacorEnMes(mesStr,s) },
+    { l:'— Con alto riesgo de fracaso (>5)', f:s=>hacorEnMes(mesStr,s,true), sub:true },
+    { l:'Días de CNAF',                  f:s=>diasInterfazEnMes(mesStr,s,'CNAF') },
+    { l:'Días de VNI + CNAF alternado',  f:s=>diasInterfazEnMes(mesStr,s,'VNI_CNAF') },
+    { l:'Días de VAN con O₂',            f:s=>diasInterfazEnMes(mesStr,s,'VAN_O2') },
+    { l:'Días en aire ambiente',         f:s=>diasInterfazEnMes(mesStr,s,'AA') },
+    { l:'Cambios de soporte durante la sesión', f:s=>cambiosSoporteEnMes(mesStr,s) },
+  ]},
+
+  { g:'Humidificación de la vía aérea', icono:'ti-droplet-filled', filas:[
+    { l:'Días con humidificación registrada', f:s=>h(s).total },
+    { l:'— Pasiva (HME)',                f:s=>h(s).pasiva, sub:true },
+    { l:'— Activa',                      f:s=>h(s).activa, sub:true },
+    { l:'% de días en humidificación activa', f:s=>h(s).total ? Math.round(h(s).activa / h(s).total * 1000)/10 : 0, unidad:'%', tot:'propio' },
+  ]},
+
+  { g:'Deglución', icono:'ti-soup', filas:[
+    { l:'Evaluaciones de deglución (paciente-día)', f:s=>evaluacionesDeglucionEnMes(mesStr,s), destacar:true,
+      nota:'Una por paciente y día, sin importar por cuántas vías se haya registrado' },
+    { l:'— Registradas en el campo de la evolución', f:s=>deglucionPorViaEnMes(mesStr,s,'campo'), sub:true },
+    { l:'— Marcadas con el tag de prestación',       f:s=>deglucionPorViaEnMes(mesStr,s,'tag'), sub:true },
+    { l:'— Evaluaciones formales (GUSS-ICU / formal)', f:s=>deglucionPorViaEnMes(mesStr,s,'formal'), sub:true },
+  ]},
+  ];
+}
+
+// Valor formateado de una fila
+function _valorFilaInd(fila, s){
+  const v = fila.f(s);
+  const n = (v === null || v === undefined || isNaN(v)) ? 0 : v;
+  return fila.unidad ? n + fila.unidad : n;
+}
+// TOTAL de una fila: suma de columnas, o recálculo propio sobre la institución
+function _totalFilaInd(fila){
+  if(fila.tot === 'propio' || fila.unidad === '%'){
+    const v = fila.f(indSectorSel);
+    return fila.unidad ? ((v||0) + fila.unidad) : (v || 0);
+  }
+  const t = sectoresVisibles().reduce((acc, s) => acc + (Number(fila.f(s)) || 0), 0);
+  return fila.unidad ? (Math.round(t*10)/10 + fila.unidad) : t;
+}
 // ── Vista mensual ──────────────────────────────────────────
 function renderIndMensual(mesStr){
   const body = document.getElementById('indBody');
@@ -20153,24 +20454,17 @@ function renderIndMensual(mesStr){
   // cerraban y la suma parecía mal hecha.
   const totalPrestProc = procedimientosTotalEnMes(indSectorSel, mesStr) + fichasNeuroEnMes(indSectorSel, mesStr);
   const totalPrestTot = prestacionesTotalesEnMes(indSectorSel, mesStr);
-  const totalARM = patients.reduce((s,p)=>s+diasARMenMes(p,mesStr),0);
-  const totalTET = diasTETenMes(mesStr);
-  const totalTQTarm = diasTQTarmEnMes(mesStr);
-  const totalTQTesp = diasTQTespEnMes(mesStr);
-  const totalCuff = controlCuffEnMes(indSectorSel, mesStr);
+  // v3_226: los KPI ignoraban el filtro de sector (usaban toda la institución
+  // aunque abajo la tabla mostrara un solo sector) y contaban los días de ARM
+  // con un criterio distinto al de la tabla, así que los dos números no cerraban.
+  const totalARM = diasARMregistrados(mesStr, indSectorSel);
+  const totalTET = diasTETreg(mesStr, indSectorSel);
+  const totalTQTarm = diasTQTARMreg(mesStr, indSectorSel);
+  const totalTQTesp = diasInterfazEnMes(mesStr, indSectorSel, 'TQT_ESP');
+  const totalCuff = controlCuffDiasEnMes(mesStr, indSectorSel);
   const totalPVE = pveEnMes(indSectorSel, mesStr);
 
-  const fila = (label, fn) => {
-    const total = fn(indSectorSel);   // v3_214: el TOTAL respeta el filtro de sector
-    const celdas = sectoresVisibles().map(s=>`<td>${fn(s)||0}</td>`).join('');
-    return `<tr><td style="font-weight:600">${label}</td>${celdas}<td style="font-weight:700;color:var(--blue-700)">${total}</td></tr>`;
-  };
-
-  const filaARM = (label, fn) => {
-    const celdas = sectoresVisibles().map(s=>`<td>${fn(s)||0}</td>`).join('');
-    const total = sectoresVisibles().reduce((s,sala)=>s+(fn(sala)||0),0);
-    return `<tr><td style="font-weight:600">${label}</td>${celdas}<td style="font-weight:700;color:var(--blue-700)">${total}</td></tr>`;
-  };
+  // v3_226: las filas ahora salen de catalogoIndicadores()
 
   // v3_209: la humidificación se calcula una sola vez por sector, no una vez
   // por celda: recorrer todas las evoluciones cuatro veces por sala no hace
@@ -20202,77 +20496,17 @@ function renderIndMensual(mesStr){
         </tr>
       </thead>
       <tbody>
-        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Prestaciones</td></tr>
-        ${fila('Prestaciones totales del servicio', s=>prestacionesTotalesEnMes(s,mesStr))}
-        ${fila('Prestaciones generales (ARM/TQT ×6, resto ×2)', s=>prestacionesGeneralesEnMes(s,mesStr))}
-        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Prestaciones específicas</td></tr>
-        ${fila('Total de prestaciones específicas', s=>prestacionesEspTotalEnMes(s,mesStr))}
-        ${PRESTACIONES_ESP.map(esp => fila(esp, s=>prestacionesEspEnMes(s,mesStr,esp))).join('')}
-        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Procedimientos y evaluaciones</td></tr>
-        ${fila('Total de procedimientos', s=>procedimientosTotalEnMes(s,mesStr)+fichasNeuroEnMes(s,mesStr))}
-        ${PROCEDIMIENTOS_ESP.map(pr => fila(pr.label, s=>procedimientoEspEnMes(s,mesStr,pr.label))).join('')}
-        ${fila('Evaluación neurológica (ficha)', s=>fichasNeuroEnMes(s,mesStr))}
-        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">ARM / Ventilación mecánica</td></tr>
-        ${filaARM('Días de ARM registrados (TET + TQT)', s=>diasARMregistrados(mesStr,s))}
-        ${filaARM('— Días de TET', s=>diasTETreg(mesStr,s))}
-        ${filaARM('— Días de TQT en ARM', s=>diasTQTARMreg(mesStr,s))}
-        ${filaARM('Días de ARM según fechas de la ficha', s=>patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0))}
-        ${filaARM('— Días de ARM sin evolución cargada', s=>Math.max(0, patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0) - diasARMregistrados(mesStr,s)))}
-        ${filaARM('Días de TQT sin ARM (espontáneo)', s=>diasInterfazEnMes(mesStr,s,'TQT_ESP'))}
-        ${filaARM('Pacientes distintos que pasaron por ARM', s=>pacientesEnARMenMes(s,mesStr))}
-        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Soporte no invasivo / Oxigenoterapia (días)</td></tr>
-        ${filaARM('SOFA — evaluaciones cargadas', s=>sofaDelMes(mesStr,s))}
-        ${filaARM('— Pacientes con SOFA evaluado', s=>sofaDelMes(mesStr,s,'pacientes'))}
-        ${filaARM('— Con SOFA máximo ≥ 10 (disfunción grave)', s=>sofaDelMes(mesStr,s,'graves'))}
-        ${filaARM('— SOFA máximo promedio', s=>sofaDelMes(mesStr,s,'promedio'))}
-        ${filaARM('Días de VNI', s=>diasInterfazEnMes(mesStr,s,'VNI'))}
-        ${filaARM('— Electiva (1ª línea)', s=>vniPorMotivoEnMes(mesStr,s,'electiva'))}
-        ${filaARM('— Cambio de interfaz (sin PVE)', s=>vniPorMotivoEnMes(mesStr,s,'cambio_interfaz'))}
-        ${filaARM('— Prevención de falla de extubación', s=>vniPorMotivoEnMes(mesStr,s,'prevencion'))}
-        ${filaARM('— Rescate post-extubación', s=>vniPorMotivoEnMes(mesStr,s,'rescate'))}
-        ${filaARM('Horas totales de VNI', s=>horasVNIEnMes(mesStr,s))}
-        ${filaARM('HACOR evaluados', s=>hacorEnMes(mesStr,s))}
-        ${filaARM('— Con alto riesgo de fracaso (>5)', s=>hacorEnMes(mesStr,s,true))}
-        ${filaARM('Días de CNAF', s=>diasInterfazEnMes(mesStr,s,'CNAF'))}
-        ${filaARM('Días de VNI + CNAF alternado', s=>diasInterfazEnMes(mesStr,s,'VNI_CNAF'))}
-        ${filaARM('Días de VAN con O₂', s=>diasInterfazEnMes(mesStr,s,'VAN_O2'))}
-        ${filaARM('Días en aire ambiente', s=>diasInterfazEnMes(mesStr,s,'AA'))}
-        ${filaARM('Cambios de soporte durante la sesión', s=>cambiosSoporteEnMes(mesStr,s))}
-        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Extubaciones</td></tr>
-        ${filaARM('Extubaciones exitosas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.extubacion==='Sí — planificada'&&e.pveResult==='Exitosa'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
-        ${filaARM('Extubaciones fallidas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.extubacion?.startsWith('Sí')&&e.pveResult?.startsWith('Fallida')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
-        ${filaARM('Extubaciones no programadas (total)', s=>extubDetalle(mesStr,s,'no_programada'))}
-        ${filaARM('— Autoextubaciones', s=>extubDetalle(mesStr,s,'autoextubacion'))}
-        ${filaARM('— Extubaciones accidentales', s=>extubDetalle(mesStr,s,'accidental'))}
-        ${filaARM('Extubaciones sin PVE previa', s=>extubDetalle(mesStr,s,'sin_pve'))}
-        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Decanulación</td></tr>
-        ${filaARM('Decanulaciones exitosas', s=>decanulaciones('',s,mesStr))}
-        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Movimientos del mes</td></tr>
-        ${filaARM('Ingresos al sector', s=>ingresosDelMes(mesStr,s))}
-        ${filaARM('— De los cuales son reingresos', s=>reingresosDelMes(mesStr,s))}
-        ${filaARM('— Reingresos a menos de 30 días', s=>reingresosDelMes(mesStr,s,true))}
-        ${filaARM('Altas', s=>egresosDelMes(mesStr,'alta',s))}
-        ${filaARM('Óbitos', s=>egresosDelMes(mesStr,'obito',s))}
-        ${filaARM('— Por muerte encefálica', s=>obitosDelMes(mesStr,s,_obME))}
-        ${filaARM('— Por parada cardíaca', s=>obitosDelMes(mesStr,s,_obPC))}
-        ${filaARM('— Sin mecanismo registrado', s=>obitosDelMes(mesStr,s,_obSin))}
-        ${filaARM('Traslados internos', s=>egresosDelMes(mesStr,'traslado',s))}
-        ${filaARM('Cambios de cama (mismo sector)', s=>egresosDelMes(mesStr,'cama',s))}
-        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Donación de órganos</td></tr>
-        ${filaARM('Donantes', s=>obitosDelMes(mesStr,s,_obDon))}
-        ${filaARM('— En muerte encefálica', s=>obitosDelMes(mesStr,s,e=>_obME(e)&&_obDon(e)))}
-        ${filaARM('— En asistolia controlada', s=>obitosDelMes(mesStr,s,e=>_obPC(e)&&_obDon(e)))}
-        <tr><td style="font-weight:600">Tasa de donación</td>${sectoresVisibles().map(s=>`<td>${tasaDonacion(mesStr,s)}</td>`).join('')}<td style="font-weight:700;color:var(--blue-700)">${tasaDonacion(mesStr,indSectorSel)}</td></tr>
-        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">PVE / Ventilación espontánea</td></tr>
-        ${filaARM('PVE realizadas', s=>pveEnMes(s,mesStr))}
-        ${filaARM('PVE exitosas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.pveResult==='Exitosa'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s)))}
-        <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}" style="padding:6px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">Vía aérea artificial</td></tr>
-        ${filaARM('Controles de cuff', s=>controlCuffEnMes(s,mesStr))}
-        ${filaARM('Días con humidificación registrada', s=>_humidSalas[s].total)}
-        ${filaARM('— Humidificación pasiva (HME)', s=>_humidSalas[s].pasiva)}
-        ${filaARM('— Humidificación activa', s=>_humidSalas[s].activa)}
-        <tr><td style="font-weight:600">% de días en humidificación activa</td>${sectoresVisibles().map(s=>`<td>${pctTxt(_humidSalas[s].activa, _humidSalas[s].total)}</td>`).join('')}<td style="font-weight:700;color:var(--blue-700)">${pctTxt(_humidSalas[indSectorSel].activa, _humidSalas[indSectorSel].total)}</td></tr>
-        ${filaARM('Evaluaciones de deglución', s=>deglucionEnMes(s,mesStr))}
+        ${catalogoIndicadores(mesStr).map(gr => `
+          <tr style="background:var(--gray-50)"><td colspan="${sectoresVisibles().length+2}"
+              style="padding:7px 12px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--purple-700)">
+            <i class="ti ${gr.icono}"></i> ${gr.g}</td></tr>
+          ${gr.filas.map(f => `<tr>
+            <td style="font-weight:${f.sub ? '400' : '600'};${f.sub ? 'padding-left:22px;color:var(--text-muted)' : ''}">${f.l}${
+              f.nota ? `<div style="font-size:10px;color:var(--text-muted);font-weight:400;line-height:1.3">${f.nota}</div>` : ''}</td>
+            ${sectoresVisibles().map(s => `<td>${_valorFilaInd(f, s)}</td>`).join('')}
+            <td style="font-weight:700;color:${f.destacar ? 'var(--purple-700)' : 'var(--blue-700)'}">${_totalFilaInd(f)}</td>
+          </tr>`).join('')}
+        `).join('')}
       </tbody>
     </table>
     </div>
@@ -20285,6 +20519,51 @@ function renderIndMensual(mesStr){
 }
 
 // ── Vista por paciente ────────────────────────────────────
+// v3_226: conteos por paciente, con las MISMAS definiciones que el resto.
+// Antes cada tabla los recalculaba a mano y arrastraba criterios viejos: el
+// TQT espontáneo se buscaba dentro de `interfaz` (formato anterior a v3_187),
+// así que en las tres tablas por paciente esa columna daba 0.
+function datosPorPaciente(p){
+  const evos = evoluciones.filter(e => e.patientId === p.id && !e.tipo);
+  const diasU = filtro => new Set(evos.filter(e => e.date && filtro(e)).map(e => e.date)).size;
+  const esTQTesp = e => e.interfazEsp === 'TQT_O2' || e.interfazEsp === 'TQT_AA'
+                     || (e.interfaz||'').includes('TQT espontáneo');
+  return {
+    evos,
+    diasHosp:  p.fIHosp ? (daysBetween(p.fIHosp, p.fEUTI || today()) || 0) + 1 : null,
+    diasArm:   p.inicioARM ? (daysBetween(p.inicioARM, p.finARM || fechaSalidaARM(p.id) || today()) || 0) + 1 : 0,
+    diasTET:   diasU(e => e.interfaz === 'TET' && !e.interfazEsp),
+    diasTQTarm:diasU(e => e.interfaz === 'TQT' && !e.interfazEsp),
+    diasTQTesp:diasU(esTQTesp),
+    pves:      diasU(e => e.pve && e.pve !== 'No' && e.pve !== ''),
+    pvesEx:    diasU(e => e.pveResult === 'Exitosa'),
+    extub:     diasU(e => esEvoConExtubacion(e)),
+    // Misma regla unificada que el indicador: una por día, por cualquier vía
+    deg:       (() => {
+      const set = new Set();
+      evos.forEach(e => {
+        if(!e.date) return;
+        const porCampo = !!(e.deglusion && e.deglusion !== 'No realizada');
+        const porTag = tecList(e).some(t => _normPrest(t) === _normPrest('Evaluación de deglución'));
+        if(porCampo || porTag) set.add(e.date);
+      });
+      (evalDeglusion || []).forEach(ev => {
+        if(ev && ev.patientId === p.id && ev.fecha && !ev._borrada) set.add(ev.fecha);
+      });
+      return set.size;
+    })(),
+    cuff:      diasU(e => e.cuffM || e.cuffT || e.cuffN),
+    humActiva: diasU(e => e.humidificacion === 'Activa'),
+    vni:       diasU(e => e.interfazEsp === 'VNI' || e.interfazEsp === 'VNI_CNAF'),
+    cnaf:      diasU(e => e.interfazEsp === 'CNAF' || e.interfazEsp === 'VNI_CNAF'),
+    decanulado:diasU(e => e.decDecanulado === 'Si') > 0,
+    sofaMax:   (() => {
+      const v = evos.map(e => Number(e.sofa)).filter(n => isFinite(n));
+      return v.length ? Math.max(...v) : null;
+    })(),
+  };
+}
+
 function renderIndPacientes(){
   const body = document.getElementById('indBody');
   if(!body) return;
@@ -20292,20 +20571,10 @@ function renderIndPacientes(){
   // v3_214: la vista por paciente respeta el filtro de sector (por dónde está hoy)
   const lista = indSectorSel ? patients.filter(p => p.sala === indSectorSel) : patients;
   const filas = lista.map(p=>{
-    const evos = evoluciones.filter(e=>e.patientId===p.id && !e.tipo);
-    // v3_109: días/eventos únicos por fecha (varias evoluciones el mismo día = 1 día)
-    const diasU = filtro => new Set(evos.filter(e=>e.date && filtro(e)).map(e=>e.date)).size;
-    const diasArm = p.inicioARM ? (daysBetween(p.inicioARM, p.finARM||today())||0)+1 : 0;
-    const diasTET = diasU(e=>e.interfaz==='TET');
-    const diasTQTarm = diasU(e=>e.interfaz==='TQT');
-    const diasTQTesp = diasU(e=>(e.interfaz||'').includes('TQT espontáneo'));
-    const pves = diasU(e=>e.pve && e.pve!=='No' && e.pve!=='');
-    const pvesEx = diasU(e=>e.pveResult==='Exitosa');
-    const extub = diasU(e=>e.extubacion?.startsWith('Sí'));
-    const deg = diasU(e=>e.deglusion && e.deglusion!=='No realizada');
-    const cuff = diasU(e=>e.cuffM||e.cuffT||e.cuffN);
-    const humActiva = diasU(e=>e.humidificacion==='Activa');   // v3_209
-    const diasHosp = p.fIHosp ? (daysBetween(p.fIHosp,p.fEUTI||today())||0)+1 : '—';
+    // v3_226: un solo cálculo, compartido con el Excel
+    const d = datosPorPaciente(p);
+    const { evos, diasArm, diasTET, diasTQTarm, diasTQTesp, pves, pvesEx, extub, deg, cuff, humActiva } = d;
+    const diasHosp = d.diasHosp ?? '—';
     return `<tr>
       <td style="font-weight:600;white-space:nowrap">${p.apellido}, ${p.nombre}</td>
       <td>${p.dni||'—'}</td>
@@ -20327,7 +20596,7 @@ function renderIndPacientes(){
       <td>${deg||'—'}</td>
       <td>${cuff||'—'}</td>
       <td>${humActiva||'—'}</td>
-      <td>${diasU(e=>e.decDecanulado==='Si')?'Sí':'—'}</td>
+      <td>${d.decanulado?'Sí':'—'}</td>
       <td>${evos.length}</td>
     </tr>`;
   }).join('');
@@ -20464,121 +20733,45 @@ async function exportarIndicadoresCompleto(mesStr){
   rows.push(['Turno','Evoluciones']);
   Object.entries(eq.porTurno).filter(([,v])=>v>0).forEach(([k,v])=>rows.push([k, v]));
 
-  // ── 3. PRESTACIONES ──
-  seccion('PRESTACIONES (por sector)');
-  rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
-  rows.push(calcFila('Prestaciones totales', s=>prestacionesTotalesEnMes(s,mesStr)));
-  rows.push(calcFila('Prestaciones generales (ARM/TQT ×6, resto ×2)', s=>prestacionesGeneralesEnMes(s,mesStr)));
-  rows.push([]);
-  rows.push(['Evaluaciones y procedimientos estructurados','Cantidad']);
-  Object.entries(evalEstructuradasEnMes(mesStr)).forEach(([k,v])=>rows.push([k, v]));
-  rows.push([]);
-  rows.push(['TODAS LAS TÉCNICAS REGISTRADAS (ordenadas por frecuencia)','Veces']);
-  const conteo = Object.entries(conteoTecnicasEnMes(mesStr)).sort((a,b)=>b[1]-a[1]);
-  conteo.forEach(([t,n])=>rows.push([t, n]));
-  rows.push(['TOTAL técnicas', conteo.reduce((s,[,n])=>s+n,0)]);
+  // ── 3. INDICADORES POR SECTOR ──────────────────────────────────
+  // v3_226: salen del mismo catálogo que la pantalla, así que el Excel y lo
+  // que se ve en la app no pueden volver a dar números distintos.
+  catalogoIndicadores(mesStr).forEach(gr => {
+    seccion(gr.g.toUpperCase() + ' (por sector)');
+    rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
+    gr.filas.forEach(f => {
+      rows.push([(f.sub ? '   ' : '') + f.l,
+        ...sectoresVisibles().map(s => _valorFilaInd(f, s)),
+        _totalFilaInd(f)]);
+    });
+  });
 
-  // ── 4. VENTILACIÓN ──
-  seccion('VENTILACIÓN MECÁNICA Y SOPORTE (por sector)');
-  rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
-  rows.push(calcFila('Días de ARM totales', s=>patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0)));
-  rows.push(calcFila('Días de TET', s=>diasInterfazEnMes(mesStr,s,'TET')));
-  rows.push(calcFila('Días de TQT en ARM', s=>diasInterfazEnMes(mesStr,s,'TQT_ARM')));
-  rows.push(calcFila('Días de TQT sin ARM (espontáneo)', s=>diasInterfazEnMes(mesStr,s,'TQT_ESP')));
-  rows.push(calcFila('SOFA — evaluaciones cargadas', s=>sofaDelMes(mesStr,s)));
-  rows.push(calcFila('— Pacientes con SOFA evaluado', s=>sofaDelMes(mesStr,s,'pacientes')));
-  rows.push(calcFila('— Con SOFA máximo >= 10 (disfunción grave)', s=>sofaDelMes(mesStr,s,'graves')));
-  rows.push(calcFila('— SOFA máximo promedio', s=>sofaDelMes(mesStr,s,'promedio')));
-  rows.push(calcFila('Días de VNI', s=>diasInterfazEnMes(mesStr,s,'VNI')));
-  rows.push(calcFila('— VNI electiva (1a linea)', s=>vniPorMotivoEnMes(mesStr,s,'electiva')));
-  rows.push(calcFila('— VNI por cambio de interfaz (sin PVE)', s=>vniPorMotivoEnMes(mesStr,s,'cambio_interfaz')));
-  rows.push(calcFila('— VNI para prevenir falla de extubación', s=>vniPorMotivoEnMes(mesStr,s,'prevencion')));
-  rows.push(calcFila('— VNI de rescate post-extubación', s=>vniPorMotivoEnMes(mesStr,s,'rescate')));
-  rows.push(calcFila('Horas totales de VNI', s=>horasVNIEnMes(mesStr,s)));
-  rows.push(calcFila('HACOR evaluados', s=>hacorEnMes(mesStr,s)));
-  rows.push(calcFila('— Con alto riesgo de fracaso (>5)', s=>hacorEnMes(mesStr,s,true)));
-  rows.push(calcFila('Días de CNAF', s=>diasInterfazEnMes(mesStr,s,'CNAF')));
-  rows.push(calcFila('Días de VNI + CNAF alternado', s=>diasInterfazEnMes(mesStr,s,'VNI_CNAF')));
-  rows.push(calcFila('Cambios de soporte durante la sesión', s=>cambiosSoporteEnMes(mesStr,s)));
-  rows.push(calcFila('Días de VAN con O2', s=>diasInterfazEnMes(mesStr,s,'VAN_O2')));
-  rows.push(calcFila('Días en aire ambiente', s=>diasInterfazEnMes(mesStr,s,'AA')));
-  rows.push(calcFila('Pacientes distintos que pasaron por ARM', s=>pacientesEnARMenMes(s,mesStr)));
-
-  // ── 5. EXTUBACIONES ──
-  seccion('EXTUBACIONES (por sector)');
-  rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
-  rows.push(calcFila('Extubaciones (todas)', s=>extubDetalle(mesStr,s,'todas')));
-  rows.push(calcFila('Planificadas', s=>extubDetalle(mesStr,s,'planificada')));
-  rows.push(calcFila('Exitosas', s=>extubDetalle(mesStr,s,'exitosa')));
-  rows.push(calcFila('Fallidas', s=>extubDetalle(mesStr,s,'fallida')));
-  rows.push(calcFila('No programadas (total)', s=>extubDetalle(mesStr,s,'no_programada')));
-  rows.push(calcFila('— Autoextubaciones', s=>extubDetalle(mesStr,s,'autoextubacion')));
-  rows.push(calcFila('— Accidentales', s=>extubDetalle(mesStr,s,'accidental')));
-  rows.push(calcFila('Sin PVE previa', s=>extubDetalle(mesStr,s,'sin_pve')));
-  rows.push(calcFila('PVE realizadas', s=>pveEnMes(s,mesStr)));
-
-  // ── 6. VÍA AÉREA / DECANULACIÓN ──
-  seccion('VÍA AÉREA Y DECANULACIÓN (por sector)');
-  rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
-  rows.push(calcFila('Decanulaciones exitosas', s=>decanulaciones('',s,mesStr)));
-  rows.push(calcFila('Controles de cuff (días)', s=>controlCuffEnMes(s,mesStr)));
-  rows.push(calcFila('Evaluaciones de deglución (días)', s=>deglucionEnMes(s,mesStr)));
-  // v3_209: humidificación de la vía aérea artificial
-  { const H = {}; [indSectorSel].concat(sectoresVisibles()).forEach(s=>{ H[s] = humidDiasEnMes(mesStr, s); });
-    rows.push(calcFila('Días con humidificación registrada', s=>H[s].total));
-    rows.push(calcFila('  Humidificación pasiva (HME)', s=>H[s].pasiva));
-    rows.push(calcFila('  Humidificación activa', s=>H[s].activa));
-    rows.push(['% de días en humidificación activa', ...sectoresVisibles().map(s=>pctTxt(H[s].activa, H[s].total)), pctTxt(H[indSectorSel].activa, H[indSectorSel].total)]);
+  // Detalle de la humidificación activa
+  { const H0 = humidDiasEnMes(mesStr, indSectorSel);
     const mot = motivosHumidActivaEnMes(mesStr, indSectorSel);
     if(mot.length){
-      rows.push([]);
-      rows.push(['Motivo del pase a humidificación activa','Días','% sobre días en activa']);
-      mot.forEach(([m,n])=>rows.push([m, n, pctTxt(n, H[indSectorSel].activa)]));
-    }
-  }
+      seccion('MOTIVOS DEL PASE A HUMIDIFICACIÓN ACTIVA');
+      rows.push(['Motivo','Días','% sobre días en activa']);
+      mot.forEach(([m,n]) => rows.push([m, n, pctTxt(n, H0.activa)]));
+    } }
 
-  // ── 7. MOVIMIENTOS ──
-  seccion('MOVIMIENTOS DEL MES (por sector)');
+  seccion('DONACIÓN DE ÓRGANOS');
   rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
-  rows.push(calcFila('Ingresos', s=>ingresosDelMes(mesStr,s)));
-  rows.push(calcFila('Altas', s=>egresosDelMes(mesStr,'alta',s)));
-  rows.push(calcFila('Óbitos', s=>egresosDelMes(mesStr,'obito',s)));
-  rows.push(calcFila('  Por muerte encefálica', s=>obitosDelMes(mesStr,s,_obME)));
-  rows.push(calcFila('  Por parada cardíaca', s=>obitosDelMes(mesStr,s,_obPC)));
-  rows.push(calcFila('  Sin mecanismo registrado', s=>obitosDelMes(mesStr,s,_obSin)));
-  rows.push(calcFila('Traslados internos', s=>egresosDelMes(mesStr,'traslado',s)));
-  rows.push(calcFila('Cambios de cama (mismo sector)', s=>egresosDelMes(mesStr,'cama',s)));
-
-  // ── 7b. DONACIÓN DE ÓRGANOS ──
-  seccion('DONACIÓN DE ÓRGANOS (por sector)');
-  rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
-  rows.push(calcFila('Donantes', s=>obitosDelMes(mesStr,s,_obDon)));
-  rows.push(calcFila('  En muerte encefálica', s=>obitosDelMes(mesStr,s,e=>_obME(e)&&_obDon(e))));
-  rows.push(calcFila('  En asistolia controlada', s=>obitosDelMes(mesStr,s,e=>_obPC(e)&&_obDon(e))));
   rows.push(['Tasa de donación', ...sectoresVisibles().map(s=>tasaDonacion(mesStr,s)), tasaDonacion(mesStr,indSectorSel)]);
+
 
   // ── 8. DETALLE POR PACIENTE ──
   seccion('DETALLE POR PACIENTE (todos los registros)');
-  rows.push(['Paciente','DNI','Sala','Cama','Estado','Sexo','Edad','Grupo','IMC','Días hosp.','Días ARM','Días TET','Días TQT ARM','Días TQT esp.','PVE','PVE exitosas','Extubaciones','Eval. deglución','Ctrl. cuff','Días humid. activa','Decanulado','Evoluciones','Mecanismo del óbito','Donante']);
+  rows.push(['Paciente','DNI','Sala','Cama','Estado','Sexo','Edad','Grupo','IMC','Días hosp.','Días ARM','Días TET','Días TQT ARM','Días TQT esp.','Días VNI','Días CNAF','PVE','PVE exitosas','Extubaciones','Eval. deglución','Ctrl. cuff','Días humid. activa','SOFA máx.','Decanulado','Evoluciones','Mecanismo del óbito','Donante']);
   patients.forEach(p=>{
-    const evos = evoluciones.filter(e=>e.patientId===p.id&&!e.tipo);
-    const diasU = filtro => new Set(evos.filter(e=>e.date && filtro(e)).map(e=>e.date)).size;
-    const diasArm = p.inicioARM ? (daysBetween(p.inicioARM,p.finARM||today())||0)+1 : 0;
+    const d = datosPorPaciente(p);   // v3_226: mismas definiciones que la pantalla
     rows.push([
       `${p.apellido}, ${p.nombre}`, p.dni||'', SALA_LABEL[p.sala]||p.sala||'', p.cama||'', p.estado||'',
       p.genero||'', p.edad||'', p.tipoKine?(TIPO_KINE_LABEL[p.tipoKine]||p.tipoKine).replace(/^[^ ]+ /,''):'', imcDePaciente(p)||'',
-      p.fIHosp ? (daysBetween(p.fIHosp,p.fEUTI||today())||0)+1 : '',
-      diasArm||'', diasU(e=>e.interfaz==='TET'&&!e.interfazEsp)||'',
-      diasU(e=>e.interfaz==='TQT'&&!e.interfazEsp)||'',
-      diasU(e=>e.interfazEsp==='TQT_O2'||e.interfazEsp==='TQT_AA'||(e.interfaz||'').includes('TQT espontáneo'))||'',
-      diasU(e=>e.pve&&e.pve!=='No'&&e.pve!=='')||'',
-      diasU(e=>e.pveResult==='Exitosa')||'',
-      diasU(e=>esEvoConExtubacion(e))||'',
-      diasU(e=>e.deglusion&&e.deglusion!=='No realizada')||'',
-      diasU(e=>e.cuffM||e.cuffT||e.cuffN)||'',
-      diasU(e=>e.humidificacion==='Activa')||'',   // v3_209
-      diasU(e=>e.decDecanulado==='Si')?'Sí':'',
-      evos.length,
+      d.diasHosp||'', d.diasArm||'', d.diasTET||'', d.diasTQTarm||'', d.diasTQTesp||'',
+      d.vni||'', d.cnaf||'', d.pves||'', d.pvesEx||'', d.extub||'', d.deg||'', d.cuff||'',
+      d.humActiva||'', d.sofaMax ?? '', d.decanulado ? 'Sí' : '',
+      d.evos.length,
       p.causaObito||'', p.donanteObito||''       // v3_183
     ]);
   });
@@ -20599,57 +20792,44 @@ async function exportarIndicadoresCompleto(mesStr){
 async function exportarIndicadores(vista, mesStr){
   const rows = [];
   if(vista==='mensual'){
-    rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
-    const calcFila = (label, fn) => [label, ...sectoresVisibles().map(fn), sectoresVisibles().reduce((s,sala)=>s+(fn(sala)||0),0)];
+    // v3_226: mismo catálogo que la pantalla y que el Excel completo.
+    // Este bloque era el más desactualizado de los tres: buscaba el TQT
+    // espontáneo con el formato viejo (texto dentro de `interfaz`), así que esa
+    // fila daba 0 siempre, y filtraba por el sector ACTUAL del paciente en vez
+    // del sector donde se hizo cada evolución.
     rows.push(['Período:', etiquetaPeriodo(mesStr), '(' + rangoDe(mesStr).desde + ' a ' + rangoDe(mesStr).hasta + ')']);
+    rows.push(['Alcance:', indSectorSel ? ('Solo ' + SECTOR_LBL(indSectorSel)) : 'Toda la institución']);
     rows.push([]);
-    rows.push(['PRESTACIONES']);
-    rows.push(calcFila('Prestaciones totales', s=>prestacionesTotalesEnMes(s,mesStr)));
-    rows.push(calcFila('Prestaciones generales', s=>prestacionesGeneralesEnMes(s,mesStr)));
-    rows.push(['PRESTACIONES ESPECÍFICAS']);
-    rows.push(calcFila('Total de prestaciones específicas', s=>prestacionesEspTotalEnMes(s,mesStr)));
-    PRESTACIONES_ESP.forEach(esp => rows.push(calcFila(esp, s=>prestacionesEspEnMes(s,mesStr,esp))));
-    rows.push(['PROCEDIMIENTOS Y EVALUACIONES']);
-    rows.push(calcFila('Total de procedimientos', s=>procedimientosTotalEnMes(s,mesStr)+fichasNeuroEnMes(s,mesStr)));
-    PROCEDIMIENTOS_ESP.forEach(pr => rows.push(calcFila(pr.label, s=>procedimientoEspEnMes(s,mesStr,pr.label))));
-    rows.push(calcFila('Evaluación neurológica (ficha)', s=>fichasNeuroEnMes(s,mesStr)));
-    rows.push(['ARM / VENTILACIÓN']);
-    rows.push(calcFila('Días de ARMI totales', s=>patients.filter(p=>!s||p.sala===s).reduce((acc,p)=>acc+diasARMenMes(p,mesStr),0)));
-    rows.push(calcFila('Días de TET', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.interfaz==='TET'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
-    rows.push(calcFila('Días de TQT en ARM', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.interfaz==='TQT'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
-    rows.push(calcFila('Días de TQT sin ARM', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&(e.interfaz||'').includes('TQT espontáneo')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
-    rows.push(calcFila('Pacientes distintos que pasaron por ARM', s=>pacientesEnARMenMes(s,mesStr)));
-    rows.push(['EXTUBACIONES']);
-    rows.push(calcFila('Exitosas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.extubacion==='Sí — planificada'&&e.pveResult==='Exitosa'&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
-    rows.push(calcFila('Fallidas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&e.extubacion?.startsWith('Sí')&&e.pveResult?.startsWith('Fallida')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
-    rows.push(calcFila('No programadas', s=>contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&(e.extubacion==='Sí — no planificada'||e.extubacion==='autoextubacion'||e.extubacion==='accidental')&&(!s||patients.find(p=>p.id===e.patientId)?.sala===s))));
-    rows.push(['VÍA AÉREA / CUFF']);
-    rows.push(calcFila('Controles de cuff', s=>controlCuffEnMes(s,mesStr)));
-    { const H = {}; [indSectorSel].concat(sectoresVisibles()).forEach(s=>{ H[s] = humidDiasEnMes(mesStr, s); });   // v3_209
-      rows.push(calcFila('Días con humidificación registrada', s=>H[s].total));
-      rows.push(calcFila('  Humidificación pasiva (HME)', s=>H[s].pasiva));
-      rows.push(calcFila('  Humidificación activa', s=>H[s].activa));
-      motivosHumidActivaEnMes(mesStr, indSectorSel).forEach(([m,n])=>rows.push(['    Motivo: '+m, n]));
-    }
-    rows.push(calcFila('Evaluaciones de deglución', s=>deglucionEnMes(s,mesStr)));
+    catalogoIndicadores(mesStr).forEach(gr => {
+      rows.push([]);
+      rows.push([gr.g.toUpperCase()]);
+      rows.push(['Indicador', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
+      gr.filas.forEach(f => rows.push([(f.sub ? '   ' : '') + f.l,
+        ...sectoresVisibles().map(s => _valorFilaInd(f, s)), _totalFilaInd(f)]));
+    });
+    // Desglose de prestaciones específicas y procedimientos, que en la pantalla
+    // están en su propia solapa
+    rows.push([]);
+    rows.push(['DETALLE DE PRESTACIONES ESPECÍFICAS']);
+    rows.push(['Prestación', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
+    PRESTACIONES_ESP.forEach(esp => rows.push([esp,
+      ...sectoresVisibles().map(s => prestacionesEspEnMes(s,mesStr,esp)),
+      sectoresVisibles().reduce((a,s)=>a+prestacionesEspEnMes(s,mesStr,esp),0)]));
+    rows.push([]);
+    rows.push(['DETALLE DE PROCEDIMIENTOS']);
+    rows.push(['Procedimiento', ...sectoresVisibles().map(SECTOR_LBL), 'TOTAL']);
+    PROCEDIMIENTOS_ESP.forEach(pr => rows.push([pr.label,
+      ...sectoresVisibles().map(s => procedimientoEspEnMes(s,mesStr,pr.label)),
+      sectoresVisibles().reduce((a,s)=>a+procedimientoEspEnMes(s,mesStr,pr.label),0)]));
   } else {
-    rows.push(['Paciente','DNI','Sala','Cama','Estado','Días hosp.','Días ARM','Días TET','Días TQT ARM','Días TQT esp.','PVE','PVE exitosas','Extubaciones','Eval. deglución','Ctrl. cuff','Evoluciones']);
-    patients.forEach(p=>{
-      const evos = evoluciones.filter(e=>e.patientId===p.id&&!e.tipo);
-      const diasU = filtro => new Set(evos.filter(e=>e.date && filtro(e)).map(e=>e.date)).size;
-      const diasArm = p.inicioARM ? (daysBetween(p.inicioARM,p.finARM||today())||0)+1 : 0;
+    rows.push(['Paciente','DNI','Sala','Cama','Estado','Días hosp.','Días ARM','Días TET','Días TQT ARM','Días TQT esp.','Días VNI','Días CNAF','PVE','PVE exitosas','Extubaciones','Eval. deglución','Ctrl. cuff','SOFA máx.','Evoluciones']);
+    (indSectorSel ? patients.filter(p=>p.sala===indSectorSel) : patients).forEach(p=>{
+      const d = datosPorPaciente(p);   // v3_226
       rows.push([
         `${p.apellido}, ${p.nombre}`, p.dni||'', SALA_LABEL[p.sala]||p.sala||'', p.cama||'', p.estado||'',
-        p.fIHosp ? (daysBetween(p.fIHosp,p.fEUTI||today())||0)+1 : '',
-        diasArm||'', diasU(e=>e.interfaz==='TET')||'',
-        diasU(e=>e.interfaz==='TQT')||'',
-        diasU(e=>(e.interfaz||'').includes('TQT espontáneo'))||'',
-        diasU(e=>e.pve&&e.pve!=='No'&&e.pve!=='')||'',
-        diasU(e=>e.pveResult==='Exitosa')||'',
-        diasU(e=>e.extubacion?.startsWith('Sí'))||'',
-        diasU(e=>e.deglusion&&e.deglusion!=='No realizada')||'',
-        diasU(e=>e.cuffM||e.cuffT||e.cuffN)||'',
-        evos.length
+        d.diasHosp||'', d.diasArm||'', d.diasTET||'', d.diasTQTarm||'', d.diasTQTesp||'',
+        d.vni||'', d.cnaf||'', d.pves||'', d.pvesEx||'', d.extub||'', d.deg||'', d.cuff||'',
+        d.sofaMax ?? '', d.evos.length
       ]);
     });
   }
