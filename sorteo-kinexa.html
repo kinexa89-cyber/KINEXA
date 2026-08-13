@@ -1,440 +1,822 @@
 <!DOCTYPE html>
-<html lang="es-AR">
+<html lang="es">
 <head>
-<meta charset="UTF-8">
+<meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sorteo Kinexa — selección verificable</title>
+<title>Sorteo Kinexa — Beca 2026</title>
 <style>
   :root{
-    --violeta:#5B21B6; --violeta-cla:#7C3AED; --violeta-osc:#3B0765;
-    --verde:#0F6E56; --verde-cla:#1D9E75; --verde-50:#E1F5EE;
-    --rojo:#B91C1C; --ambar:#8C5610; --ambar-50:#FAEEDA;
-    --gris-50:#F5F4F0; --gris-100:#E6E4DC; --gris-400:#888780;
-    --texto:#1a1a2e; --texto-suave:#5F5E5A; --borde:#DAD8D0;
+    --violeta:#7c3aed; --violeta-osc:#5b21b6; --violeta-claro:#f5f3ff;
+    --borde:#e5e7eb; --texto:#1f2937; --gris:#6b7280; --gris-claro:#f9fafb;
+    --verde:#059669; --verde-claro:#ecfdf5; --rojo:#dc2626; --rojo-claro:#fef2f2;
+    --ambar:#d97706; --ambar-claro:#fffbeb;
+    --fuente:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;
   }
-  *{box-sizing:border-box}
-  body{margin:0;padding:0;background:linear-gradient(140deg,#3B0765,#7C3AED 55%,#A68AF9);
-       min-height:100vh;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
-       color:var(--texto);padding:16px}
-  .wrap{max-width:860px;margin:0 auto}
-  header{text-align:center;color:#fff;padding:22px 8px 26px}
-  .logo{width:56px;height:56px;border-radius:15px;background:#fff;color:var(--violeta);
-        display:inline-flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;margin-bottom:12px}
-  header h1{margin:0;font-size:27px;font-weight:800;letter-spacing:-.4px}
-  header p{margin:7px 0 0;font-size:14px;opacity:.85}
-  .card{background:#fff;border-radius:16px;padding:20px;margin-bottom:14px;
-        box-shadow:0 8px 26px rgba(0,0,0,.16)}
-  .card h2{margin:0 0 4px;font-size:15px;font-weight:800;text-transform:uppercase;
-           letter-spacing:.7px;color:var(--violeta)}
-  .card .hint{margin:0 0 14px;font-size:13px;color:var(--texto-suave);line-height:1.5}
-  textarea{width:100%;min-height:190px;padding:12px;border:1.5px solid var(--borde);
-           border-radius:10px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
-           font-size:13px;line-height:1.55;resize:vertical}
-  textarea:focus{outline:none;border-color:var(--violeta-cla)}
-  .fila{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
-  button{padding:11px 18px;border:none;border-radius:10px;font-size:14px;font-weight:700;
-         cursor:pointer;font-family:inherit;transition:opacity .15s}
-  button:hover{opacity:.88}
-  button:disabled{opacity:.45;cursor:not-allowed}
-  .b-pri{background:var(--violeta);color:#fff}
-  .b-sec{background:var(--gris-100);color:var(--texto)}
-  .b-ok{background:var(--verde);color:#fff}
-  input[type=text],input[type=number]{padding:10px 12px;border:1.5px solid var(--borde);
-        border-radius:9px;font-size:14px;font-family:inherit}
-  label.chk{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--texto-suave);cursor:pointer}
-  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin:14px 0}
-  .stat{background:var(--gris-50);border-radius:11px;padding:12px;text-align:center}
-  .stat .n{font-size:26px;font-weight:800;color:var(--violeta)}
-  .stat .l{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--texto-suave);margin-top:2px}
-  .lista{max-height:340px;overflow-y:auto;border:1px solid var(--borde);border-radius:11px;margin-top:6px}
-  table{width:100%;border-collapse:collapse;font-size:13px}
-  th{position:sticky;top:0;background:var(--gris-50);padding:9px 10px;text-align:left;
-     font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--texto-suave);
-     border-bottom:2px solid var(--gris-100)}
-  td{padding:8px 10px;border-bottom:1px solid #f0efeb;vertical-align:top}
-  tr.gana{background:var(--verde-50);font-weight:700}
-  tr.desc{opacity:.55}
-  .num{font-family:ui-monospace,monospace;color:var(--gris-400);width:46px}
-  .badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700}
-  .b-val{background:var(--verde-50);color:var(--verde)}
-  .b-des{background:#FDE8E8;color:var(--rojo)}
-  .b-ext{background:#EDE9FE;color:var(--violeta)}
-  .ganador{background:linear-gradient(135deg,var(--verde),var(--verde-cla));color:#fff;
-           border-radius:16px;padding:26px 22px;text-align:center;margin-bottom:14px}
-  .ganador .rot{font-size:12px;text-transform:uppercase;letter-spacing:1.4px;opacity:.85}
-  .ganador .user{font-size:32px;font-weight:800;margin:8px 0 4px;word-break:break-word}
-  .ganador .inst{font-size:16px;opacity:.94}
-  .ganador .idx{font-size:12px;opacity:.8;margin-top:10px;font-family:ui-monospace,monospace}
-  .supl{background:var(--gris-50);border-radius:12px;padding:13px 15px;margin-top:9px;font-size:14px}
-  .supl b{color:var(--violeta)}
-  .aviso{background:var(--ambar-50);border:1px solid #F3D49A;border-radius:10px;
-         padding:11px 13px;font-size:12.5px;color:var(--ambar);line-height:1.55;margin-top:12px}
-  .semilla{background:#1a1a2e;color:#7DD3AC;border-radius:10px;padding:12px 14px;
-           font-family:ui-monospace,monospace;font-size:12.5px;margin-top:12px;word-break:break-all;line-height:1.7}
-  .semilla span{color:#A68AF9}
-  .sorteando{font-size:30px;font-weight:800;color:var(--violeta);text-align:center;padding:26px 10px;
-             font-family:ui-monospace,monospace}
-  footer{text-align:center;color:rgba(255,255,255,.7);font-size:12px;padding:18px 10px 30px;line-height:1.6}
-  @media(max-width:520px){
-    header h1{font-size:22px} .ganador .user{font-size:25px} .card{padding:16px}
-  }
+  *{ box-sizing:border-box }
+  body{ margin:0; background:#f3f4f6; font-family:var(--fuente); color:var(--texto); font-size:15px; line-height:1.5 }
+  .wrap{ max-width:900px; margin:0 auto; padding:20px 16px 60px }
+
+  header{ background:linear-gradient(135deg,var(--violeta) 0%,var(--violeta-osc) 100%);
+    color:#fff; border-radius:14px; padding:24px 26px; margin-bottom:22px }
+  header h1{ margin:0 0 4px; font-size:26px; letter-spacing:-.5px }
+  header p{ margin:0; opacity:.9; font-size:14px }
+
+  .paso{ background:#fff; border:1px solid var(--borde); border-radius:12px; padding:20px 22px; margin-bottom:16px }
+  .paso h2{ margin:0 0 4px; font-size:17px; display:flex; align-items:center; gap:9px }
+  .num{ background:var(--violeta); color:#fff; width:26px; height:26px; border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; flex-shrink:0 }
+  .paso .ayuda{ color:var(--gris); font-size:13.5px; margin:0 0 14px 35px }
+
+  textarea, input[type=text]{ width:100%; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:13px;
+    border:1.5px solid var(--borde); border-radius:8px; padding:11px 12px; resize:vertical; color:var(--texto) }
+  textarea:focus, input:focus{ outline:none; border-color:var(--violeta) }
+  #entrada{ min-height:200px }
+  #historias{ min-height:90px }
+
+  button{ font-family:var(--fuente); font-size:14px; font-weight:600; border:none; border-radius:8px;
+    padding:10px 18px; cursor:pointer; transition:.15s }
+  .btn-primario{ background:var(--violeta); color:#fff }
+  .btn-primario:hover{ background:var(--violeta-osc) }
+  .btn-primario:disabled{ background:#c4b5fd; cursor:not-allowed }
+  .btn-sec{ background:#fff; color:var(--violeta); border:1.5px solid var(--violeta) }
+  .btn-sec:hover{ background:var(--violeta-claro) }
+  .btn-gris{ background:#fff; color:var(--gris); border:1.5px solid var(--borde) }
+  .btn-gris:hover{ background:var(--gris-claro) }
+  .btn-grande{ font-size:17px; padding:15px 34px; width:100%; margin-top:6px }
+  .fila-btn{ display:flex; gap:9px; flex-wrap:wrap; margin-top:12px }
+
+  .codigo{ background:#1f2937; color:#e5e7eb; border-radius:8px; padding:14px 15px;
+    font-family:ui-monospace,Menlo,Consolas,monospace; font-size:11.5px; line-height:1.55;
+    white-space:pre-wrap; word-break:break-all; max-height:180px; overflow:auto; margin:10px 0 0 }
+
+  .instru{ background:var(--violeta-claro); border:1px solid #ddd6fe; border-radius:9px;
+    padding:14px 16px; margin:12px 0 0; font-size:13.5px }
+  .instru ol{ margin:8px 0 0; padding-left:20px }
+  .instru li{ margin-bottom:7px }
+  .instru b{ color:var(--violeta-osc) }
+
+  .aviso{ background:var(--ambar-claro); border:1px solid #fde68a; border-radius:9px;
+    padding:13px 15px; font-size:13.5px; color:#78350f; margin-top:12px }
+
+  .stats{ display:flex; gap:10px; flex-wrap:wrap; margin-top:14px }
+  .stat{ flex:1; min-width:105px; background:var(--gris-claro); border:1px solid var(--borde);
+    border-radius:9px; padding:12px 14px; text-align:center }
+  .stat .n{ font-size:26px; font-weight:800; line-height:1.1 }
+  .stat .l{ font-size:11px; color:var(--gris); text-transform:uppercase; letter-spacing:.4px; margin-top:3px }
+  .stat.ok .n{ color:var(--verde) } .stat.no .n{ color:var(--rojo) } .stat.vi .n{ color:var(--violeta) }
+
+  table{ width:100%; border-collapse:collapse; font-size:13px; margin-top:12px }
+  th{ text-align:left; padding:8px 10px; background:var(--gris-claro); border-bottom:2px solid var(--borde);
+    font-size:11px; text-transform:uppercase; letter-spacing:.4px; color:var(--gris) }
+  td{ padding:8px 10px; border-bottom:1px solid #f3f4f6; vertical-align:top }
+  tr.invalido{ background:var(--rojo-claro) }
+  tr.invalido td{ color:#991b1b }
+  .tabla-scroll{ max-height:330px; overflow:auto; border:1px solid var(--borde); border-radius:8px; margin-top:12px }
+  .chip{ display:inline-block; background:var(--violeta-claro); color:var(--violeta-osc);
+    border-radius:20px; padding:2px 9px; font-size:11px; font-weight:600; margin:1px 2px 1px 0 }
+  .chip.extra{ background:var(--verde-claro); color:var(--verde) }
+
+  .ruleta{ text-align:center; font-size:30px; font-weight:800; color:var(--violeta);
+    padding:34px 12px; letter-spacing:-.5px; word-break:break-all }
+  .ganador{ background:linear-gradient(135deg,var(--violeta) 0%,var(--violeta-osc) 100%);
+    color:#fff; border-radius:12px; padding:28px 24px; text-align:center; margin-top:14px }
+  .ganador .et{ font-size:12px; text-transform:uppercase; letter-spacing:1.5px; opacity:.85 }
+  .ganador .us{ font-size:34px; font-weight:800; margin:8px 0 4px; word-break:break-all }
+  .ganador .inst{ font-size:15px; opacity:.92 }
+  .suplente{ background:#fff; border:1px solid var(--borde); border-radius:9px;
+    padding:13px 16px; margin-top:9px; display:flex; align-items:center; gap:13px }
+  .suplente .pos{ background:var(--gris-claro); color:var(--gris); width:30px; height:30px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; font-weight:700; font-size:13px; flex-shrink:0 }
+  .acta{ background:var(--gris-claro); border:1px solid var(--borde); border-radius:9px;
+    padding:14px 16px; margin-top:14px; font-size:12.5px; font-family:ui-monospace,Menlo,Consolas,monospace;
+    white-space:pre-wrap; line-height:1.6 }
+  label.check{ display:flex; align-items:flex-start; gap:9px; font-size:13.5px; margin-top:9px; cursor:pointer }
+  label.check input{ margin-top:3px; flex-shrink:0 }
+  .oculto{ display:none }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <header>
-    <div class="logo">K</div>
-    <h1>Sorteo Kinexa</h1>
-    <p>Selección aleatoria verificable · Beca Kinexa 2026</p>
-  </header>
+<header>
+  <h1>Sorteo Beca Kinexa 2026</h1>
+  <p>Un año de Kinexa para un servicio de kinesiología · <b>el sorteo es entre instituciones</b></p>
+</header>
 
-  <!-- 1. Pegar comentarios -->
-  <div class="card">
-    <h2>1 · Pegá los comentarios</h2>
-    <p class="hint">
-      Un comentario por línea, con el formato <b>usuario: texto del comentario</b>.
-      Si copiás y pegás directo de Instagram suele venir así.
-      También sirve solo <b>usuario texto</b> — la herramienta detecta el @ igual.
-    </p>
-    <textarea id="entrada" spellcholding="false" placeholder="lucia.ferrari: @martin.gomez — Hospital San Martín, La Plata
-kine.martin: @sofi.re @juanpk — Hospital Posadas, El Palomar
-sofia.re: @lucia.ferrari — Hospital Posadas, El Palomar"></textarea>
+<!-- ─────────── PASO 1 ─────────── -->
+<div class="paso">
+  <h2><span class="num">1</span> Traer los comentarios de Instagram</h2>
+  <p class="ayuda">Instagram muestra solo los primeros comentarios: los demás están escondidos detrás de
+  "Ver más comentarios". Si seleccionás y copiás sin abrirlos todos, te vas a traer 15 de 150.
+  Este script los abre todos y te los copia limpios.</p>
 
-    <div class="fila">
-      <label class="chk"><input type="checkbox" id="exigirInst" checked> Exigir institución</label>
-      <label class="chk"><input type="checkbox" id="unaPorUsuario"> Una sola chance por usuario</label>
-    </div>
-    <div class="fila">
-      <button class="b-pri" onclick="procesar()">Procesar comentarios</button>
-      <button class="b-sec" onclick="cargarEjemplo()">Cargar ejemplo</button>
-      <button class="b-sec" onclick="limpiar()">Limpiar</button>
-    </div>
+  <div class="instru">
+    <b>Cómo usarlo</b> (desde la computadora, en Chrome):
+    <ol>
+      <li>Abrí la publicación del sorteo en <b>instagram.com</b>, con tu sesión iniciada.</li>
+      <li>Apretá <b>F12</b> para abrir las herramientas de desarrollador y hacé clic en la solapa <b>Console</b>.</li>
+      <li>Si aparece un cartel que dice "Pegar no está permitido", escribí <b>allow pasting</b> y dale Enter.</li>
+      <li>Copiá el script de abajo con el botón, pegalo en la consola y apretá <b>Enter</b>.</li>
+      <li>Va a tardar entre 1 y 3 minutos abriendo comentarios. Te avisa cuando termina.</li>
+      <li>Volvé acá y pegá con <b>Ctrl+V</b> en el recuadro del paso 2.</li>
+    </ol>
   </div>
 
-  <!-- 2. Historias -->
-  <div class="card" id="cardHistorias" style="display:none">
-    <h2>2 · Chances extra por historia</h2>
-    <p class="hint">
-      Usuarios que compartieron en historia etiquetando a @kinexa.app.
-      Uno por línea, con o sin arroba. Cada uno suma una chance más.
-    </p>
-    <textarea id="historias" style="min-height:110px" placeholder="@lucia.ferrari
-kine.martin"></textarea>
-    <div class="fila"><button class="b-sec" onclick="procesar()">Recalcular</button></div>
+  <div class="codigo" id="scriptIG"></div>
+  <div class="fila-btn">
+    <button class="btn-primario" onclick="copiarScript()">Copiar el script</button>
   </div>
 
-  <!-- 3. Participantes -->
-  <div class="card" id="cardLista" style="display:none">
-    <h2>3 · Participantes</h2>
-    <div class="stats" id="stats"></div>
-    <div class="lista"><table id="tabla"></table></div>
-    <div class="aviso" id="avisoDesc" style="display:none"></div>
+  <div class="aviso">
+    <b>Si no te funciona la consola:</b> abrí todos los "Ver más comentarios" a mano (hay que hacer clic
+    varias veces hasta que no aparezca más), después seleccioná todo con Ctrl+A, copiá con Ctrl+C y pegá
+    en el paso 2. La herramienta limpia sola la basura que se cuela ("4 d", "Me gusta", "Responder").
+  </div>
+</div>
+
+<!-- ─────────── PASO 2 ─────────── -->
+<div class="paso">
+  <h2><span class="num">2</span> Pegar acá</h2>
+  <p class="ayuda">Pegá tal cual, no hace falta acomodar nada.</p>
+
+  <textarea id="entrada" spellcheck="false" placeholder="Pegá los comentarios acá (Ctrl+V)..."></textarea>
+
+  <label class="check">
+    <input type="checkbox" id="exigirEtiqueta" checked>
+    <span>Exigir que haya etiquetado al menos a un colega (si no etiquetó a nadie, queda afuera)</span>
+  </label>
+  <label class="check">
+    <input type="checkbox" id="exigirInst">
+    <span>Descartar los comentarios donde no se entienda qué institución nombraron.
+    <b>Dejalo destildado:</b> igual se descartan solos más adelante, pero así los ves en el detalle
+    en vez de que desaparezcan sin que te enteres.</span>
+  </label>
+  <label class="check">
+    <input type="checkbox" id="unaPorInst" checked onchange="if(participantes.length){armarChances();render();}">
+    <span><b>Una sola chance por institución</b>, sin importar cuántas personas la hayan nombrado
+    ni cuántas veces. Es lo más justo: el premio es para el servicio, no para la persona
+    que más comentó.</span>
+  </label>
+
+  <div class="fila-btn">
+    <button class="btn-primario" onclick="procesar()">Procesar comentarios</button>
+    <button class="btn-gris" onclick="limpiarTodo()">Limpiar</button>
+  </div>
+</div>
+
+<!-- ─────────── PASO 3 (opcional) ─────────── -->
+<div class="paso">
+  <h2><span class="num">3</span> Chances extra por historia <span style="font-size:12px;color:var(--gris);font-weight:400">(opcional)</span></h2>
+  <p class="ayuda">Instagram no da una lista de quién compartió en historias. Si no la tenés, dejá esto
+  vacío y el sorteo se hace solo con los comentarios: es lo más transparente, porque no podés verificar
+  algo que Instagram no te muestra. Si cargás usuarios, la chance extra va <b>a la institución que esa
+  persona nombró</b>, no a la persona.</p>
+
+  <div class="instru" style="background:var(--gris-claro);border-color:var(--borde)">
+    <b>Si querés intentar armar la lista:</b> las historias compartidas te llegan como notificación y
+    quedan en la bandeja de mensajes (aparecen como "compartió tu publicación"). Anotá esos usuarios
+    acá, uno por línea. Solo suman si además comentaron.
   </div>
 
-  <!-- 4. Sortear -->
-  <div class="card" id="cardSorteo" style="display:none">
-    <h2>4 · Sortear</h2>
-    <p class="hint">
-      La semilla es el número del que sale el azar. Dejá la que viene o poné una que se pueda
-      verificar después (por ejemplo, los números del Quini 6 de ese día). Con la misma semilla
-      y la misma lista, el resultado siempre es el mismo: por eso es auditable.
-    </p>
-    <div class="fila">
-      <input type="text" id="semilla" style="flex:1;min-width:180px" placeholder="Semilla">
-      <button class="b-sec" onclick="nuevaSemilla()">Otra semilla</button>
-    </div>
-    <div class="fila">
-      <button class="b-ok" id="btnSortear" onclick="sortear()">🎲 Sortear ahora</button>
-      <button class="b-sec" onclick="exportar()">Descargar acta (.txt)</button>
-    </div>
-  </div>
+  <textarea id="historias" spellcheck="false" placeholder="@usuario1&#10;@usuario2"></textarea>
+</div>
 
+<!-- ─────────── RESULTADOS DEL PROCESADO ─────────── -->
+<div class="paso oculto" id="panelParticipantes">
+  <h2><span class="num">✓</span> Instituciones participantes</h2>
+  <p class="ayuda">El sorteo es entre <b>instituciones</b>. Revisá esta lista antes de sortear:
+  la misma institución puede estar escrita de varias formas y hay que unificarla, porque si no
+  entra al bombo dos veces.</p>
+  <div class="stats" id="stats"></div>
+
+  <div id="sugerencias"></div>
+
+  <div class="fila-btn">
+    <button class="btn-sec" onclick="verComentarios()" id="btnVer">Ver los comentarios uno por uno</button>
+    <button class="btn-gris" onclick="exportar()">Descargar todo (.csv)</button>
+  </div>
+  <div id="tablaInst"></div>
+  <div id="detalle"></div>
+</div>
+
+<!-- ─────────── SORTEO ─────────── -->
+<div class="paso oculto" id="panelSorteo">
+  <h2><span class="num">🎲</span> Sortear</h2>
+  <p class="ayuda">Se sortea entre las instituciones de la lista de arriba. La semilla hace que el
+  sorteo sea verificable: con la misma lista y la misma semilla, el resultado siempre es el mismo.</p>
+  <div style="display:flex;gap:9px;flex-wrap:wrap;align-items:center">
+    <input type="text" id="semilla" style="flex:1;min-width:200px" placeholder="Semilla">
+    <button class="btn-gris" onclick="nuevaSemilla()">Generar otra</button>
+  </div>
+  <button class="btn-primario btn-grande" id="btnSortear" onclick="sortear()">Sortear la institución ganadora</button>
   <div id="resultado"></div>
+</div>
 
-  <footer>
-    Todo se procesa en este dispositivo. Nada se envía a ningún servidor.<br>
-    Kinexa · kinexa-app.com.ar
-  </footer>
 </div>
 
 <script>
-let participantes = [];   // { usuario, etiquetados, institucion, texto, valido, motivo, extra }
-let chances = [];         // una entrada por chance: { n, usuario, institucion, tipo }
-let ultimoSorteo = null;
+/* ══════════════════════════════════════════════════════════
+   SORTEO KINEXA — herramienta de sorteo verificable
+   ══════════════════════════════════════════════════════════ */
+
+var participantes = [];   // { usuario, etiquetados, institucion, texto, valido, motivo, extra, claveInst }
+var instituciones = [];   // { clave, nombre, personas[], menciones, chances, excluida }
+var chances = [];         // una entrada por chance
+var mostrandoTodos = false;
 
 /* ── Utilidades ─────────────────────────────────────────── */
-const norm = u => String(u||'').trim().toLowerCase().replace(/^@+/,'').replace(/[.,;:]+$/,'');
-const esc = s => String(s??'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function norm(u){
+  return String(u||'').trim().toLowerCase().replace(/^@+/,'').replace(/[.,;:]+$/,'');
+}
+function esc(s){
+  return String(s==null?'':s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
 
-/* Generador con semilla (mulberry32). Determinista: misma semilla, mismo resultado. */
+/* Generador con semilla (mulberry32): misma semilla → mismo resultado siempre */
 function rngDesde(semilla){
-  let h = 1779033703 ^ String(semilla).length;
-  for(let i=0;i<String(semilla).length;i++){
-    h = Math.imul(h ^ String(semilla).charCodeAt(i), 3432918353);
+  var s = String(semilla);
+  var h = 1779033703 ^ s.length;
+  for(var i=0;i<s.length;i++){
+    h = Math.imul(h ^ s.charCodeAt(i), 3432918353);
     h = h << 13 | h >>> 19;
   }
-  let a = h >>> 0;
+  var a = h >>> 0;
   return function(){
     a |= 0; a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ a >>> 15, 1 | a);
+    var t = Math.imul(a ^ a >>> 15, 1 | a);
     t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
     return ((t ^ t >>> 14) >>> 0) / 4294967296;
   };
 }
 
-/* ── Parseo de un comentario ────────────────────────────── */
-function parsearLinea(linea){
-  const cruda = linea.trim();
-  if(!cruda) return null;
+/* ══════════════════════════════════════════════════════════
+   LIMPIEZA DEL PEGADO DE INSTAGRAM
+   ──────────────────────────────────────────────────────────
+   Instagram no copia "usuario: comentario" en una línea. Copia el nombre en
+   una línea, el comentario en otra, y entremedio mete "4 d", "2 Me gusta",
+   "Responder", "Ver traducción", "Ver las 3 respuestas"... El parser viejo
+   trataba cada línea como un comentario, así que la mayoría se descartaba o
+   se leía mal. Por eso "rescataba poca gente".
+   Acá primero se tira la basura y después se reconstruyen los pares
+   usuario + comentario.
+   ══════════════════════════════════════════════════════════ */
 
-  // "usuario: texto"  →  separamos autor y contenido
-  let usuario = '', texto = cruda;
-  const m = cruda.match(/^@?([A-Za-z0-9._]{2,30})\s*[::]\s*(.*)$/);
-  if(m){ usuario = norm(m[1]); texto = m[2].trim(); }
-  else {
-    // "usuario @etiquetado ..." → el primer token es el autor
-    const t = cruda.match(/^@?([A-Za-z0-9._]{2,30})\s+(.*)$/);
-    if(t){ usuario = norm(t[1]); texto = t[2].trim(); }
+/* Líneas que Instagram intercala y no son parte de ningún comentario */
+var RUIDO = [
+  /^\d+\s*(d|h|m|s|sem|a)$/i,                    // "4 d", "22 h", "3 sem"
+  /^hace\s+/i,                                   // "hace 5 días"
+  /^\d+\s*me gusta/i, /^me gusta$/i,             // "2 Me gusta"
+  /^\d+\s*likes?$/i, /^like$/i,
+  /^responder$/i, /^reply$/i,
+  /^ver traducci[oó]n$/i, /^see translation$/i,
+  /^ver( las)?( \d+)? respuestas?$/i, /^ocultar respuestas$/i,
+  /^view( all)?( \d+)? repl(y|ies)$/i, /^hide replies$/i,
+  /^ver m[aá]s comentarios?$/i, /^load more comments$/i,
+  /^cargar m[aá]s comentarios?$/i,
+  /^verificado$/i, /^verified$/i,
+  /^publicar$/i, /^post$/i,
+  /^ver estad[ií]sticas$/i, /^view insights$/i,
+  /^informaci[oó]n de ia$/i,
+  /^agrega un comentario/i, /^add a comment/i,
+  /^les gusta a /i, /^liked by /i,
+  /^\d+$/,                                       // números sueltos
+  /^[·•—–\-\s]+$/,                               // separadores
+  /^y \d+ personas m[aá]s$/i,
+  /^m[aá]s$/i, /^more$/i,
+  /^editado$/i, /^edited$/i,
+  /^autor$/i, /^author$/i, /^fijado$/i, /^pinned$/i,
+];
+function esRuido(l){
+  var t = l.trim();
+  if(!t) return true;
+  for(var i=0;i<RUIDO.length;i++) if(RUIDO[i].test(t)) return true;
+  return false;
+}
+
+/* ¿Esta línea es SOLO un nombre de usuario? (la línea del autor) */
+function esSoloUsuario(l){
+  return /^[A-Za-z0-9._]{2,30}$/.test(l.trim()) && /[a-z]/i.test(l);
+}
+
+/* ¿Esta línea arranca un comentario nuevo?
+   Sirve para saber dónde termina el comentario anterior: sin esto, el texto de
+   una persona se seguía pegando al del siguiente y terminaban mezclados. */
+function esInicioDeComentario(l){
+  var t = l.trim();
+  if(esSoloUsuario(t)) return true;                      // el autor solo en su línea
+  if(/^@?[A-Za-z0-9._]{2,30}\s*[:：]\s*.+$/.test(t)) return true;   // "usuario: comentario"
+  // "usuario @colega ..." → el autor NO lleva arroba; si la línea empieza con @
+  // es una mención dentro del comentario de otro, no un autor
+  if(/^[A-Za-z0-9._]{2,30}\s+.*@[A-Za-z0-9._]{2,30}/.test(t)) return true;
+  return false;
+}
+
+/* Toma el texto pegado y devuelve una lista de { usuario, texto } */
+function reconstruirComentarios(bruto){
+  var lineas = String(bruto).split('\n').map(function(l){ return l.trim(); })
+                            .filter(function(l){ return !esRuido(l); });
+  var out = [];
+
+  for(var i=0;i<lineas.length;i++){
+    var l = lineas[i];
+
+    // Caso A — todo en una línea: "usuario: @colega — Hospital X"
+    var m = l.match(/^@?([A-Za-z0-9._]{2,30})\s*[:：]\s*(.+)$/);
+    if(m){ out.push({ usuario:norm(m[1]), texto:m[2].trim() }); continue; }
+
+    // "usuario @colega — Hospital X" (sin dos puntos). El autor no lleva
+    // arroba: si la línea empieza con @, es una mención, no un autor.
+    var t = l.match(/^([A-Za-z0-9._]{2,30})\s+(.+)$/);
+    if(t && !/^@/.test(l) && /@/.test(t[2])){ out.push({ usuario:norm(t[1]), texto:t[2].trim() }); continue; }
+
+    // Caso B — el usuario está solo en su línea y el comentario viene después.
+    // Se juntan las líneas siguientes hasta encontrar otro usuario suelto.
+    if(esSoloUsuario(l)){
+      var partes = [];
+      var j = i + 1;
+      // Se junta hasta que empiece OTRO comentario (o hasta 4 líneas: un
+      // comentario de Instagram no ocupa más que eso una vez sacada la basura)
+      while(j < lineas.length && !esInicioDeComentario(lineas[j]) && partes.length < 4){
+        partes.push(lineas[j]);
+        j++;
+      }
+      if(partes.length){
+        out.push({ usuario:norm(l), texto:partes.join(' ').trim() });
+        i = j - 1;
+        continue;
+      }
+    }
+
+    // Caso C — línea con @ pero sin autor identificable (queda registrada
+    // como no válida para que se vea en el detalle y no desaparezca en silencio)
+    if(/@[A-Za-z0-9._]{2,30}/.test(l)) out.push({ usuario:'', texto:l });
   }
-  if(!usuario) return { usuario:'(sin identificar)', etiquetados:[], institucion:'', texto:cruda,
-                        valido:false, motivo:'No se pudo identificar al autor' };
+  return out;
+}
 
-  // Etiquetados: todos los @ del texto, sin el propio autor ni repetidos
-  const brutos = (texto.match(/@[A-Za-z0-9._]{2,30}/g) || []).map(norm);
-  const etiquetados = [...new Set(brutos)].filter(e => e !== usuario && e !== 'kinexa.app');
+/* ── Analiza un comentario ya reconstruido ──────────────── */
+function analizar(c){
+  var texto = c.texto || '';
+  if(!c.usuario){
+    return { usuario:'(no identificado)', etiquetados:[], institucion:'', texto:texto,
+             valido:false, motivo:'No se pudo identificar quién comentó' };
+  }
 
-  // Institución: lo que queda después de sacar las etiquetas y los separadores
-  let institucion = texto.replace(/@[A-Za-z0-9._]{2,30}/g, ' ')
-                         .replace(/[—–\-|]+/g, ' ')
-                         .replace(/\s+/g, ' ')
-                         .trim()
-                         .replace(/^[,.;:]+|[,.;:]+$/g, '')
-                         .trim();
+  // Etiquetados: todos los @ del texto, sin el propio autor ni la cuenta del sorteo
+  var brutos = (texto.match(/@[A-Za-z0-9._]{2,30}/g) || []).map(norm);
+  var vistos = {}, etiquetados = [];
+  brutos.forEach(function(e){
+    if(e === c.usuario || e === 'kinexa.app' || vistos[e]) return;
+    vistos[e] = 1; etiquetados.push(e);
+  });
 
-  const exigirInst = document.getElementById('exigirInst').checked;
-  let valido = true, motivo = '';
-  if(!etiquetados.length){ valido = false; motivo = 'No etiquetó a ningún colega'; }
-  else if(exigirInst && institucion.length < 4){ valido = false; motivo = 'No indicó institución'; }
+  // Institución: lo que queda sacando las etiquetas y los separadores
+  var institucion = texto.replace(/@[A-Za-z0-9._]{2,30}/g,' ')
+                         .replace(/[—–|]+/g,' ')
+                         .replace(/\s+-\s+/g,' ')
+                         .replace(/\s+/g,' ').trim()
+                         .replace(/^[,.;:]+|[,.;:]+$/g,'').trim();
 
-  return { usuario, etiquetados, institucion, texto: cruda, valido, motivo };
+  var exigirEt = document.getElementById('exigirEtiqueta').checked;
+  var exigirIn = document.getElementById('exigirInst').checked;
+  var valido = true, motivo = '';
+  if(exigirEt && !etiquetados.length){ valido = false; motivo = 'No etiquetó a ningún colega'; }
+  else if(exigirIn && institucion.length < 4){ valido = false; motivo = 'No indicó institución'; }
+
+  return { usuario:c.usuario, etiquetados:etiquetados, institucion:institucion,
+           texto:texto, valido:valido, motivo:motivo };
+}
+
+/* ══════════════════════════════════════════════════════════
+   AGRUPAR POR INSTITUCIÓN
+   ──────────────────────────────────────────────────────────
+   El premio es para un SERVICIO, no para una persona. Eso cambia dos cosas
+   que la versión anterior hacía mal:
+     · una misma persona puede haber comentado nombrando instituciones
+       distintas, y cada una tiene que entrar por su cuenta;
+     · si veinte personas nombran el mismo hospital, ese hospital no puede
+       tener veinte chances contra una de un hospital que nombró una sola
+       persona: sería premiar al servicio con más gente en Instagram.
+   Por eso el bombo se arma con instituciones, no con usuarios.
+   ══════════════════════════════════════════════════════════ */
+
+/* Clave para detectar que dos textos son la misma institución.
+   Saca tildes, mayúsculas, puntuación y las palabras genéricas (hospital,
+   clínica, sanatorio, de, del, la...) que no distinguen una de otra. */
+var GENERICAS = ['hospital','hosp','htal','h','clinica','sanatorio','instituto','centro',
+                 'medico','medica','general','municipal','provincial','nacional','interzonal',
+                 'zonal','agudos','de','del','la','el','los','las','y','en','para','al','a',
+                 'servicio','kinesiologia','kine','uti','ucia','terapia','intensiva'];
+function claveInstitucion(txt){
+  var t = String(txt||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')   // saca tildes
+    .replace(/[^a-z0-9\s]/g,' ')
+    .replace(/\s+/g,' ').trim();
+  var toks = t.split(' ').filter(function(w){
+    return w.length > 1 && GENERICAS.indexOf(w) === -1;
+  });
+  return toks.sort().join(' ');
+}
+
+/* Parecido entre dos claves: cuántas palabras comparten.
+   Se usa solo para SUGERIR uniones, nunca para unir solo: unir mal dos
+   hospitales distintos cambiaría el ganador. */
+function parecido(a, b){
+  var A = a.split(' ').filter(Boolean), B = b.split(' ').filter(Boolean);
+  if(!A.length || !B.length) return 0;
+  var comunes = A.filter(function(w){ return B.indexOf(w) !== -1; }).length;
+  return comunes / Math.max(A.length, B.length);
+}
+
+/* Arma la lista de instituciones a partir de los comentarios válidos */
+function agruparInstituciones(){
+  var mapa = {};
+  participantes.forEach(function(p){
+    if(!p.valido) return;
+    var nombre = (p.institucion || '').trim();
+    var clave = claveInstitucion(nombre);
+    if(!clave){
+      p.valido = false;
+      p.motivo = 'No se entiende qué institución nombró';
+      return;
+    }
+    if(!mapa[clave]) mapa[clave] = { clave:clave, nombre:nombre, personas:[], menciones:0, excluida:false };
+    var g = mapa[clave];
+    g.menciones++;
+    if(g.personas.indexOf(p.usuario) === -1) g.personas.push(p.usuario);
+    // Se muestra el nombre más largo: suele ser el más completo
+    if(nombre.length > g.nombre.length) g.nombre = nombre;
+    p.claveInst = clave;
+  });
+  instituciones = Object.keys(mapa).map(function(k){ return mapa[k]; })
+    .sort(function(a,b){ return b.menciones - a.menciones; });
+}
+
+/* Instituciones parecidas que conviene revisar */
+function sugerirUniones(){
+  var out = [];
+  for(var i=0;i<instituciones.length;i++){
+    for(var j=i+1;j<instituciones.length;j++){
+      var s = parecido(instituciones[i].clave, instituciones[j].clave);
+      if(s >= 0.5 && s < 1) out.push({ a:instituciones[i], b:instituciones[j], s:s });
+    }
+  }
+  return out.sort(function(x,y){ return y.s - x.s; }).slice(0, 12);
+}
+
+/* Une B dentro de A: reescribe la institución de los comentarios de B */
+function unir(claveA, claveB){
+  var A = instituciones.filter(function(g){ return g.clave === claveA; })[0];
+  var B = instituciones.filter(function(g){ return g.clave === claveB; })[0];
+  if(!A || !B) return;
+  participantes.forEach(function(p){
+    if(p.claveInst === claveB) p.institucion = A.nombre;
+  });
+  recalcular();
+}
+
+/* Renombra una institución (si el nombre nuevo coincide con otra, se unen) */
+function renombrar(clave, nuevo){
+  nuevo = String(nuevo||'').trim();
+  if(!nuevo) return;
+  participantes.forEach(function(p){
+    if(p.claveInst === clave) p.institucion = nuevo;
+  });
+  recalcular();
+}
+
+function alternarExcluida(clave){
+  var g = instituciones.filter(function(x){ return x.clave === clave; })[0];
+  if(g){ g.excluida = !g.excluida; armarChances(); render(); }
 }
 
 /* ── Procesar todo ──────────────────────────────────────── */
 function procesar(){
-  const lineas = document.getElementById('entrada').value.split('\n');
-  participantes = lineas.map(parsearLinea).filter(Boolean);
+  var bruto = document.getElementById('entrada').value;
+  if(!bruto.trim()){ alert('Pegá primero los comentarios en el paso 2.'); return; }
 
-  // Historias → chance extra
-  const extras = new Set(
-    document.getElementById('historias').value.split('\n').map(norm).filter(Boolean)
-  );
+  participantes = reconstruirComentarios(bruto).map(analizar);
+  recalcular();
+  mostrandoTodos = false;
+  document.getElementById('panelParticipantes').classList.remove('oculto');
+  document.getElementById('panelSorteo').classList.toggle('oculto', chances.length === 0);
+  if(!document.getElementById('semilla').value) nuevaSemilla();
+  document.getElementById('panelParticipantes').scrollIntoView({ behavior:'smooth', block:'start' });
+}
 
-  const unaPorUsuario = document.getElementById('unaPorUsuario').checked;
-  const yaConChance = new Set();
+/* Rehace los grupos y el bombo. Se llama cada vez que se une o renombra algo. */
+function recalcular(){
+  agruparInstituciones();
+  armarChances();
+  render();
+}
+
+/* El bombo: una chance por institución (o una por mención, si se destilda) */
+function armarChances(){
+  var unaPorInst = document.getElementById('unaPorInst').checked;
+
+  // Historias: suman una chance extra a la institución de esa persona
+  var extras = {};
+  document.getElementById('historias').value.split('\n')
+    .map(norm).filter(Boolean).forEach(function(u){ extras[u] = 1; });
 
   chances = [];
-  participantes.forEach(p=>{
-    p.extra = false;
-    if(!p.valido) return;
-    if(unaPorUsuario && yaConChance.has(p.usuario)){
-      p.valido = false; p.motivo = 'Ya tenía una chance (modo 1 por usuario)';
-      return;
+  participantes.forEach(function(p){ p.extra = false; });
+
+  instituciones.forEach(function(g){
+    if(g.excluida) return;
+    g.chances = 0;
+    if(unaPorInst){
+      chances.push({ institucion:g.nombre, clave:g.clave, personas:g.personas, tipo:'institución' });
+      g.chances = 1;
+    } else {
+      // Una chance por cada comentario válido que la nombró
+      participantes.forEach(function(p){
+        if(p.valido && p.claveInst === g.clave){
+          chances.push({ institucion:g.nombre, clave:g.clave, personas:[p.usuario], tipo:'comentario' });
+          g.chances++;
+        }
+      });
     }
-    yaConChance.add(p.usuario);
-    chances.push({ n: chances.length+1, usuario:p.usuario, institucion:p.institucion, tipo:'comentario' });
+    // Chance extra si alguien que la nombró compartió en historias
+    var conHistoria = g.personas.filter(function(u){ return extras[u]; });
+    if(conHistoria.length){
+      chances.push({ institucion:g.nombre, clave:g.clave, personas:conHistoria, tipo:'historia' });
+      g.chances++;
+      participantes.forEach(function(p){
+        if(p.claveInst === g.clave && extras[p.usuario]) p.extra = true;
+      });
+    }
   });
 
-  // Una chance extra por usuario que compartió en historia y además comentó válido
-  const conComentario = new Set(chances.map(c=>c.usuario));
-  extras.forEach(u=>{
-    if(!conComentario.has(u)) return;
-    const inst = chances.find(c=>c.usuario===u)?.institucion || '';
-    chances.push({ n: chances.length+1, usuario:u, institucion:inst, tipo:'historia' });
-    const p = participantes.find(x=>x.usuario===u && x.valido);
-    if(p) p.extra = true;
-  });
-
-  render();
-  document.getElementById('cardHistorias').style.display = 'block';
-  document.getElementById('cardLista').style.display = 'block';
-  document.getElementById('cardSorteo').style.display = chances.length ? 'block' : 'none';
+  document.getElementById('panelParticipantes').classList.remove('oculto');
+  document.getElementById('panelSorteo').classList.toggle('oculto', chances.length === 0);
   if(!document.getElementById('semilla').value) nuevaSemilla();
-  document.getElementById('resultado').innerHTML = '';
-  ultimoSorteo = null;
 }
 
 function render(){
-  const val = participantes.filter(p=>p.valido);
-  const desc = participantes.filter(p=>!p.valido);
-  const usuarios = new Set(val.map(p=>p.usuario)).size;
-  const inst = new Set(val.map(p=>p.institucion.toLowerCase()).filter(Boolean)).size;
+  renderInstituciones();
+  var validos = participantes.filter(function(p){ return p.valido; });
+  var usuarios = {}; validos.forEach(function(p){ usuarios[p.usuario] = 1; });
+  var nUsuarios = Object.keys(usuarios).length;
+  var invalidos = participantes.length - validos.length;
+  var enJuego = instituciones.filter(function(g){ return !g.excluida; }).length;
 
-  document.getElementById('stats').innerHTML = `
-    <div class="stat"><div class="n">${chances.length}</div><div class="l">Chances</div></div>
-    <div class="stat"><div class="n">${usuarios}</div><div class="l">Participantes</div></div>
-    <div class="stat"><div class="n">${inst}</div><div class="l">Instituciones</div></div>
-    <div class="stat"><div class="n">${desc.length}</div><div class="l">Descartados</div></div>`;
+  document.getElementById('stats').innerHTML =
+    '<div class="stat"><div class="n">' + participantes.length + '</div><div class="l">Comentarios leídos</div></div>' +
+    '<div class="stat"><div class="n">' + nUsuarios + '</div><div class="l">Personas</div></div>' +
+    '<div class="stat ok"><div class="n">' + enJuego + '</div><div class="l">Instituciones en el bombo</div></div>' +
+    '<div class="stat no"><div class="n">' + invalidos + '</div><div class="l">Comentarios afuera</div></div>' +
+    '<div class="stat vi"><div class="n">' + chances.length + '</div><div class="l">Chances totales</div></div>';
 
-  let filas = '<tr><th>#</th><th>Usuario</th><th>Institución</th><th>Estado</th></tr>';
-  let i = 0;
-  participantes.forEach(p=>{
-    if(p.valido){
-      i++;
-      filas += `<tr><td class="num">${i}</td><td><b>@${esc(p.usuario)}</b>${p.extra?' <span class="badge b-ext">+historia</span>':''}</td>
-        <td>${esc(p.institucion)||'<i>—</i>'}</td><td><span class="badge b-val">válido</span></td></tr>`;
-    } else {
-      filas += `<tr class="desc"><td class="num">—</td><td>@${esc(p.usuario)}</td>
-        <td>${esc(p.texto).slice(0,60)}</td><td><span class="badge b-des">${esc(p.motivo)}</span></td></tr>`;
-    }
-  });
-  document.getElementById('tabla').innerHTML = filas;
+  var lista = mostrandoTodos ? participantes : participantes.slice(0, 12);
+  var filas = lista.map(function(p){
+    return '<tr class="' + (p.valido ? '' : 'invalido') + '">' +
+      '<td><b>@' + esc(p.usuario) + '</b>' + (p.extra ? ' <span class="chip extra">+1 historia</span>' : '') + '</td>' +
+      '<td>' + (p.etiquetados.length
+          ? p.etiquetados.map(function(e){ return '<span class="chip">@' + esc(e) + '</span>'; }).join('')
+          : '<span style="color:var(--gris)">—</span>') + '</td>' +
+      '<td>' + esc(p.institucion || '—') + '</td>' +
+      '<td>' + (p.valido ? '<span style="color:var(--verde);font-weight:600">Participa</span>'
+                         : '<span style="color:var(--rojo)">' + esc(p.motivo) + '</span>') + '</td>' +
+    '</tr>';
+  }).join('');
 
-  const av = document.getElementById('avisoDesc');
-  if(desc.length){
-    av.style.display = 'block';
-    av.innerHTML = `<b>${desc.length} comentario${desc.length>1?'s':''} descartado${desc.length>1?'s':''}.</b>
-      Revisá que no sea un error de formato antes de sortear: si a alguien le falta la institución
-      pero se entiende cuál es, podés corregirlo en el texto de arriba y volver a procesar.`;
-  } else av.style.display = 'none';
+  document.getElementById('detalle').innerHTML =
+    '<div class="tabla-scroll"><table><thead><tr>' +
+    '<th>Comentó</th><th>Etiquetó a</th><th>Institución</th><th>Estado</th>' +
+    '</tr></thead><tbody>' + filas + '</tbody></table></div>' +
+    (!mostrandoTodos && participantes.length > 12
+      ? '<p style="font-size:13px;color:var(--gris);margin:8px 0 0">Se muestran 12 de ' +
+        participantes.length + '. Tocá "Ver el detalle" para verlos todos.</p>' : '');
+
+  document.getElementById('btnVer').textContent = mostrandoTodos ? 'Mostrar menos' : 'Ver el detalle';
+}
+
+function verComentarios(){ mostrandoTodos = !mostrandoTodos; render(); }
+
+/* ── Tabla de instituciones (editable) ──────────────────── */
+function renderInstituciones(){
+  var sug = sugerirUniones();
+  document.getElementById('sugerencias').innerHTML = sug.length
+    ? '<div class="aviso"><b>Revisá estas: podrían ser la misma institución escrita distinto.</b><br>' +
+      '<span style="font-size:12.5px">Si son la misma, unilas. Si no, dejalas: no se toca nada solo.</span>' +
+      sug.map(function(u){
+        return '<div style="background:#fff;border:1px solid #fde68a;border-radius:7px;padding:9px 11px;margin-top:8px;' +
+               'display:flex;gap:10px;align-items:center;flex-wrap:wrap">' +
+          '<div style="flex:1;min-width:200px;font-size:13px">' +
+            '<b>' + esc(u.a.nombre) + '</b> <span style="color:var(--gris)">(' + u.a.menciones + ')</span>' +
+            '<br><b>' + esc(u.b.nombre) + '</b> <span style="color:var(--gris)">(' + u.b.menciones + ')</span></div>' +
+          '<button class="btn-sec" style="padding:7px 13px;font-size:13px" ' +
+            'onclick="unir(' + JSON.stringify(u.a.clave).replace(/"/g,'&quot;') + ',' +
+                              JSON.stringify(u.b.clave).replace(/"/g,'&quot;') + ')">Son la misma</button>' +
+        '</div>';
+      }).join('') + '</div>'
+    : '';
+
+  var filas = instituciones.map(function(g){
+    return '<tr' + (g.excluida ? ' class="invalido"' : '') + '>' +
+      '<td><input type="text" value="' + esc(g.nombre) + '" ' +
+        'onchange="renombrar(' + JSON.stringify(g.clave).replace(/"/g,'&quot;') + ', this.value)" ' +
+        'style="width:100%;font-family:var(--fuente);font-size:13px;padding:6px 8px"></td>' +
+      '<td style="text-align:center;font-weight:700">' + (g.excluida ? '—' : (g.chances || 0)) + '</td>' +
+      '<td>' + g.personas.map(function(u){ return '<span class="chip">@' + esc(u) + '</span>'; }).join('') + '</td>' +
+      '<td><button class="btn-gris" style="padding:5px 10px;font-size:12px" ' +
+        'onclick="alternarExcluida(' + JSON.stringify(g.clave).replace(/"/g,'&quot;') + ')">' +
+        (g.excluida ? 'Volver a incluir' : 'Excluir') + '</button></td>' +
+    '</tr>';
+  }).join('');
+
+  document.getElementById('tablaInst').innerHTML =
+    '<p style="font-size:13px;color:var(--gris);margin:14px 0 0">' +
+    'Podés corregir el nombre escribiendo encima. Si escribís el mismo nombre en dos filas, se unen solas.</p>' +
+    '<div class="tabla-scroll"><table><thead><tr>' +
+    '<th>Institución</th><th style="text-align:center">Chances</th><th>La nombraron</th><th></th>' +
+    '</tr></thead><tbody>' + filas + '</tbody></table></div>';
 }
 
 /* ── Sorteo ─────────────────────────────────────────────── */
 function nuevaSemilla(){
-  const f = new Date();
+  var f = new Date();
   document.getElementById('semilla').value =
-    'kinexa-' + f.toISOString().slice(0,10) + '-' + Math.floor(Math.random()*1e6).toString().padStart(6,'0');
+    'kinexa-' + f.toISOString().slice(0,10) + '-' +
+    String(Math.floor(Math.random()*1e6)).padStart(6,'0');
 }
 
 function sortear(){
-  if(!chances.length) return;
-  const semilla = document.getElementById('semilla').value.trim() || 'kinexa';
-  const btn = document.getElementById('btnSortear');
+  if(!chances.length){ alert('Todavía no hay participantes.'); return; }
+  var btn = document.getElementById('btnSortear');
   btn.disabled = true;
 
-  // Animación de suspenso, después el resultado real
-  const res = document.getElementById('resultado');
-  res.innerHTML = '<div class="card"><div class="sorteando" id="ruleta">…</div></div>';
-  const rul = document.getElementById('ruleta');
-  let t = 0;
-  const iv = setInterval(()=>{
-    rul.textContent = '@' + chances[Math.floor(Math.random()*chances.length)].usuario;
-    if(++t > 22){ clearInterval(iv); mostrar(semilla); btn.disabled = false; }
+  var res = document.getElementById('resultado');
+  res.innerHTML = '<div class="ruleta" id="ruleta">…</div>';
+  var rul = document.getElementById('ruleta');
+  var t = 0;
+  var iv = setInterval(function(){
+    rul.textContent = chances[Math.floor(Math.random()*chances.length)].institucion;
+    if(++t > 22){
+      clearInterval(iv);
+      mostrarGanador(document.getElementById('semilla').value.trim() || 'kinexa');
+      btn.disabled = false;
+    }
   }, 85);
 }
 
-function mostrar(semilla){
-  const rnd = rngDesde(semilla);
-  // Barajado Fisher-Yates completo → el orden da ganador y suplentes
-  const orden = chances.map((c,i)=>i);
-  for(let i=orden.length-1;i>0;i--){
-    const j = Math.floor(rnd()*(i+1));
-    [orden[i],orden[j]] = [orden[j],orden[i]];
+function mostrarGanador(semilla){
+  var rnd = rngDesde(semilla);
+  // Barajado Fisher-Yates completo: el orden define ganador y suplentes
+  var orden = chances.map(function(c,i){ return i; });
+  for(var i=orden.length-1;i>0;i--){
+    var j = Math.floor(rnd()*(i+1));
+    var tmp = orden[i]; orden[i] = orden[j]; orden[j] = tmp;
   }
-  // Ganador y suplentes tienen que ser usuarios distintos
-  const elegidos = [];
-  for(const idx of orden){
-    const c = chances[idx];
-    if(elegidos.some(e=>e.c.usuario===c.usuario)) continue;
-    elegidos.push({ c, idx });
-    if(elegidos.length===3) break;
+  // Ganadora y suplentes tienen que ser INSTITUCIONES distintas
+  var elegidos = [];
+  for(var k=0;k<orden.length;k++){
+    var c = chances[orden[k]];
+    if(elegidos.some(function(e){ return e.clave === c.clave; })) continue;
+    elegidos.push(c);
+    if(elegidos.length === 3) break;
   }
 
-  ultimoSorteo = { semilla, elegidos, total: chances.length, fecha: new Date().toISOString() };
+  var g = elegidos[0];
+  var grupoG = instituciones.filter(function(x){ return x.clave === g.clave; })[0] || { personas:[] };
+  var html =
+    '<div class="ganador"><div class="et">Institución ganadora — Beca Kinexa 2026</div>' +
+    '<div class="us">' + esc(g.institucion) + '</div>' +
+    '<div class="inst">La nombraron: ' +
+      (grupoG.personas.length ? grupoG.personas.map(function(u){ return '@' + esc(u); }).join(' · ')
+                              : '—') + '</div></div>';
 
-  const g = elegidos[0];
-  let html = `<div class="ganador">
-      <div class="rot">Servicio ganador</div>
-      <div class="user">@${esc(g.c.usuario)}</div>
-      <div class="inst">${esc(g.c.institucion)||'—'}</div>
-      <div class="idx">chance n° ${g.idx+1} de ${chances.length}${g.c.tipo==='historia'?' · por historia':''}</div>
-    </div><div class="card">`;
+  if(elegidos.length > 1){
+    html += '<p style="font-size:13px;color:var(--gris);margin:16px 0 0"><b>Suplentes</b>, ' +
+            'por si la institución ganadora no responde:</p>';
+    for(var s=1;s<elegidos.length;s++){
+      var gr = instituciones.filter(function(x){ return x.clave === elegidos[s].clave; })[0] || { personas:[] };
+      html += '<div class="suplente"><div class="pos">' + s + '</div>' +
+        '<div><b>' + esc(elegidos[s].institucion) + '</b><br>' +
+        '<span style="font-size:12.5px;color:var(--gris)">' +
+        (gr.personas.length ? gr.personas.map(function(u){ return '@' + u; }).join(' · ') : '—') +
+        '</span></div></div>';
+    }
+  }
 
-  elegidos.slice(1).forEach((e,i)=>{
-    html += `<div class="supl"><b>${i+1}° suplente:</b> @${esc(e.c.usuario)} — ${esc(e.c.institucion)||'—'}
-             <span style="color:var(--texto-suave)">(chance n° ${e.idx+1})</span></div>`;
-  });
-
-  html += `<div class="semilla">
-      <span>semilla:</span> ${esc(semilla)}<br>
-      <span>chances totales:</span> ${chances.length}<br>
-      <span>chance sorteada:</span> ${g.idx+1}<br>
-      <span>fecha:</span> ${new Date().toLocaleString('es-AR')}
-    </div>
-    <div class="aviso">Con esta misma semilla y esta misma lista, cualquiera puede repetir el sorteo
-    y obtener exactamente este resultado. Mostrá esta pantalla en el video.</div>
-    <div class="fila"><button class="b-sec" onclick="exportar()">Descargar acta (.txt)</button></div>
-    </div>`;
+  var enJuego = instituciones.filter(function(x){ return !x.excluida; }).length;
+  var personas = {};
+  participantes.forEach(function(p){ if(p.valido) personas[p.usuario] = 1; });
+  html += '<div class="acta">' +
+    'ACTA DEL SORTEO — BECA KINEXA 2026\n' +
+    'Fecha y hora: ' + new Date().toLocaleString('es-AR') + '\n' +
+    'Comentarios procesados: ' + participantes.length + '\n' +
+    'Personas que participaron: ' + Object.keys(personas).length + '\n' +
+    'Instituciones en el bombo: ' + enJuego + ' · Chances: ' + chances.length + '\n' +
+    'Criterio: ' + (document.getElementById('unaPorInst').checked
+        ? 'una chance por institución' : 'una chance por comentario válido') + '\n' +
+    'Semilla: ' + esc(semilla) + '\n' +
+    '\nINSTITUCIÓN GANADORA: ' + esc(g.institucion) + '\n' +
+    'La nombraron: ' + (grupoG.personas.map(function(u){ return '@' + u; }).join(', ') || '—') + '\n' +
+    (elegidos.length > 1 ? 'Suplentes: ' + elegidos.slice(1).map(function(e){ return e.institucion; }).join(' | ') + '\n' : '') +
+    '\nCon la misma lista y la misma semilla, el resultado se puede volver a\n' +
+    'obtener siempre igual. Guardá esta acta y el .csv de participantes.' +
+    '</div>' +
+    '<div class="fila-btn"><button class="btn-gris" onclick="copiarActa()">Copiar el acta</button></div>';
 
   document.getElementById('resultado').innerHTML = html;
-  document.getElementById('resultado').scrollIntoView({behavior:'smooth', block:'start'});
 }
 
-/* ── Acta ───────────────────────────────────────────────── */
+function copiarActa(){
+  var t = document.querySelector('.acta').textContent;
+  copiarTexto(t, 'Acta copiada');
+}
+
+/* ── Exportar ───────────────────────────────────────────── */
 function exportar(){
-  const L = [];
-  L.push('ACTA DE SORTEO — BECA KINEXA 2026');
-  L.push('='.repeat(52));
-  L.push('Generada: ' + new Date().toLocaleString('es-AR'));
-  L.push('');
-  L.push('PARTICIPANTES VÁLIDOS (' + chances.length + ' chances)');
-  L.push('-'.repeat(52));
-  chances.forEach(c=>L.push(String(c.n).padStart(4) + '. @' + c.usuario +
-    ' — ' + (c.institucion||'—') + (c.tipo==='historia' ? '  [historia]' : '')));
-  const desc = participantes.filter(p=>!p.valido);
-  if(desc.length){
-    L.push('');
-    L.push('DESCARTADOS (' + desc.length + ')');
-    L.push('-'.repeat(52));
-    desc.forEach(p=>L.push('  @' + p.usuario + ' — ' + p.motivo));
-  }
-  L.push('');
-  if(ultimoSorteo){
-    L.push('RESULTADO');
-    L.push('-'.repeat(52));
-    L.push('Semilla: ' + ultimoSorteo.semilla);
-    L.push('Chances totales: ' + ultimoSorteo.total);
-    L.push('');
-    ultimoSorteo.elegidos.forEach((e,i)=>{
-      const rot = i===0 ? 'GANADOR' : (i + '° SUPLENTE');
-      L.push(rot + ': @' + e.c.usuario + ' — ' + (e.c.institucion||'—') + '  (chance n° ' + (e.idx+1) + ')');
-    });
-  } else {
-    L.push('(Todavía no se realizó el sorteo)');
-  }
-  L.push('');
-  L.push('El resultado es reproducible: con la misma lista y la misma semilla,');
-  L.push('la herramienta devuelve siempre el mismo ganador.');
-
-  const blob = new Blob([L.join('\n')], {type:'text/plain;charset=utf-8'});
-  const a = document.createElement('a');
+  var filas = [['INSTITUCIONES EN EL SORTEO']];
+  filas.push(['Institucion','Chances','Menciones','Personas','En el bombo']);
+  instituciones.forEach(function(g){
+    filas.push([g.nombre, g.excluida ? 0 : (g.chances||0), g.menciones,
+                g.personas.join(' '), g.excluida ? 'No' : 'Si']);
+  });
+  filas.push([]);
+  filas.push(['DETALLE DE COMENTARIOS']);
+  filas.push(['Usuario','Etiquetados','Institucion','Participa','Motivo','Chance extra','Comentario']);
+  participantes.forEach(function(p){
+    filas.push([p.usuario, p.etiquetados.join(' '), p.institucion,
+                p.valido ? 'Si' : 'No', p.motivo, p.extra ? 'Si' : 'No', p.texto]);
+  });
+  var csv = '\ufeff' + filas.map(function(f){
+    return f.map(function(c){
+      var v = String(c==null?'':c).replace(/"/g,'""');
+      return /[",\n]/.test(v) ? '"' + v + '"' : v;
+    }).join(',');
+  }).join('\n');
+  var blob = new Blob([csv], { type:'text/csv;charset=utf-8' });
+  var a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = 'acta-sorteo-kinexa-' + new Date().toISOString().slice(0,10) + '.txt';
+  a.download = 'sorteo-kinexa-instituciones.csv';
   a.click();
-  URL.revokeObjectURL(a.href);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 3000);
 }
 
-function cargarEjemplo(){
-  document.getElementById('entrada').value =
-`lucia.ferrari: @martin.gomez — Hospital San Martín, La Plata
-kine.martin: @sofi.re @juanpk — Hospital Posadas, El Palomar
-sofia.re: @lucia.ferrari — Hospital Posadas, El Palomar
-juanpk: @kine.martin — Hospital Posadas, El Palomar
-ana.kinesio: @pablo.rt — Hospital Iturraspe, Santa Fe
-pablo.rt: @ana.kinesio — Hospital Iturraspe, Santa Fe
-kinesiobelgrano: @nadie
-carla.utip: @flor.kine — Hospital de Niños, Córdoba
-lucia.ferrari: @sofia.re — Hospital San Martín, La Plata`;
-  document.getElementById('historias').value = '@lucia.ferrari\nkine.martin';
-  procesar();
-}
-
-function limpiar(){
+function limpiarTodo(){
+  if(!confirm('¿Borrar todo y empezar de nuevo?')) return;
   document.getElementById('entrada').value = '';
   document.getElementById('historias').value = '';
-  participantes = []; chances = []; ultimoSorteo = null;
-  ['cardHistorias','cardLista','cardSorteo'].forEach(id=>document.getElementById(id).style.display='none');
+  participantes = []; chances = []; instituciones = [];
+  document.getElementById('panelParticipantes').classList.add('oculto');
+  document.getElementById('panelSorteo').classList.add('oculto');
   document.getElementById('resultado').innerHTML = '';
+}
+
+/* ══════════════════════════════════════════════════════════
+   SCRIPT PARA LA CONSOLA DE INSTAGRAM
+   Abre todos los "Ver más comentarios" y "Ver respuestas", junta el texto
+   y lo deja en el portapapeles.
+   ══════════════════════════════════════════════════════════ */
+var SCRIPT_IG = [
+"(async () => {",
+"  const esperar = ms => new Promise(r => setTimeout(r, ms));",
+"  const textos = ['ver m', 'load more', 'cargar m', 'ver las', 'ver respuesta', 'view repl'];",
+"  const buscarBotones = () => [...document.querySelectorAll('button, [role=button], span')]",
+"    .filter(b => { const t = (b.textContent||'').trim().toLowerCase();",
+"      return t.length < 40 && textos.some(x => t.startsWith(x)); });",
+"  let vueltas = 0, sinCambios = 0, previo = 0;",
+"  console.log('Abriendo comentarios, esperá...');",
+"  while (vueltas < 400 && sinCambios < 4) {",
+"    const bts = buscarBotones();",
+"    if (bts.length) { bts.forEach(b => { try { b.click(); } catch(e){} }); }",
+"    await esperar(700);",
+"    const n = document.body.innerText.length;",
+"    if (n <= previo) sinCambios++; else { sinCambios = 0; previo = n; }",
+"    vueltas++;",
+"    if (vueltas % 10 === 0) console.log('...' + vueltas + ' pasadas');",
+"  }",
+"  const texto = document.body.innerText;",
+"  try { await navigator.clipboard.writeText(texto); console.log('LISTO: copiado al portapapeles. Pegalo en la herramienta del sorteo.'); }",
+"  catch(e) { const ta = document.createElement('textarea'); ta.value = texto;",
+"    document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();",
+"    console.log('LISTO: copiado. Pegalo en la herramienta del sorteo.'); }",
+"})();"
+].join('\n');
+
+document.getElementById('scriptIG').textContent = SCRIPT_IG;
+
+function copiarScript(){ copiarTexto(SCRIPT_IG, 'Script copiado. Pegalo en la consola de Instagram.'); }
+
+function copiarTexto(t, msg){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){ alert(msg); },
+      function(){ copiarFallback(t, msg); });
+  } else copiarFallback(t, msg);
+}
+function copiarFallback(t, msg){
+  var ta = document.createElement('textarea');
+  ta.value = t; document.body.appendChild(ta); ta.select();
+  try { document.execCommand('copy'); alert(msg); }
+  catch(e){ alert('No se pudo copiar solo. Seleccioná el texto a mano y copiá con Ctrl+C.'); }
+  ta.remove();
 }
 
 nuevaSemilla();
