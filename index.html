@@ -278,6 +278,13 @@ tr:hover td{ background:var(--blue-50); }
 .modal-overlay{ display:none; position:fixed; inset:0; background:rgba(0,0,0,.5);
   z-index:200; align-items:flex-start; justify-content:center; padding:1rem; overflow-y:auto; }
 .modal-overlay.open{ display:flex; animation:overlayIn .18s ease; }
+/* v3_236: las pantallas del consultorio son overlays a pantalla completa
+   (z-index 1500 y 1600). Sus modales tienen que quedar por encima o se abren
+   detrás y parece que el botón no funciona. */
+.modal-overlay.modal-alto{ z-index:1700; }
+/* Lo mismo vale para las tendencias: se abren DESDE el modal de evolución, que
+   está más abajo en el DOM y con el mismo z-index, así que sin esto quedaban
+   tapadas por el modal que las invocó. */
 .modal-overlay.open .modal{ animation:modalIn .2s cubic-bezier(.2,.9,.3,1); }
 @keyframes overlayIn{ from{opacity:0} to{opacity:1} }
 @keyframes modalIn{ from{opacity:0; transform:translateY(12px) scale(.985)} to{opacity:1; transform:none} }
@@ -1089,7 +1096,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- ════ v3_235 — Tendencias de variables clínicas ════ -->
-<div class="modal-overlay" id="modalTendencias">
+<div class="modal-overlay modal-alto" id="modalTendencias">
   <div class="modal" style="width:620px">
     <div class="modal-header">
       <div>
@@ -1122,7 +1129,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- Evaluación (inicial / intermedia / alta) -->
-<div class="modal-overlay" id="modalEvalAmb">
+<div class="modal-overlay modal-alto" id="modalEvalAmb">
   <div class="modal" style="width:660px">
     <div class="modal-header">
       <div>
@@ -1187,7 +1194,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- Evolución del día de atención -->
-<div class="modal-overlay" id="modalEvoAmb">
+<div class="modal-overlay modal-alto" id="modalEvoAmb">
   <div class="modal" style="width:660px">
     <div class="modal-header">
       <div>
@@ -1219,7 +1226,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- Turno: alta y edición -->
-<div class="modal-overlay" id="modalTurno">
+<div class="modal-overlay modal-alto" id="modalTurno">
   <div class="modal" style="width:520px">
     <div class="modal-header">
       <div>
@@ -1229,7 +1236,12 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <button class="modal-close" onclick="closeModal('modalTurno')">&times;</button>
     </div>
     <div class="modal-body">
-      <input type="hidden" id="tuId"><input type="hidden" id="tuFecha"><input type="hidden" id="tuHora">
+      <input type="hidden" id="tuId">
+
+      <div class="form-row">
+        <div class="form-group"><label>Fecha *</label><input type="date" id="tuFecha"></div>
+        <div class="form-group"><label>Horario *</label><input type="time" id="tuHora" step="300"></div>
+      </div>
 
       <div class="form-group"><label>Paciente *</label>
         <select id="tuPaciente"></select>
@@ -1269,7 +1281,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- Ficha del paciente ambulatorio -->
-<div class="modal-overlay" id="modalPacAmb">
+<div class="modal-overlay modal-alto" id="modalPacAmb">
   <div class="modal" style="width:640px">
     <div class="modal-header">
       <div>
@@ -3682,6 +3694,13 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <div class="form-row">
         <div class="form-group"><label>SpO₂ (%)</label><input type="number" id="eSpO2" inputmode="numeric" max="100" oninput="calcIndicesOxigenacion()"></div>
         <div class="form-group"><label>PAFI</label><input class="f-auto" type="number" id="ePAFI" inputmode="decimal"><div class="form-hint">PO₂ / FiO₂</div></div>
+      </div>
+      <!-- v3_236: referencia del contexto en que se sacó el EAB. Texto libre a
+           propósito: "control post prono", "post supino", "previo a PVE"… el
+           mismo valor se lee distinto según de dónde viene. -->
+      <div class="form-group">
+        <label>Referencia del EAB</label>
+        <input type="text" id="eEABNota" maxlength="80" placeholder="Ej: control post prono, previo a PVE, post aspiración…">
       </div>
       <!-- v3_133: índices de oxigenación pediátricos -->
       <div class="form-row" id="eIOOSIRow" style="display:none">
@@ -6743,7 +6762,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_235';
+const APP_VERSION = 'v3_236';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -9833,7 +9852,9 @@ function renderAgenda(){
     cont.innerHTML = `<div style="text-align:center;padding:2.5rem 1rem;color:var(--text-muted);font-size:13px">
       <i class="ti ti-calendar-off" style="font-size:26px;display:block;margin-bottom:8px;opacity:.5"></i>
       El consultorio no atiende este día.${delDia.length ? `<br><strong>Hay ${delDia.length} turno${delDia.length===1?'':'s'} cargado${delDia.length===1?'':'s'}</strong> igual.` : ''}
-      <br><span style="font-size:11.5px">Se configura en Configuración → sector.</span></div>`
+      <br><span style="font-size:11.5px">Se configura en Configuración → sector.</span>
+      <div style="margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="abrirTurno(null,'${fecha}','')">
+        <i class="ti ti-plus"></i>Cargar un turno igual</button></div></div>`
       + (delDia.length ? delDia.map(t => tarjetaTurno(t)).join('') : '');
     return;
   }
@@ -9874,9 +9895,25 @@ function renderAgenda(){
     </div>`);
   }
 
-  cont.innerHTML = filas.length
+  // v3_236: un turno cargado a mano puede caer fuera de las franjas configuradas.
+  // Antes desaparecía de la vista: seguía existiendo pero nadie lo veía.
+  const horasGrilla = new Set();
+  for(let m = ini; m + paso <= fin; m += paso) horasGrilla.add(_minAHhmm(m));
+  const fuera = delDia.filter(t => !horasGrilla.has(t.hora))
+    .filter(t => !soloMios || String(t.kineUser||'') === miUser);
+  const bloqueFuera = fuera.length ? `
+    <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border)">
+      <div style="font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--amber-800);margin-bottom:7px">
+        <i class="ti ti-clock-exclamation"></i> Fuera del horario configurado</div>
+      ${fuera.map(t => `<div style="display:flex;gap:10px;align-items:flex-start;margin-bottom:6px">
+        <div style="width:52px;flex-shrink:0;text-align:right;padding-top:9px;font-size:13px;font-weight:800">${_esc(t.hora)}</div>
+        <div style="flex:1;min-width:0">${tarjetaTurno(t)}</div></div>`).join('')}
+    </div>` : '';
+
+  cont.innerHTML = (filas.length
     ? filas.join('')
-    : `<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:13px">El horario configurado para este día no entra ni un turno de ${paso} min.</div>`;
+    : `<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:13px">El horario configurado para este día no entra ni un turno de ${paso} min.</div>`)
+    + bloqueFuera;
 }
 
 function tarjetaTurno(t){
@@ -9899,11 +9936,15 @@ async function abrirTurno(id, fecha, hora){
   const cfg = cfgConsultorio(currentSector) || cfgConsultorioPorDefecto();
 
   document.getElementById('tuId').value = t ? t.id : '';
-  document.getElementById('tuFecha').value = t ? t.fecha : (fecha || AGENDA_FECHA || today());
-  document.getElementById('tuHora').value  = t ? t.hora  : (hora || '');
+  // v3_236: fecha y hora son editables. Si se entró tocando una franja vienen
+  // precargadas, pero un turno puede caer fuera de la grilla (un paciente que
+  // solo puede a las 7:30) y antes no había forma de cargarlo.
+  const fBase = t ? t.fecha : (fecha || AGENDA_FECHA || today());
+  const hBase = t ? t.hora  : (hora || '');
+  document.getElementById('tuFecha').value = fBase;
+  document.getElementById('tuHora').value  = hBase;
   document.getElementById('turnoTitulo').textContent = t ? 'Turno' : 'Nuevo turno';
-  document.getElementById('turnoSubtitulo').textContent =
-    `${fmtDate(t ? t.fecha : (fecha || AGENDA_FECHA))} · ${t ? t.hora : hora} hs`;
+  document.getElementById('turnoSubtitulo').textContent = fmtDate(fBase) + (hBase ? ` · ${hBase} hs` : '');
 
   // Pacientes del consultorio
   const sel = document.getElementById('tuPaciente');
@@ -9966,6 +10007,7 @@ async function guardarTurno(){
   const id = document.getElementById('tuId').value;
   const fecha = document.getElementById('tuFecha').value;
   const hora  = document.getElementById('tuHora').value;
+  if(!fecha || !hora){ showToast('Completá la fecha y el horario','error'); return; }
   const cfg = cfgConsultorio(currentSector) || cfgConsultorioPorDefecto();
   const cupos = Math.max(1, Number(cfg.cupos) || 1);
 
@@ -10141,11 +10183,11 @@ function serieDe(pacId, key){
   const pts = [];
   evos.forEach(e => {
     const n = _tendNum(e[key]);
-    if(n !== null) pts.push({ v:n, fecha:e.date, hora:e.hora || '', kine:e.kine || '' });
+    if(n !== null) pts.push({ v:n, fecha:e.date, hora:e.hora || '', kine:e.kine || '', nota:e.eabNota || '' });
     if(Array.isArray(e.eabExtra)){
       e.eabExtra.forEach(x => {
         const nx = _tendNum(x && x[key]);
-        if(nx !== null) pts.push({ v:nx, fecha:e.date, hora:(x.hora || e.hora || ''), kine:e.kine || '', extra:true });
+        if(nx !== null) pts.push({ v:nx, fecha:e.date, hora:(x.hora || e.hora || ''), kine:e.kine || '', nota:x.nota || '', extra:true });
       });
     }
   });
@@ -10183,7 +10225,7 @@ function _graficoTend(pts, cfg){
     const fuera = (cfg.banda && (p.v < cfg.banda[0] || p.v > cfg.banda[1]))
       || (cfg.piso != null && p.v < cfg.piso) || (cfg.techo != null && p.v > cfg.techo);
     return `<circle cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="${p.extra ? 2.2 : 3}"
-      fill="${fuera ? 'var(--amber-800)' : 'var(--purple-400)'}"><title>${_esc(fmtDate(p.fecha))}${p.hora ? ' ' + p.hora : ''} — ${p.v}</title></circle>`;
+      fill="${fuera ? 'var(--amber-800)' : 'var(--purple-400)'}"><title>${_esc(fmtDate(p.fecha))}${p.hora ? ' ' + p.hora : ''} — ${p.v}${p.nota ? '\n' + _esc(p.nota) : ''}</title></circle>`;
   }).join('');
 
   const ejes = [max - pad, min + pad].map(v =>
@@ -12571,6 +12613,7 @@ function construirTextoEvo(evo, p){
     add('PMI - indice de presion muscular (cmH2O)', evo.pmi);
     add('pH', evo.ph); add('pCO2 (mmHg)', evo.pco2); add('pO2 (mmHg)', evo.po2); add('HCO3', evo.hco3);
     add('SpO2 (%)', evo.spo2); add('PAFI', evo.pafi); add('Lactato', evo.lactato);
+    add('Referencia del EAB', evo.eabNota);
     add('FC (lpm)', evo.fc);
     add('TA (mmHg)', (evo.tas!=='' && evo.tad!=='' && evo.tas!=null && evo.tad!=null) ? `${evo.tas}/${evo.tad}` : '');
     add('TAM (mmHg)', evo.tam); add('Temperatura (°C)', evo.temp); add('PIC (mmHg)', evo.pic); add('EtCO2 (mmHg)', evo.etco2);
@@ -15773,7 +15816,10 @@ function agregarEAB(data){
       '<div class="form-group"><label>SpO₂ (%)</label><input type="number" data-eab="spo2" inputmode="numeric" max="100" value="'+val(data.spo2)+'"></div>'+
       '<div class="form-group"><label>PAFI</label><input type="number" data-eab="pafi" inputmode="decimal" value="'+val(data.pafi)+'"></div>'+
       '<div class="form-group"><label>Ác. láctico</label><input type="number" data-eab="lactato" inputmode="decimal" step="0.1" value="'+val(data.lactato)+'"></div>'+
-    '</div>';
+    '</div>'+
+    // v3_236: cada EAB adicional lleva su propia referencia
+    '<div class="form-group"><label>Referencia</label>'+
+      '<input type="text" data-eab="nota" maxlength="80" placeholder="Ej: control post prono" value="'+val(data.nota)+'"></div>';
   cont.appendChild(card);
 }
 
@@ -17130,6 +17176,7 @@ const EVO_LABELS = {
   sofaHep:'SOFA — hepático', sofaCardio:'SOFA — cardiovascular',
   sofaNeuro:'SOFA — neurológico', sofaRenal:'SOFA — renal',
   hacorMomento:'HACOR — momento', hacorGcs:'HACOR — Glasgow', hacorFc:'HACOR — FC',
+  eabNota:'Referencia del EAB',   // v3_236
   hacorPh:'HACOR — pH', hacorPafi:'HACOR — PaO₂/FiO₂', hacorFr:'HACOR — FR',
   soporteFinal:'Soporte al finalizar la sesión',
   interfaz:'Interfaz', interfazEsp:'Detalle de interfaz', armDiametro:'Diámetro TET/cánula (mm)', tetADS:'TET a ADS (cm)',
@@ -17176,7 +17223,7 @@ const EVO_SKIP_CAMPOS = new Set([
   // mecánica (ya en sección Mecánica ventilatoria)
   'modo','curvaFlujo','curvaFlujo2','vt','vtkg','fr','frReal','peep','fio2','ppico','pplat','dp','crs','pausaInsp','pausaInsp2',
   // EAB (ya en su sección)
-  'ph','pco2','po2','spo2','pafi','eabExtra',
+  'ph','pco2','po2','spo2','pafi','eabNota','eabExtra',
   // neuro/sedación mostrado
   'rass','cpot','camicu','akm1',
   // PVE (sección propia)
@@ -17506,9 +17553,10 @@ function evoCardHTML(e, i){
   // 5) EAB
   const secEAB = evoSeccionGrid('EAB', [
     [e.ph,'pH'], [e.pco2,'pCO₂'], [e.po2,'pO₂'], [e.hco3,'HCO₃'], [e.spo2,'SpO₂ %'],
-    [e.pafi,'PAFI'], [e.io,'IO'], [e.osi,'OSI'], [e.lactato,'Lactato']
+    [e.pafi,'PAFI'], [e.io,'IO'], [e.osi,'OSI'], [e.lactato,'Lactato'], [e.eabNota,'Referencia']
   ]);
-  const secEABExtra = Array.isArray(e.eabExtra) ? e.eabExtra.map(x=>evoSeccionGrid('EAB'+(x.hora?' · '+x.hora:''), [
+  const secEABExtra = Array.isArray(e.eabExtra) ? e.eabExtra.map(x=>evoSeccionGrid(
+    'EAB'+(x.hora?' · '+x.hora:'')+(x.nota?' · '+x.nota:''), [
     [x.ph,'pH'],[x.pco2,'pCO₂'],[x.po2,'pO₂'],[x.hco3,'HCO₃'],[x.spo2,'SpO₂ %'],[x.pafi,'PAFI'],[x.lactato,'Lact']
   ])).join('') : '';
   // 6) Secreciones
@@ -19288,7 +19336,7 @@ function openEvolucion(patientId){
   document.getElementById('eKine').value = currentUser.name;
   const nFields = ['eModo','eVT','eVTkg','eVM','eFR','eFRreal','ePEEP','eFiO2','eTi','ePausaInsp','ePC',
     'ePpico','ePplat','ePEEPt','eDP','eCrs','eRinsp','eFlujo','eMP','eER','eCT','ePMI','ePMI2','eVM2',
-    'ePH','ePCO2','ePO2','eHCO3','eSpO2','ePAFI','eInterfaz',
+    'ePH','ePCO2','ePO2','eHCO3','eSpO2','ePAFI','eEABNota','eInterfaz',
     'eFC','eTAS','eTAD','eTAM','eSpO2Mon','eFRMon','ePIC','eEtCO2','eTemp',
     'eBalon','eMAP','eIO','eOSI','eComfortB','eSBS','eNRS','eOPS','eFLACC','eCAPD','eSOPHIA','eTal','eWoodDownes',
     'eRASS','eCPOT','eCAMICU','eVentSed','eDolorAuto','eDolorEscala','eOtrosFarmacos',
@@ -20765,7 +20813,7 @@ const EVO_FIELD_MAP = {
   p01:'eP01', deltaPocc:'eDeltaPocc', vm:'eVM', pmi:'ePMI',   // v3_211
   ppico:'ePpico', pplat:'ePplat', peept:'ePEEPt', dp:'eDP', crs:'eCrs',
   rinsp:'eRinsp', flujo:'eFlujo', mp:'eMP', er:'eER', ct:'eCT',
-  ph:'ePH', pco2:'ePCO2', po2:'ePO2', hco3:'eHCO3', spo2:'eSpO2', pafi:'ePAFI',
+  ph:'ePH', pco2:'ePCO2', po2:'ePO2', hco3:'eHCO3', spo2:'eSpO2', pafi:'ePAFI', eabNota:'eEABNota',
   diasHosp:'eDiasHosp',
   rass:'eRASS', cpot:'eCPOT', camicu:'eCAMICU', ventSed:'eVentSed',
   dolorAuto:'eDolorAuto', dolorEscala:'eDolorEscala', otrosFarmacos:'eOtrosFarmacos',
@@ -21207,7 +21255,7 @@ async function guardarEvolucion(){
     dp:GN('eDP'), crs:GN('eCrs'), rinsp:GN('eRinsp'), flujo:GN('eFlujo'),
     mp:GN('eMP'), er:GN('eER'), ct:GN('eCT'),
     ph:GN('ePH'), pco2:GN('ePCO2'), po2:GN('ePO2'), hco3:GN('eHCO3'),
-    spo2:GN('eSpO2'), pafi:GN('ePAFI'), eabExtra:collectEABExtra(), diasHosp:GN('eDiasHosp'),
+    spo2:GN('eSpO2'), pafi:GN('ePAFI'), eabNota:G('eEABNota'), eabExtra:collectEABExtra(), diasHosp:GN('eDiasHosp'),
     rass:G('eRASS'), cpot:G('eCPOT'), camicu:G('eCAMICU'), ventSed:G('eVentSed'),
     dolorAuto:G('eDolorAuto'), dolorEscala:G('eDolorEscala'),
     sedacion:getMultiselectValues('msSedacion'), analgesia:getMultiselectValues('msAnalgesia'),
