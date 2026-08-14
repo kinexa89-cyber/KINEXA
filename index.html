@@ -753,6 +753,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 .accordion-header:hover{ background:var(--blue-50); border-left-color:var(--blue-400); }
 .accordion-body{ display:none; padding:12px 0 6px 13px; border-left:3px solid var(--blue-50); margin-left:1px; margin-bottom:6px; }
 .accordion-body.open{ display:block; }
+/* v3_235: acceso a las tendencias desde el encabezado de cada sección */
+.btn-tend{background:none;border:none;color:var(--purple-400);cursor:pointer;padding:2px 5px;
+  border-radius:6px;font-size:15px;line-height:1;display:inline-flex;align-items:center}
+.btn-tend:hover{background:var(--purple-50)}
 .accordion-arrow{ transition:transform .2s; }
 .accordion-arrow.open{ transform:rotate(180deg); }
 
@@ -1081,6 +1085,23 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <div id="consListaPacientes"></div>
     </div>
 
+  </div>
+</div>
+
+<!-- ════ v3_235 — Tendencias de variables clínicas ════ -->
+<div class="modal-overlay" id="modalTendencias">
+  <div class="modal" style="width:620px">
+    <div class="modal-header">
+      <div>
+        <h3><i class="ti ti-chart-line" style="color:var(--purple-400);margin-right:6px"></i><span id="tendTitulo">Tendencias</span></h3>
+        <div class="modal-subtitle" id="tendSubtitulo">—</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalTendencias')">&times;</button>
+    </div>
+    <div class="modal-body" style="padding-top:8px">
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px" id="tendGrupos"></div>
+      <div id="tendContenido"></div>
+    </div>
   </div>
 </div>
 
@@ -2506,7 +2527,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     <!-- ══ Signos vitales ══ -->
     <div class="accordion-header" onclick="toggleAccordion('accVS')">
       <span><i class="ti ti-heartbeat" style="margin-right:6px;color:var(--red-400)"></i>Signos vitales (monitor)</span>
-      <i class="ti ti-chevron-down accordion-arrow" id="arrVS"></i>
+      <span style="display:flex;align-items:center;gap:4px"><button type="button" class="btn-tend" title="Ver tendencias" onclick="event.stopPropagation();abrirTendencias('vitales')"><i class="ti ti-chart-line"></i></button><i class="ti ti-chevron-down accordion-arrow" id="arrVS"></i></span>
     </div>
     <div class="accordion-body" id="accVS">
       <div class="form-row four" style="margin-top:8px">
@@ -3147,7 +3168,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 
     <div class="accordion-header" onclick="toggleAccordion('accSed')">
       <span><i class="ti ti-brain" style="margin-right:6px;color:var(--purple-400)"></i>Neurológico / Sedoanalgesia</span>
-      <i class="ti ti-chevron-down accordion-arrow" id="arrSed"></i>
+      <span style="display:flex;align-items:center;gap:4px"><button type="button" class="btn-tend" title="Ver tendencias" onclick="event.stopPropagation();abrirTendencias('neuro')"><i class="ti ti-chart-line"></i></button><i class="ti ti-chevron-down accordion-arrow" id="arrSed"></i></span>
     </div>
     <div class="accordion-body" id="accSed">
       <div id="eAdultoEscalas">
@@ -3407,7 +3428,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 
     <div class="accordion-header" onclick="toggleAccordion('accVent')">
       <span><i class="ti ti-lungs" style="margin-right:6px;color:var(--blue-400)"></i>Mecánica ventilatoria — Setting inicial</span>
-      <i class="ti ti-chevron-down accordion-arrow" id="arrVent"></i>
+      <span style="display:flex;align-items:center;gap:4px"><button type="button" class="btn-tend" title="Ver tendencias" onclick="event.stopPropagation();abrirTendencias('ventilacion')"><i class="ti ti-chart-line"></i></button><i class="ti ti-chevron-down accordion-arrow" id="arrVent"></i></span>
     </div>
     <div class="accordion-body" id="accVent">
       <div class="form-row four" style="margin-top:8px">
@@ -3649,7 +3670,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     <!-- EAB -->
     <div class="accordion-header" onclick="toggleAccordion('accEAB')">
       <span><i class="ti ti-droplet" style="margin-right:6px;color:var(--teal-400)"></i>Equilibrio ácido-base (EAB)</span>
-      <i class="ti ti-chevron-down accordion-arrow" id="arrEAB"></i>
+      <span style="display:flex;align-items:center;gap:4px"><button type="button" class="btn-tend" title="Ver tendencias" onclick="event.stopPropagation();abrirTendencias('eab')"><i class="ti ti-chart-line"></i></button><i class="ti ti-chevron-down accordion-arrow" id="arrEAB"></i></span>
     </div>
     <div class="accordion-body" id="accEAB">
       <div class="form-row four" style="margin-top:8px">
@@ -6722,7 +6743,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_234';
+const APP_VERSION = 'v3_235';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -10048,6 +10069,186 @@ function whatsappPacienteAmb(id){
   if(!num){ showToast('Ese paciente no tiene celular cargado','error'); return; }
   const msg = `Hola ${p.nombre}, te escribimos de ${instNombreActual() || 'kinesiología'}.`;
   window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+// ════════════════════════════════════════════════════════
+//  v3_235 — TENDENCIAS DE VARIABLES CLÍNICAS
+// ════════════════════════════════════════════════════════
+// Un valor suelto dice poco: una PAFI de 180 puede ser una mejoría o el
+// principio de un problema según de dónde venga. Hasta acá había que abrir
+// evolución por evolución para reconstruir eso de memoria.
+//
+// Los datos se leen de las evoluciones ya cargadas, así que no hay nada nuevo
+// que completar: la serie aparece sola apenas hay dos mediciones.
+
+const TEND_GRUPOS = {
+  eab: { label:'EAB', icono:'ti-droplet', series:[
+    { k:'ph',      label:'pH',        banda:[7.35, 7.45], dec:2 },
+    { k:'pco2',    label:'pCO₂',      unidad:'mmHg', banda:[35, 45] },
+    { k:'po2',     label:'pO₂',       unidad:'mmHg', banda:[80, 100] },
+    { k:'hco3',    label:'HCO₃',      unidad:'mEq/L', banda:[22, 26] },
+    { k:'pafi',    label:'PAFI',      piso:300, mejorArriba:true },
+    { k:'lactato', label:'Lactato',   unidad:'mmol/L', techo:2 },
+    { k:'spo2',    label:'SpO₂ (EAB)', unidad:'%', piso:92, mejorArriba:true },
+  ]},
+  vitales: { label:'Signos vitales', icono:'ti-heartbeat', series:[
+    { k:'fc',      label:'FC',        unidad:'lpm', banda:[60, 100] },
+    { k:'tam',     label:'TAM',       unidad:'mmHg', piso:65, mejorArriba:true },
+    { k:'spo2Mon', label:'SpO₂ monitor', unidad:'%', piso:92, mejorArriba:true },
+    { k:'frMon',   label:'FR monitor', unidad:'rpm', banda:[12, 20] },
+    { k:'temp',    label:'Temperatura', unidad:'°C', banda:[36, 37.5], dec:1 },
+    { k:'etco2',   label:'EtCO₂',     unidad:'mmHg', banda:[35, 45] },
+    { k:'pic',     label:'PIC',       unidad:'mmHg', techo:20 },
+  ]},
+  neuro: { label:'Neurológico', icono:'ti-brain', series:[
+    { k:'rass', label:'RASS', escala:[-5, 4], banda:[-1, 0] },
+    { k:'cpot', label:'CPOT / Dolor', escala:[0, 8], techo:2 },
+    { k:'mrc',  label:'MRC-Sumy', escala:[0, 60], piso:48, mejorArriba:true },
+  ]},
+  ventilacion: { label:'Ventilación', icono:'ti-lungs', series:[
+    { k:'peep',  label:'PEEP',   unidad:'cmH₂O' },
+    { k:'fio2',  label:'FiO₂',   unidad:'%', techo:60 },
+    { k:'vt',    label:'VT',     unidad:'mL' },
+    { k:'vtkg',  label:'VT/kg',  unidad:'mL/kg', banda:[6, 8], dec:1 },
+    { k:'fr',    label:'FR seteada', unidad:'rpm' },
+    { k:'ppico', label:'Ppico',  unidad:'cmH₂O', techo:35 },
+    { k:'pplat', label:'Pplat',  unidad:'cmH₂O', techo:30 },
+    { k:'dp',    label:'Driving pressure', unidad:'cmH₂O', techo:15 },
+    { k:'crs',   label:'Compliance', unidad:'mL/cmH₂O', piso:40, mejorArriba:true },
+  ]},
+};
+
+let _tendGrupo = 'eab', _tendPacId = null;
+
+// El RASS y el CPOT se guardan como texto ("-2 Sedación leve"): interesa el número
+function _tendNum(v){
+  if(v === null || v === undefined || v === '') return null;
+  if(typeof v === 'number') return isFinite(v) ? v : null;
+  const s = String(v).trim();
+  if(/^no evaluable/i.test(s)) return null;
+  const m = s.match(/^[+-]?\d+(?:[.,]\d+)?/);
+  if(!m) return null;
+  const n = parseFloat(m[0].replace(',', '.'));
+  return isFinite(n) ? n : null;
+}
+
+// Serie cronológica de una variable. Los EAB adicionales de una misma evolución
+// entran como puntos propios: son mediciones distintas del mismo día.
+function serieDe(pacId, key){
+  const evos = evoluciones
+    .filter(e => e.patientId === pacId && !e.tipo && !e._borrada)
+    .sort((a, b) => _claveCrono(a).localeCompare(_claveCrono(b)));
+  const pts = [];
+  evos.forEach(e => {
+    const n = _tendNum(e[key]);
+    if(n !== null) pts.push({ v:n, fecha:e.date, hora:e.hora || '', kine:e.kine || '' });
+    if(Array.isArray(e.eabExtra)){
+      e.eabExtra.forEach(x => {
+        const nx = _tendNum(x && x[key]);
+        if(nx !== null) pts.push({ v:nx, fecha:e.date, hora:(x.hora || e.hora || ''), kine:e.kine || '', extra:true });
+      });
+    }
+  });
+  return pts;
+}
+
+// Gráfico de línea en SVG. Sin librerías: son pocos puntos y así anda offline.
+function _graficoTend(pts, cfg){
+  const W = 300, H = 96, PL = 34, PR = 6, PT = 10, PB = 16;
+  const vals = pts.map(p => p.v);
+  let min = Math.min(...vals), max = Math.max(...vals);
+  // La banda de referencia tiene que entrar en el cuadro aunque los valores no la toquen
+  if(cfg.banda){ min = Math.min(min, cfg.banda[0]); max = Math.max(max, cfg.banda[1]); }
+  if(cfg.piso  != null) { min = Math.min(min, cfg.piso);  max = Math.max(max, cfg.piso); }
+  if(cfg.techo != null) { min = Math.min(min, cfg.techo); max = Math.max(max, cfg.techo); }
+  if(cfg.escala){ min = Math.min(min, cfg.escala[0]); max = Math.max(max, cfg.escala[1]); }
+  if(max === min){ max += 1; min -= 1; }
+  const pad = (max - min) * 0.12;
+  min -= pad; max += pad;
+
+  const x = i => PL + (pts.length === 1 ? (W - PL - PR) / 2 : (i / (pts.length - 1)) * (W - PL - PR));
+  const y = v => PT + (1 - (v - min) / (max - min)) * (H - PT - PB);
+  const dec = cfg.dec != null ? cfg.dec : (max - min < 5 ? 1 : 0);
+
+  let fondo = '';
+  if(cfg.banda){
+    const y1 = y(cfg.banda[1]), y2 = y(cfg.banda[0]);
+    fondo += `<rect x="${PL}" y="${y1}" width="${W-PL-PR}" height="${Math.max(1,y2-y1)}" fill="var(--teal-400)" opacity=".13"/>`;
+  }
+  if(cfg.piso != null)  fondo += `<line x1="${PL}" y1="${y(cfg.piso)}" x2="${W-PR}" y2="${y(cfg.piso)}" stroke="var(--amber-800)" stroke-width="1" stroke-dasharray="3 3" opacity=".55"/>`;
+  if(cfg.techo != null) fondo += `<line x1="${PL}" y1="${y(cfg.techo)}" x2="${W-PR}" y2="${y(cfg.techo)}" stroke="var(--amber-800)" stroke-width="1" stroke-dasharray="3 3" opacity=".55"/>`;
+
+  const linea = pts.map((p, i) => `${x(i).toFixed(1)},${y(p.v).toFixed(1)}`).join(' ');
+  const puntos = pts.map((p, i) => {
+    const fuera = (cfg.banda && (p.v < cfg.banda[0] || p.v > cfg.banda[1]))
+      || (cfg.piso != null && p.v < cfg.piso) || (cfg.techo != null && p.v > cfg.techo);
+    return `<circle cx="${x(i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="${p.extra ? 2.2 : 3}"
+      fill="${fuera ? 'var(--amber-800)' : 'var(--purple-400)'}"><title>${_esc(fmtDate(p.fecha))}${p.hora ? ' ' + p.hora : ''} — ${p.v}</title></circle>`;
+  }).join('');
+
+  const ejes = [max - pad, min + pad].map(v =>
+    `<text x="${PL-4}" y="${(y(v)+3).toFixed(1)}" text-anchor="end" font-size="8" fill="var(--text-light)">${v.toFixed(dec)}</text>`).join('');
+  const fechas = `<text x="${PL}" y="${H-3}" font-size="7.5" fill="var(--text-light)">${_esc(fmtDate(pts[0].fecha))}</text>`
+    + (pts.length > 1 ? `<text x="${W-PR}" y="${H-3}" text-anchor="end" font-size="7.5" fill="var(--text-light)">${_esc(fmtDate(pts[pts.length-1].fecha))}</text>` : '');
+
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block" preserveAspectRatio="none">
+    ${fondo}
+    ${pts.length > 1 ? `<polyline points="${linea}" fill="none" stroke="var(--purple-400)" stroke-width="1.6" stroke-linejoin="round"/>` : ''}
+    ${puntos}${ejes}${fechas}
+  </svg>`;
+}
+
+function abrirTendencias(grupo, pacId){
+  const id = pacId || currentEvoPacId || _tendPacId;
+  if(!id){ showToast('Abrí un paciente para ver sus tendencias','error'); return; }
+  _tendPacId = id;
+  _tendGrupo = grupo && TEND_GRUPOS[grupo] ? grupo : 'eab';
+  const p = patients.find(x => x.id === id);
+  document.getElementById('tendSubtitulo').textContent = p ? `${p.apellido}, ${p.nombre}` : '';
+  document.getElementById('tendGrupos').innerHTML = Object.keys(TEND_GRUPOS).map(k =>
+    `<button type="button" class="btn btn-sm ${k === _tendGrupo ? 'btn-primary' : 'btn-ghost'}" onclick="abrirTendencias('${k}')">
+      <i class="ti ${TEND_GRUPOS[k].icono}"></i>${TEND_GRUPOS[k].label}</button>`).join('');
+  renderTendencias();
+  openModal('modalTendencias');
+}
+
+function renderTendencias(){
+  const g = TEND_GRUPOS[_tendGrupo];
+  document.getElementById('tendTitulo').textContent = 'Tendencias · ' + g.label;
+  const cont = document.getElementById('tendContenido');
+
+  const bloques = g.series.map(cfg => {
+    const pts = serieDe(_tendPacId, cfg.k);
+    if(!pts.length) return '';
+    const ult = pts[pts.length - 1], prev = pts.length > 1 ? pts[pts.length - 2] : null;
+    const dec = cfg.dec != null ? cfg.dec : 0;
+    let delta = '';
+    if(prev){
+      const d = ult.v - prev.v;
+      const signo = d > 0 ? '▲' : (d < 0 ? '▼' : '=');
+      // No se pinta de verde ni rojo: si sube o baja "bien" depende del cuadro,
+      // y un color equivocado orienta peor que ninguno.
+      delta = `<span style="font-size:11px;color:var(--text-muted);margin-left:6px">${signo} ${Math.abs(d).toFixed(dec)}</span>`;
+    }
+    const ref = cfg.banda ? `ref. ${cfg.banda[0]}–${cfg.banda[1]}`
+      : (cfg.piso != null ? `objetivo ≥ ${cfg.piso}` : (cfg.techo != null ? `objetivo ≤ ${cfg.techo}` : ''));
+
+    return `<div style="background:#fff;border:1px solid var(--border);border-radius:11px;padding:11px 12px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:2px">
+        <div style="font-size:12.5px;font-weight:700">${cfg.label}${cfg.unidad ? ` <span style="font-weight:400;color:var(--text-light);font-size:11px">${cfg.unidad}</span>` : ''}</div>
+        <div><span style="font-size:15px;font-weight:800;color:var(--purple-400)">${ult.v.toFixed(dec)}</span>${delta}</div>
+      </div>
+      <div style="font-size:10.5px;color:var(--text-light);margin-bottom:4px">
+        ${pts.length} medición${pts.length === 1 ? '' : 'es'}${ref ? ' · ' + ref : ''}</div>
+      ${pts.length > 1 ? _graficoTend(pts, cfg)
+        : `<div style="font-size:11.5px;color:var(--text-light);padding:6px 0">Una sola medición: todavía no hay tendencia.</div>`}
+    </div>`;
+  }).filter(Boolean);
+
+  cont.innerHTML = bloques.length ? bloques.join('')
+    : `<div style="text-align:center;padding:2.5rem 1rem;color:var(--text-muted);font-size:13px">
+        <i class="ti ti-chart-line" style="font-size:26px;display:block;margin-bottom:8px;opacity:.4"></i>
+        Este paciente no tiene valores cargados de ${g.label.toLowerCase()}.</div>`;
 }
 
 function doLogout(){
