@@ -2381,8 +2381,32 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           </button>
         </div>
 
-        <!-- v3_117: días de ventilación espontánea (si estuvo en ARM antes) -->
+        <!-- v3_117: noches de ventilación espontánea (si estuvo en ARM antes) -->
         <div id="eVEdiasHint" style="display:none;margin-top:8px;background:var(--teal-50);border:1px solid var(--teal-100);border-radius:10px;padding:9px 12px;font-size:12px;color:var(--teal-800);line-height:1.5"></div>
+
+        <!-- ══ v3_229: ¿pasó la noche sin ARM? ══
+             El TQT que se reconecta al ventilador a la noche vuelve a estar
+             espontáneo a la mañana, así que la evolución del día siguiente lo
+             muestra sin ARM y el conteo de noches seguía corriendo como si nada.
+             Esta pregunta aparece SOLO cuando ya hay al menos una noche por
+             confirmar (o sea, cuando en un día anterior se registró que se
+             desconectó del respirador). Si la respuesta es "No", el conteo
+             arranca de cero ese mismo día. -->
+        <div id="eVENocheBox" style="display:none;margin-top:8px;background:var(--amber-50);border:1.5px solid var(--amber-100);border-radius:10px;padding:10px 12px">
+          <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--amber-800);margin-bottom:4px">
+            <i class="ti ti-moon"></i> ¿Pasó la noche sin ARM?
+          </div>
+          <div class="form-hint" id="eVENocheHint" style="margin-bottom:8px"></div>
+          <div class="dec-row">
+            <button type="button" class="dec-btn" id="eBtnVENocheSi" onclick="setVENocheSinARM('Si')">
+              <i class="ti ti-check"></i> Sí — pasó la noche espontáneo
+            </button>
+            <button type="button" class="dec-btn" id="eBtnVENocheNo" onclick="setVENocheSinARM('No')">
+              <i class="ti ti-plug"></i> No — se reconectó a ARM
+            </button>
+          </div>
+          <input type="hidden" id="eVENocheSinARM" value="">
+        </div>
 
         <!-- v3_142: Dificultad respiratoria (solo pediátricos SIN ARM) -->
         <div id="eDifRespPed" style="display:none">
@@ -3306,6 +3330,71 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 
     <hr class="sep">
 
+    </div><!-- fin armOnlyBlock — SOFA, sedoanalgesia y mecánica ventilatoria -->
+
+    <!-- ══ v3_228: EAB pegado abajo del setting ventilatorio ══
+         Se pedía tenerlo a mano apenas se termina de cargar el setting, sin
+         scrollear hasta el final. Por eso los bloques exclusivos de ARM quedaron
+         partidos en dos: el EAB va en el medio, porque también hace falta en
+         VNI y en CNAF (donde armOnlyBlock está oculto). -->
+    <div id="eabWrap" style="display:none">
+    <!-- EAB -->
+    <div class="accordion-header" onclick="toggleAccordion('accEAB')">
+      <span><i class="ti ti-droplet" style="margin-right:6px;color:var(--teal-400)"></i>Equilibrio ácido-base (EAB)</span>
+      <i class="ti ti-chevron-down accordion-arrow" id="arrEAB"></i>
+    </div>
+    <div class="accordion-body" id="accEAB">
+      <div class="form-row four" style="margin-top:8px">
+        <div class="form-group"><label>pH</label><input type="number" id="ePH" inputmode="decimal" step="0.01" placeholder="7.35–7.45"></div>
+        <div class="form-group"><label>pCO₂ (mmHg)</label><input type="number" id="ePCO2" inputmode="decimal" placeholder="35–45"></div>
+        <div class="form-group"><label>pO₂ (mmHg)</label><input type="number" id="ePO2" inputmode="decimal"></div>
+        <div class="form-group"><label>HCO₃ (mEq/L)</label><input type="number" id="eHCO3" inputmode="decimal" placeholder="22–26"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>SpO₂ (%)</label><input type="number" id="eSpO2" inputmode="numeric" max="100" oninput="calcIndicesOxigenacion()"></div>
+        <div class="form-group"><label>PAFI</label><input class="f-auto" type="number" id="ePAFI" inputmode="decimal"><div class="form-hint">PO₂ / FiO₂</div></div>
+      </div>
+      <!-- v3_133: índices de oxigenación pediátricos -->
+      <div class="form-row" id="eIOOSIRow" style="display:none">
+        <div class="form-group">
+          <label>IO — Índice de oxigenación</label>
+          <input class="f-auto" type="text" id="eIO" readonly>
+          <div class="form-hint" id="eIOHint">(FiO₂ × MAP × 100) / PaO₂</div>
+        </div>
+        <div class="form-group">
+          <label>OSI — Índice de saturación de oxígeno</label>
+          <input class="f-auto" type="text" id="eOSI" readonly>
+          <div class="form-hint" id="eOSIHint">(FiO₂ × MAP × 100) / SpO₂</div>
+        </div>
+      </div>
+      <div class="form-row four">
+        <div class="form-group">
+          <label>Gradiente A-a (mmHg)</label>
+          <input class="f-auto" type="text" id="eAAGrad" readonly>
+          <div class="form-hint">PAO₂ − PaO₂</div>
+        </div>
+        <div class="form-group">
+          <label>Relación a/A</label>
+          <input class="f-auto" type="text" id="eAaRatio" readonly>
+          <div class="form-hint">PaO₂ / PAO₂</div>
+        </div>
+        <div class="form-group">
+          <label>Ácido láctico (mmol/L)</label>
+          <input type="number" id="eLactato" inputmode="decimal" step="0.1" placeholder="ej: 1.2">
+        </div>
+      </div>
+
+      <!-- EAB adicionales (varios en el día) -->
+      <div id="eabExtraContainer"></div>
+      <button type="button" class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="agregarEAB()">
+        <i class="ti ti-plus"></i> Agregar EAB
+      </button>
+    </div>
+    </div>
+
+    <div id="armOnlyBlock2" style="display:none">
+    <hr class="sep">
+
     <!-- PVE -->
     <div class="accordion-header" onclick="toggleAccordion('accPVE')">
       <span><i class="ti ti-activity" style="margin-right:6px;color:var(--teal-600)"></i>Prueba de ventilación espontánea (PVE)</span>
@@ -3626,66 +3715,12 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       </div>
     </div>
 
-    </div><!-- fin armOnlyBlock -->
+    </div><!-- fin armOnlyBlock2 -->
 
-    <!-- v3_171: el EAB y las Secreciones salieron de armOnlyBlock. El EAB también
-         hace falta con CAFO y VNI, y las secreciones en el TQT sin ARM.
-         Su visibilidad la maneja actualizarBloquesRespiratorios(). -->
-    <div id="eabWrap" style="display:none">
-    <!-- EAB -->
-    <div class="accordion-header" onclick="toggleAccordion('accEAB')">
-      <span><i class="ti ti-droplet" style="margin-right:6px;color:var(--teal-400)"></i>Equilibrio ácido-base (EAB)</span>
-      <i class="ti ti-chevron-down accordion-arrow" id="arrEAB"></i>
-    </div>
-    <div class="accordion-body" id="accEAB">
-      <div class="form-row four" style="margin-top:8px">
-        <div class="form-group"><label>pH</label><input type="number" id="ePH" inputmode="decimal" step="0.01" placeholder="7.35–7.45"></div>
-        <div class="form-group"><label>pCO₂ (mmHg)</label><input type="number" id="ePCO2" inputmode="decimal" placeholder="35–45"></div>
-        <div class="form-group"><label>pO₂ (mmHg)</label><input type="number" id="ePO2" inputmode="decimal"></div>
-        <div class="form-group"><label>HCO₃ (mEq/L)</label><input type="number" id="eHCO3" inputmode="decimal" placeholder="22–26"></div>
-      </div>
-      <div class="form-row">
-        <div class="form-group"><label>SpO₂ (%)</label><input type="number" id="eSpO2" inputmode="numeric" max="100" oninput="calcIndicesOxigenacion()"></div>
-        <div class="form-group"><label>PAFI</label><input class="f-auto" type="number" id="ePAFI" inputmode="decimal"><div class="form-hint">PO₂ / FiO₂</div></div>
-      </div>
-      <!-- v3_133: índices de oxigenación pediátricos -->
-      <div class="form-row" id="eIOOSIRow" style="display:none">
-        <div class="form-group">
-          <label>IO — Índice de oxigenación</label>
-          <input class="f-auto" type="text" id="eIO" readonly>
-          <div class="form-hint" id="eIOHint">(FiO₂ × MAP × 100) / PaO₂</div>
-        </div>
-        <div class="form-group">
-          <label>OSI — Índice de saturación de oxígeno</label>
-          <input class="f-auto" type="text" id="eOSI" readonly>
-          <div class="form-hint" id="eOSIHint">(FiO₂ × MAP × 100) / SpO₂</div>
-        </div>
-      </div>
-      <div class="form-row four">
-        <div class="form-group">
-          <label>Gradiente A-a (mmHg)</label>
-          <input class="f-auto" type="text" id="eAAGrad" readonly>
-          <div class="form-hint">PAO₂ − PaO₂</div>
-        </div>
-        <div class="form-group">
-          <label>Relación a/A</label>
-          <input class="f-auto" type="text" id="eAaRatio" readonly>
-          <div class="form-hint">PaO₂ / PAO₂</div>
-        </div>
-        <div class="form-group">
-          <label>Ácido láctico (mmol/L)</label>
-          <input type="number" id="eLactato" inputmode="decimal" step="0.1" placeholder="ej: 1.2">
-        </div>
-      </div>
-
-      <!-- EAB adicionales (varios en el día) -->
-      <div id="eabExtraContainer"></div>
-      <button type="button" class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="agregarEAB()">
-        <i class="ti ti-plus"></i> Agregar EAB
-      </button>
-    </div>
-    </div>
-
+    <!-- v3_171: las Secreciones salieron de armOnlyBlock: hacen falta en ARM y
+         también en el TQT sin ARM. Su visibilidad la maneja
+         actualizarBloquesRespiratorios(). v3_228: el EAB se mudó arriba, pegado
+         al setting ventilatorio. -->
     <div id="secrecionesWrap" style="display:none">
     <!-- Secreciones (ARM) -->
     <div class="accordion-header" onclick="toggleAccordion('accSec')">
@@ -3785,6 +3820,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
               <option value="Vt bajo">Vt bajo</option>
               <option value="Hemoptisis">Hemoptisis</option>
               <option value="Secreciones espesas/adherentes">Secreciones espesas / adherentes</option>
+              <option value="Para disminución de espacio muerto">Para disminución de espacio muerto</option>
               <option value="Quemadura de vía aérea">Quemadura de vía aérea</option>
               <option value="Otro">Otro</option>
             </select>
@@ -4287,6 +4323,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <span class="tag" onclick="toggleTag(this)">Transferencias</span>
           <span class="tag" onclick="toggleTag(this)">Sedestación al borde de la cama</span>
           <span class="tag" onclick="toggleTag(this)">Bipedestación</span>
+          <span class="tag" onclick="toggleTag(this)">Monopedestación</span>
           <span class="tag" onclick="toggleTag(this)">Equilibrio</span>
           <span class="tag" onclick="toggleTag(this)">Premarcha</span>
           <span class="tag" onclick="toggleTag(this)">Fortalecimiento</span>
@@ -6377,7 +6414,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_227';
+const APP_VERSION = 'v3_229';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -10559,7 +10596,8 @@ function construirTextoEvo(evo, p){
     add('Tubo con o sin balón', evo.balon);
     add('MAP - presión media en vía aérea (cmH2O)', evo.map);
     add('IO - índice de oxigenación', evo.io); add('OSI - índice de saturación de oxígeno', evo.osi);
-    add('Día de ventilación espontánea (sin ARM)', evo.diasVE);
+    add('Noche de ventilación espontánea (sin ARM)', evo.diasVE);
+    add('¿Pasó la noche sin ARM?', evo.veNocheSinARM === 'Si' ? 'Sí' : (evo.veNocheSinARM === 'No' ? 'No, se reconectó a ARM' : ''));
     add('Diámetro de TET/cánula', evo.armDiametro); add('TET a nivel de ADS (cm)', evo.tetADS);
     add('Posición', evo.posicionARM); add('Ciclo de prono', evo.pronoCiclo);
     add('Cuff leak test', evo.cuffLeak);
@@ -12653,6 +12691,15 @@ const CLAVES_O2_NO_INVASIVO = ['cnFlujo','mvFio2','mrFlujo','cnafFlujo','cnafFio
 // Una evolución está en ARM invasiva si tiene TET/TQT y no tiene interfaz espontánea
 const evoEnARMinvasiva = e => !e?.interfazEsp && (e?.interfaz === 'TET' || e?.interfaz === 'TQT');
 
+// v3_228: los bloques exclusivos de ARM ahora son dos (armOnlyBlock y
+// armOnlyBlock2, con el EAB en el medio). Se muestran y se ocultan juntos.
+function setBloquesARMVisibles(ver){
+  ['armOnlyBlock','armOnlyBlock2'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.style.display = ver ? 'block' : 'none';
+  });
+}
+
 function setARMStatus(enARM){
   document.getElementById('eBtnArmSi').className = 'dec-btn' + (enARM ? ' dec-arm-si' : '');
   document.getElementById('eBtnArmNo').className = 'dec-btn' + (!enARM ? ' dec-arm-no' : '');
@@ -12660,7 +12707,7 @@ function setARMStatus(enARM){
   document.getElementById('eSubArmNo').style.display = !enARM ? 'block' : 'none';
   // v3_224: si se intubó durante la sesión, el bloque de ARM sigue disponible
   const _intubEnSesion = (document.getElementById('eSoporteFinalTipo')?.value || '') === 'ARM';
-  document.getElementById('armOnlyBlock').style.display = (enARM || _intubEnSesion) ? 'block' : 'none';
+  setBloquesARMVisibles(enARM || _intubEnSesion);   // v3_228
   // El Proceso de Decanulación solo aplica a TQT sin ARM: se oculta al tocar
   // este botón y se vuelve a mostrar únicamente si eligen TQT en setInterfazEsp
   actualizarSeccionDecanulacion(false);
@@ -13243,10 +13290,20 @@ function fechaSalidaARM(patientId){
   }
 
   let inicioRacha = ultima.date;
+  let reconexionNocturna = false;
   for(let i = conDatoVent.length - 1; i >= 0; i--){
     if(!espontanea(conDatoVent[i])) break;
     inicioRacha = conDatoVent[i].date;
+    // v3_229: el traqueostomizado que se reconecta al ventilador de noche y se
+    // desconecta a la mañana queda registrado como espontáneo en TODAS las
+    // evoluciones, así que la racha no se cortaba nunca. Si en esa evolución se
+    // dejó anotado que NO pasó la noche sin ARM, el conteo arranca de cero ahí.
+    if(conDatoVent[i].veNocheSinARM === 'No'){ reconexionNocturna = true; break; }
   }
+
+  // Si hubo reconexión nocturna, la fecha es esa y punto: no se afina con la
+  // extubación ni con finARM, que son anteriores y volverían a inflar el conteo.
+  if(reconexionNocturna) return inicioRacha;
 
   // ── Datos que pueden precisar el momento exacto de la salida ──
   // Solo valen si son ANTERIORES o iguales al inicio de la racha: si dicen una
@@ -13261,28 +13318,102 @@ function fechaSalidaARM(patientId){
   return inicioRacha;
 }
 
-// Días de ventilación espontánea a hoy (el día de la salida cuenta como día 1)
-function diasVentilacionEspontanea(patientId, fechaRef){
+// ════════════════════════════════════════════════════════
+//  v3_228 — NOCHES DE VENTILACIÓN ESPONTÁNEA
+// ════════════════════════════════════════════════════════
+// El equipo no cuenta días de calendario: cuenta NOCHES. El día en que se
+// desconecta el ventilador todavía no cuenta nada (el paciente puede pasar la
+// noche y volver a ARM). Recién si al día siguiente sigue sin ARM se anota la
+// 1.ª noche en ventilación espontánea. Se cuenta hasta la 7.ª noche: pasada esa
+// marca el paciente se considera destetado y deja de contarse.
+//
+// Aritméticamente la noche N es la diferencia en días contra la fecha de salida
+// de ARM, con la salvedad de que la racha la corta cualquier evolución que
+// muestre al paciente de nuevo en ARM (eso lo resuelve fechaSalidaARM).
+const NOCHES_VE_MAX = 7;
+const ORDINAL_NOCHE = ['', '1.ª', '2.ª', '3.ª', '4.ª', '5.ª', '6.ª', '7.ª'];
+
+function nochesVentilacionEspontanea(patientId, fechaRef){
   const f = fechaSalidaARM(patientId);
   if(!f) return null;
-  const ref = fechaRef || today();
-  const d = daysBetween(f, ref);
-  // El día en que sale de ARM es el día 0; al día siguiente, día 1.
-  return (d === null || d < 0) ? null : d;
+  const n = daysBetween(f, fechaRef || today());
+  // 0 = salió de ARM ese mismo día, todavía no pasó ninguna noche.
+  return (n === null || n < 0) ? null : n;
 }
 
-// Muestra/oculta el aviso de días sin ARM en el formulario de evolución
+// Compatibilidad con lo que llamaba a la función vieja
+function diasVentilacionEspontanea(patientId, fechaRef){
+  return nochesVentilacionEspontanea(patientId, fechaRef);
+}
+
+// v3_229: la respuesta a "¿pasó la noche sin ARM?" del formulario abierto.
+// Todavía no está guardada, así que el cartel tiene que contemplarla en vivo.
+function setVENocheSinARM(val){
+  const inp = document.getElementById('eVENocheSinARM');
+  if(!inp) return;
+  inp.value = (inp.value === val) ? '' : val;   // volver a tocarlo lo destilda
+  document.getElementById('eBtnVENocheSi')?.classList.toggle('dec-sel', inp.value === 'Si');
+  document.getElementById('eBtnVENocheNo')?.classList.toggle('dec-sel', inp.value === 'No');
+  actualizarHintVE(currentEvoPacId, true);
+}
+
+function resetVENocheSinARM(){
+  const inp = document.getElementById('eVENocheSinARM'); if(inp) inp.value = '';
+  document.getElementById('eBtnVENocheSi')?.classList.remove('dec-sel');
+  document.getElementById('eBtnVENocheNo')?.classList.remove('dec-sel');
+  const box = document.getElementById('eVENocheBox'); if(box) box.style.display = 'none';
+}
+
+// Muestra/oculta el cartel de noches sin ARM y la pregunta de confirmación
 function actualizarHintVE(patientId, mostrar){
-  const el = document.getElementById('eVEdiasHint');
+  const el  = document.getElementById('eVEdiasHint');
+  const box = document.getElementById('eVENocheBox');
   if(!el) return;
-  if(!mostrar){ el.style.display = 'none'; el.innerHTML = ''; return; }
-  const dias = diasVentilacionEspontanea(patientId);
-  const f = fechaSalidaARM(patientId);
-  if(dias === null || !f){ el.style.display = 'none'; el.innerHTML = ''; return; }
-  el.innerHTML = `<i class="ti ti-lungs" style="margin-right:5px"></i>`
-    + (dias === 0
-        ? `<strong>Día 0 de ventilación espontánea</strong> (salió de ARM hoy, ${fmtDate(f)}).`
-        : `<strong>Día ${dias} de ventilación espontánea</strong> (sin ARM desde el ${fmtDate(f)}).`);
+  const ocultar = () => {
+    el.style.display = 'none'; el.innerHTML = '';
+    if(box) box.style.display = 'none';
+  };
+  if(!mostrar){ ocultar(); return; }
+
+  // La referencia es la fecha DE LA EVOLUCIÓN, no la de hoy: al editar una
+  // evolución vieja el conteo tiene que ser el que correspondía ese día.
+  const ref = document.getElementById('eDate')?.value || today();
+  const f   = fechaSalidaARM(patientId);
+  const nCalc = nochesVentilacionEspontanea(patientId, ref);
+  if(nCalc === null || !f){ ocultar(); return; }
+
+  // ── La pregunta solo aparece si hay al menos una noche para confirmar ──
+  const inp  = document.getElementById('eVENocheSinARM');
+  const hayQuePreguntar = nCalc >= 1;
+  if(box) box.style.display = hayQuePreguntar ? 'block' : 'none';
+  if(!hayQuePreguntar && inp) inp.value = '';
+  const resp = hayQuePreguntar ? (inp?.value || '') : '';
+
+  const hintP = document.getElementById('eVENocheHint');
+  if(hintP && hayQuePreguntar){
+    hintP.innerHTML = `Se desconectó del respirador el <strong>${fmtDate(f)}</strong>. `
+      + `Confirmá si anoche siguió sin ARM: si volvió al ventilador, el conteo arranca de cero.`;
+  }
+
+  // "No" = se reconectó anoche → hoy vuelve a ser el día de la desconexión
+  const n = (resp === 'No') ? 0 : nCalc;
+
+  let txt;
+  if(resp === 'No'){
+    txt = `<strong>Se reconectó a ARM durante la noche</strong> — el conteo vuelve a cero. `
+        + `Hoy cuenta como el día de la desconexión; si mañana sigue sin ARM, es la 1.ª noche.`;
+  } else if(n === 0){
+    txt = `<strong>Todavía no pasó ninguna noche en ventilación espontánea</strong> `
+        + `— salió de ARM el ${fmtDate(f)}. Si mañana sigue sin ARM, cuenta la 1.ª noche.`;
+  } else if(n <= NOCHES_VE_MAX){
+    txt = `<strong>${ORDINAL_NOCHE[n]} noche en ventilación espontánea</strong> `
+        + `(sin ARM desde el ${fmtDate(f)})`
+        + (resp === 'Si' ? `, confirmada.` : ` — falta confirmar la noche.`);
+  } else {
+    txt = `<strong>Pasó las ${NOCHES_VE_MAX} noches en ventilación espontánea</strong> `
+        + `(sin ARM desde el ${fmtDate(f)}). A partir de acá ya no se cuenta.`;
+  }
+  el.innerHTML = `<i class="ti ti-moon" style="margin-right:5px"></i>` + txt;
   el.style.display = 'block';
 }
 
@@ -13346,8 +13477,7 @@ function actualizarBloquesRespiratorios(){
   if(eab) eab.style.display = (conARM || esp.startsWith('CNAF') || esp.startsWith('VNI')) ? 'block' : 'none';
   const sec = document.getElementById('secrecionesWrap');
   if(sec) sec.style.display = (conARM || esp.startsWith('TQT')) ? 'block' : 'none';
-  const armBox = document.getElementById('armOnlyBlock');
-  if(armBox && intubadoEnSesion) armBox.style.display = 'block';
+  if(intubadoEnSesion) setBloquesARMVisibles(true);   // v3_228
   actualizarCuffLeak();   // v3_207
   actualizarAccesoDeglusion();   // v3_211
 }
@@ -15008,6 +15138,7 @@ const EVO_LABELS = {
   soporteFinal:'Soporte al finalizar la sesión',
   interfaz:'Interfaz', interfazEsp:'Detalle de interfaz', armDiametro:'Diámetro TET/cánula (mm)', tetADS:'TET a ADS (cm)',
   posicionARM:'Posición', pronoCiclo:'Ciclo de prono', cuffLeak:'Cuff leak test',
+  veNocheSinARM:'¿Pasó la noche sin ARM?',   // v3_229
   humidificacion:'Humidificación', humidMotivo:'Motivo de humidificación activa', humidMotivoOtro:'Motivo (otro)',
   humidMotivoPasiva:'Motivo de humidificación pasiva',   // v3_223
   cnFlujo:'Cánula nasal (L/min)', mvFio2:'Máscara Venturi FiO₂ (%)', mrFlujo:'Máscara reservorio (L/min)',
@@ -15077,7 +15208,7 @@ const EVO_SKIP_CAMPOS = new Set([
   // Signos vitales
   'fc','tam','pic','etco2','spo2Mon','frMon','temp',
   // Ventilación / interfaz / O₂
-  'interfaz','interfazEsp','diasVE','motivoVM','motivoVMOtro','balon','map','io','osi',
+  'interfaz','interfazEsp','diasVE','veNocheSinARM','motivoVM','motivoVMOtro','balon','map','io','osi',
   'comfortB','sbs','nrs','ops','flacc','capd','sophia','tal','woodDownes','armDiametro','tetADS','posicionARM','pronoCiclo','cuffLeak',
   'humidificacion','humidMotivo','humidMotivoOtro',   // v3_209: van en la sección Ventilación
   // ── v3_225: campos agregados entre v3_216 y v3_223 ──────────────
@@ -15328,7 +15459,7 @@ function evoCardHTML(e, i){
   const _ARMinv = evoEnARMinvasiva(e);
   const _sinO2NI = v => _ARMinv ? '' : v;
   const secVent = evoSeccionGrid('Ventilación / Interfaz', [
-    [interfazTxt,'Interfaz'], [motivoVMTxt,'Motivo de ARM'], [e.balon,'Balón'], [e.diasVE,'Día de vent. espontánea'], [e.armDiametro,'Diámetro TET/cán. (mm)'], [e.tetADS,'TET a ADS (cm)'],
+    [interfazTxt,'Interfaz'], [motivoVMTxt,'Motivo de ARM'], [e.balon,'Balón'], [e.diasVE,'Noche de vent. espontánea'], [e.veNocheSinARM === 'Si' ? 'Sí' : (e.veNocheSinARM === 'No' ? 'No — se reconectó a ARM' : ''),'¿Pasó la noche sin ARM?'], [e.armDiametro,'Diámetro TET/cán. (mm)'], [e.tetADS,'TET a ADS (cm)'],
     [posicionTxt,'Posición'], [e.cuffLeak,'Cuff leak test'], [fmtHumidificacion(e),'Humidificación'],
     [_sinO2NI(e.cnFlujo),'Cánula nasal (L/min)'], [_sinO2NI(e.mvFio2),'Venturi FiO₂ (%)'], [_sinO2NI(e.mrFlujo),'Reservorio (L/min)'],
     [_sinO2NI(e.cnafFlujo),'CNAF flujo (L/min)'], [_sinO2NI(e.cnafFio2),'CNAF FiO₂ (%)'],
@@ -15433,7 +15564,7 @@ function evoCardHTML(e, i){
           ${badgeDiaARM(e)}
           ${e.frecuencia?`<span class="badge badge-purple" style="font-size:10px">${e.frecuencia==='manana'?'Mañana':e.frecuencia==='cada3'?'Cada 3d':e.frecuencia==='cada5'?'Cada 5d':'Sin criterio'}</span>`:''}
         </div>
-        <span class="evo-kine"><i class="ti ti-user" style="font-size:11px"></i> ${e.kine||'—'}${puedeEditarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" onclick="editarEvolucion(${e.id})" title="Editar (disponible hasta 24 hs después de la carga)"><i class="ti ti-pencil"></i></button>` : ''}${puedeEliminarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarEvolucion(${e.id})" title="${currentUser?.role === 'admin' ? 'Eliminar evolución' : 'Eliminar (disponible hasta 24 hs después de la carga)'}"><i class="ti ti-trash"></i></button>` : ''}${edicionesTextoHTML(e)}</span>
+        <span class="evo-kine"><i class="ti ti-user" style="font-size:11px"></i> ${e.kine||'—'}${puedeEditarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" onclick="editarEvolucion(${e.id})" title="Editar evolución"><i class="ti ti-pencil"></i></button>` : ''}${puedeEliminarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarEvolucion(${e.id})" title="${currentUser?.role === 'admin' ? 'Eliminar evolución' : 'Eliminar (disponible hasta 24 hs después de la carga)'}"><i class="ti ti-trash"></i></button>` : ''}${edicionesTextoHTML(e)}</span>
       </div>
       ${e.noAtencion && e.noAtencion!=='Sí se realizó atención' ? `<div style="font-size:12px;color:var(--amber-600);font-weight:600;margin-bottom:4px">⚠ ${e.noAtencion}</div>` : ''}
       ${e.conciencia ? `<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">${e.conciencia}${e.orientacion?'. '+e.orientacion:''}</div>` : ''}
@@ -17246,7 +17377,8 @@ function openEvolucion(patientId){
   document.getElementById('eBtnArmNo').className = 'dec-btn';
   document.getElementById('eSubArmSi').style.display = 'none';
   document.getElementById('eSubArmNo').style.display = 'none';
-  document.getElementById('armOnlyBlock').style.display = 'none';
+  setBloquesARMVisibles(false);   // v3_228
+  resetVENocheSinARM();           // v3_229
   document.getElementById('tqtBlock').style.display = 'none';
   // v3_209: humidificación en blanco hasta que se elija TET o TQT
   { const hb = document.getElementById('humidBlock'); if(hb) hb.style.display = 'none'; }
@@ -18483,17 +18615,21 @@ function currentShift(){
 // ════════════════════════════════════════════════════════
 //  EDICIÓN DE EVOLUCIONES
 //  v3_188: al mismo paciente lo ven varios kinesiólogos en el día, así que
-//  cualquiera del equipo puede corregir una evolución dentro de las 24 hs.
-//  La jefatura no tiene límite de tiempo. El autor original NUNCA se pisa y
-//  cada edición queda registrada con nombre y hora.
+//  cualquiera del equipo puede corregir una evolución. El autor original NUNCA
+//  se pisa y cada edición queda registrada con nombre y hora.
+//  v3_228: se sacó la ventana de 24 hs para editar. En la práctica los errores
+//  aparecen mucho después (al armar los indicadores, al revisar una historia
+//  vieja) y quedaban congelados sin forma de corregirlos. La trazabilidad la da
+//  el historial de ediciones, no el reloj. La ventana SIGUE rigiendo para la
+//  ELIMINACIÓN, que sí es destructiva.
 // ════════════════════════════════════════════════════════
-const VENTANA_EDICION_EVO_MS = 24 * 60 * 60 * 1000;
+const VENTANA_EDICION_EVO_MS = 24 * 60 * 60 * 1000;   // solo para eliminar
 
 function puedeEditarEvolucion(evo){
   if(!evo || !currentUser) return false;
+  // Los movimientos (traslado, alta, óbito, etc.) no son evoluciones editables
   if(['traslado','alta','obito','reingreso','reactivacion','cama'].includes(evo.tipo)) return false;
-  if(currentUser.role === 'admin') return true;         // jefatura: sin ventana
-  return (Date.now() - evo.id) <= VENTANA_EDICION_EVO_MS;
+  return true;   // v3_228: sin límite de tiempo
 }
 
 // ── Historial de ediciones ──────────────────────────────────────
@@ -18761,6 +18897,18 @@ function precargarCamposEvolucion(evo){
     }
   }
 
+  // v3_229: confirmación de la noche sin ARM. Va después del mapa de campos
+  // porque hay que pintar los botones y recalcular el cartel con la respuesta.
+  {
+    const inp = document.getElementById('eVENocheSinARM');
+    if(inp){
+      inp.value = evo.veNocheSinARM || '';
+      document.getElementById('eBtnVENocheSi')?.classList.toggle('dec-sel', inp.value === 'Si');
+      document.getElementById('eBtnVENocheNo')?.classList.toggle('dec-sel', inp.value === 'No');
+      actualizarHintVE(evo.patientId, ['TQT_O2','TQT_AA'].includes(evo.interfazEsp || ''));
+    }
+  }
+
   // EAB adicionales
   const eabCont = document.getElementById('eabExtraContainer');
   if(eabCont){
@@ -18884,7 +19032,7 @@ function editarEvolucion(evoId){
   const evo = evoluciones.find(e=>e.id===evoId);
   if(!evo) return;
   if(!puedeEditarEvolucion(evo)){
-    showToast('Esta evolución ya no se puede editar: pasaron más de 24 hs desde que se cargó','error');
+    showToast('Este registro no se puede editar','error');
     return;
   }
   closeModal('modalHistRapido');
@@ -19032,8 +19180,17 @@ async function guardarEvolucion(){
     humidMotivoPasiva: (_humidVisible() && G('eHumidificacion') !== 'Activa') ? G('eHumidMotivoPasiva') : '',
     humidMotivoOtro: (_humidVisible() && G('eHumidificacion') === 'Activa' && G('eHumidMotivo') === 'Otro')
                        ? G('eHumidMotivoOtro') : '',
-    diasVE: (['TQT_O2','TQT_AA'].includes(G('eInterfazEsp'))
-              ? (diasVentilacionEspontanea(currentEvoPacId, date) ?? '') : ''),
+    // v3_228: se guarda la NOCHE de ventilación espontánea (0 a 7). Pasada la
+    // 7.ª noche el paciente ya no se cuenta y el campo queda vacío.
+    // v3_229: si se reconectó a ARM esa noche, el conteo vuelve a cero.
+    diasVE: (() => {
+      if(!['TQT_O2','TQT_AA'].includes(G('eInterfazEsp'))) return '';
+      if(G('eVENocheSinARM') === 'No') return 0;
+      const n = nochesVentilacionEspontanea(currentEvoPacId, date);
+      return (n === null || n > NOCHES_VE_MAX) ? '' : n;
+    })(),
+    // v3_229: confirmación de la noche. Vacío = no se preguntó o no se contestó.
+    veNocheSinARM: ['TQT_O2','TQT_AA'].includes(G('eInterfazEsp')) ? G('eVENocheSinARM') : '',
     armDiametro:G('eARMdiametro'),
     tetADS:G('eTETads'),
     posicionARM:G('ePosicionARM')||'supino',
@@ -19311,7 +19468,7 @@ function buscarHistorial(){
             <span style="font-size:12px;font-weight:700;color:var(--blue-800)">${fmtDate(e.date)}</span>
             <span class="badge badge-gray" style="font-size:9px">${e.turno}</span>
             ${tolBadge}
-            <span style="font-size:10px;color:var(--text-muted);margin-left:auto">${e.kine}${puedeEditarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" onclick="editarEvolucion(${e.id})" title="Editar (disponible hasta 24 hs después de la carga)"><i class="ti ti-pencil"></i></button>` : ''}${puedeEliminarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarEvolucion(${e.id})" title="${currentUser?.role === 'admin' ? 'Eliminar evolución' : 'Eliminar (disponible hasta 24 hs después de la carga)'}"><i class="ti ti-trash"></i></button>` : ''}${edicionesTextoHTML(e)}</span>
+            <span style="font-size:10px;color:var(--text-muted);margin-left:auto">${e.kine}${puedeEditarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" onclick="editarEvolucion(${e.id})" title="Editar evolución"><i class="ti ti-pencil"></i></button>` : ''}${puedeEliminarEvolucion(e) ? ` <button class="btn btn-icon btn-sm" style="color:var(--red-400)" onclick="eliminarEvolucion(${e.id})" title="${currentUser?.role === 'admin' ? 'Eliminar evolución' : 'Eliminar (disponible hasta 24 hs después de la carga)'}"><i class="ti ti-trash"></i></button>` : ''}${edicionesTextoHTML(e)}</span>
           </div>
           ${items.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:5px">${items.map(([v,k])=>`<span style="font-size:11px;background:#fff;border:1px solid var(--border);padding:2px 7px;border-radius:5px"><b>${k}:</b> ${v}</span>`).join('')}</div>` : ''}
           ${tags ? `<div style="margin-bottom:4px">${tags}</div>` : ''}
@@ -21538,6 +21695,15 @@ if(GDRIVE_CONFIG?.clientId){
 }
 
 document.querySelectorAll('.appVersionTag').forEach(el=>{ el.textContent = APP_VERSION; });
+
+// ── v3_228: la pantalla puede girar ────────────────────────────────
+// La app instalada venía trabada en vertical (orientation del manifest). Hay
+// pantallas —el setting ventilatorio, las tablas de indicadores— que se leen
+// mucho mejor apaisadas, sobre todo en tablet. Se libera el bloqueo si el
+// navegador lo permite; en el manifest.json además hay que dejar "any".
+try {
+  if(screen.orientation && typeof screen.orientation.unlock === 'function') screen.orientation.unlock();
+} catch(_){ /* Safari/iOS no lo soporta: la orientación la maneja el sistema */ }
 // ── PWA: registro del service worker + autoactualización ──
 // v3_115: si hay una versión nueva publicada, la app se actualiza sola y recarga.
 // Así no hace falta acordarse del Ctrl+F5 después de cada subida.
