@@ -1005,13 +1005,109 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 </div>
 
 <!-- ════ CONFIGURACIÓN (admin) ════ -->
+<!-- ════════════════════════════════════════════════════════════════
+     v3_231 — CONSULTORIO DE KINESIOLOGÍA (sectores ambulatorios)
+     Nada que ver con internación: no hay camas, ni ARM, ni pase. Acá el eje es
+     el paciente que viene por consultorio externo, su tratamiento y su agenda.
+     Va como pantalla propia y no como pestaña de la app de internación, para
+     que ninguna de las dos se contamine con lógica de la otra.
+     ════════════════════════════════════════════════════════════════ -->
+<div id="consultorioScreen" style="display:none;position:fixed;inset:0;z-index:1500;background:var(--bg);overflow-y:auto">
+  <div style="background:linear-gradient(135deg,var(--purple-400),#5B21B6);color:#fff;padding:14px 16px 16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div style="min-width:0">
+        <div style="font-size:11px;letter-spacing:.5px;text-transform:uppercase;opacity:.85">Consultorio de kinesiología</div>
+        <div id="consNombreSector" style="font-size:18px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">—</div>
+      </div>
+      <button class="btn btn-sm" onclick="salirConsultorio()" style="background:rgba(255,255,255,.18);color:#fff;border:1px solid rgba(255,255,255,.3);flex-shrink:0">
+        <i class="ti ti-arrow-left"></i>Sectores
+      </button>
+    </div>
+    <div id="consCfgResumen" style="font-size:11.5px;opacity:.9;margin-top:6px"></div>
+  </div>
+
+  <div style="padding:14px 16px 40px;max-width:900px;margin:0 auto">
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" onclick="abrirFichaAmb()"><i class="ti ti-user-plus"></i>Nuevo paciente</button>
+      <input type="text" id="consBuscar" placeholder="Buscar por nombre, apellido o DNI…" oninput="renderPacientesAmb()" style="flex:1;min-width:180px">
+    </div>
+    <div id="consListaPacientes"></div>
+  </div>
+</div>
+
+<!-- Ficha del paciente ambulatorio -->
+<div class="modal-overlay" id="modalPacAmb">
+  <div class="modal" style="width:640px">
+    <div class="modal-header">
+      <div>
+        <h3><i class="ti ti-user" style="color:var(--purple-400);margin-right:6px"></i><span id="pacAmbTitulo">Nuevo paciente</span></h3>
+        <div class="modal-subtitle">Consultorio de kinesiología</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalPacAmb')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="paId">
+
+      <div class="form-section-title"><i class="ti ti-id"></i> Datos personales</div>
+      <div class="form-row">
+        <div class="form-group"><label>Apellido *</label><input type="text" id="paApellido"></div>
+        <div class="form-group"><label>Nombre *</label><input type="text" id="paNombre"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>DNI *</label><input type="text" id="paDni" inputmode="numeric"></div>
+        <div class="form-group"><label>Fecha de nacimiento</label><input type="date" id="paFechaNac"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Sexo</label>
+          <select id="paSexo"><option value="">—</option><option>Femenino</option><option>Masculino</option><option>Otro</option></select>
+        </div>
+        <div class="form-group"><label>Celular</label>
+          <input type="tel" id="paCelular" placeholder="11 5555-5555" inputmode="tel">
+        </div>
+      </div>
+      <div class="form-group"><label>Email</label><input type="email" id="paEmail"></div>
+
+      <div class="form-section-title" style="margin-top:12px"><i class="ti ti-shield-check"></i> Cobertura</div>
+      <div class="form-row">
+        <div class="form-group"><label>Obra social / prepaga</label><input type="text" id="paObraSocial"></div>
+        <div class="form-group"><label>Plan</label><input type="text" id="paPlan"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>N.º de afiliado</label><input type="text" id="paAfiliado"></div>
+        <div class="form-group"><label>N.º de orden / bono</label><input type="text" id="paOrden"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Sesiones autorizadas</label><input type="number" id="paSesionesAut" min="0" placeholder="10"></div>
+        <div class="form-group"><label>Modalidad de pago</label>
+          <select id="paPago"><option value="">—</option><option>Obra social</option><option>Particular</option><option>Obra social + coseguro</option></select>
+        </div>
+      </div>
+      <div class="form-group"><label>Coseguro / valor por sesión</label><input type="text" id="paCoseguro" placeholder="$"></div>
+
+      <div class="form-section-title" style="margin-top:12px"><i class="ti ti-stethoscope"></i> Derivación</div>
+      <div class="form-group"><label>Médico derivante</label><input type="text" id="paDerivante"></div>
+      <div class="form-group"><label>Diagnóstico médico</label><input type="text" id="paDiagnostico"></div>
+      <div class="form-group"><label>Motivo de consulta</label><textarea id="paMotivo" rows="2"></textarea></div>
+      <div class="form-group"><label>Observaciones</label><textarea id="paObs" rows="2"></textarea></div>
+
+      <div id="paVinculoBox" style="display:none;background:var(--teal-50);border:1px solid var(--teal-100);border-radius:9px;padding:10px 12px;font-size:12px;color:var(--teal-800)">
+        <i class="ti ti-link"></i> <span id="paVinculoTxt"></span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('modalPacAmb')">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarPacienteAmb()"><i class="ti ti-device-floppy"></i>Guardar</button>
+    </div>
+  </div>
+</div>
+
 <div id="configScreen" style="display:none;position:fixed;inset:0;z-index:2000;background:rgba(20,10,40,.55);overflow-y:auto;padding:1.2rem 1rem">
   <div class="login-card" style="max-width:620px;margin:0 auto">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
       <h1 style="font-size:20px;margin:0">Configuración</h1>
       <button class="btn btn-ghost btn-sm" onclick="cerrarConfigKinexa()"><i class="ti ti-x"></i></button>
     </div>
-    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Editá los sectores y camas de tu institución y gestioná tu equipo.</p>
+    <p style="font-size:12px;color:var(--text-muted);margin-bottom:14px">Editá los sectores de tu institución —de internación o de consultorio— y gestioná tu equipo.</p>
 
     <div style="border-top:1px solid var(--border);padding-top:12px">
       <p style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:4px">Sectores y camas</p>
@@ -6414,7 +6510,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_230';
+const APP_VERSION = 'v3_231';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -6487,6 +6583,56 @@ function renovarSesionKx(){
   } catch(e){}
 }
 let KX_SECTORES = [];
+
+// ── v3_231: configuración de los sectores ambulatorios ──────────────
+// Clave: nombre del sector. Se guarda como registro de tipo 'cfg_consultorio',
+// uno por sector, con el mismo mecanismo genérico que usan las notas y las
+// sugerencias. Ventaja: cero cambios de esquema en una base que ya está en
+// producción en varios hospitales.
+let CFG_CONSULTORIOS = {};
+
+function esSectorAmbulatorio(nombre){
+  if(!nombre) return false;
+  const c = CFG_CONSULTORIOS[String(nombre).trim()];
+  return !!(c && c.ambulatorio);
+}
+function cfgConsultorio(nombre){
+  return CFG_CONSULTORIOS[String(nombre || '').trim()] || null;
+}
+
+async function cargarConfigConsultorios(){
+  try {
+    const regs = await rpc('kinexa_registros', { p_token: TOKEN, p_tipo: 'cfg_consultorio' });
+    CFG_CONSULTORIOS = {};
+    (regs || []).filter(r => r && !r._borrada && r.sector).forEach(r => {
+      CFG_CONSULTORIOS[String(r.sector).trim()] = r;
+    });
+  } catch(e){
+    console.error('No se pudo cargar la configuración de consultorios:', e);
+    CFG_CONSULTORIOS = {};
+  }
+  return CFG_CONSULTORIOS;
+}
+
+// Guarda (o da de baja) la configuración de cada sector ambulatorio.
+// `configs` es un objeto { nombreSector: cfg | null }.
+async function guardarConfigConsultorios(configs){
+  const nombres = Object.keys(configs || {});
+  for(const nombre of nombres){
+    const cfg = configs[nombre];
+    const id = 'cons_' + String(nombre).trim().toLowerCase().replace(/[^a-z0-9]+/g,'_');
+    const data = cfg
+      ? Object.assign({}, cfg, { id, sector: String(nombre).trim(), _borrada: false })
+      : { id, sector: String(nombre).trim(), ambulatorio: false, _borrada: true };
+    try {
+      await rpc('kinexa_registro_guardar', { p_token: TOKEN, p_tipo: 'cfg_consultorio', p_id: id, p_data: data });
+    } catch(e){
+      console.error('No se pudo guardar el consultorio', nombre, e);
+      throw e;
+    }
+  }
+  await cargarConfigConsultorios();
+}
 // Arma la pantalla de sectores y las opciones de sala a partir de los sectores de la institución
 // ── v3_129: tipo de sala (adultos / pediátrico) ──────────
 // Devuelve 'pediatrico' o 'adultos' para una sala dada.
@@ -6501,8 +6647,13 @@ function esPacientePediatrico(patientId){
   return p ? esSalaPediatrica(p.sala) : false;
 }
 
-function aplicarSectoresKinexa(sectores){
+function aplicarSectoresKinexa(sectores, yaCargoCfg){
   KX_SECTORES = Array.isArray(sectores) ? sectores : [];
+  // v3_231: la primera vez todavía no sabemos qué sectores son consultorios.
+  // Se piden y se repinta, así los botones salen con el icono correcto.
+  if(!yaCargoCfg && typeof TOKEN !== 'undefined' && TOKEN){
+    cargarConfigConsultorios().then(() => aplicarSectoresKinexa(KX_SECTORES, true)).catch(()=>{});
+  }
   SECTORES = KX_SECTORES.map(s => s.nombre);
   const cont = document.getElementById('sectorBtns');
   if(cont){
@@ -6510,8 +6661,13 @@ function aplicarSectoresKinexa(sectores){
       ? `<button class="sector-btn" onclick="selectSector(null)" style="grid-column:1/-1;background:rgba(255,255,255,.15)"><i class="ti ti-layout-grid"></i><span>Ver todos los sectores</span></button>`
       : '';
     cont.innerHTML = KX_SECTORES.length
-      ? btnTodos + KX_SECTORES.map(s => { const ped = s.tipo === 'pediatrico';
-          return `<button class="sector-btn" onclick="selectSector('${String(s.nombre).replace(/'/g,"\\'")}')" data-sala="${s.nombre}"><i class="ti ${ped?'ti-mood-kid':'ti-bed'}"></i><span>${s.nombre}</span>${ped?'<small style="display:block;font-size:9px;opacity:.8;letter-spacing:.3px">PEDIÁTRICO</small>':''}</button>`; }).join('')
+      ? btnTodos + KX_SECTORES.map(s => {
+          const ped = s.tipo === 'pediatrico';
+          const amb = esSectorAmbulatorio(s.nombre);   // v3_231
+          const icono = amb ? 'ti-stethoscope' : (ped ? 'ti-mood-kid' : 'ti-bed');
+          const etiqueta = amb ? (ped ? 'CONSULTORIO · PEDIÁTRICO' : 'CONSULTORIO') : (ped ? 'PEDIÁTRICO' : '');
+          return `<button class="sector-btn" onclick="selectSector('${String(s.nombre).replace(/'/g,"\\'")}')" data-sala="${s.nombre}"><i class="ti ${icono}"></i><span>${s.nombre}</span>${etiqueta?`<small style="display:block;font-size:9px;opacity:.8;letter-spacing:.3px">${etiqueta}</small>`:''}</button>`;
+        }).join('')
       : '<p style="grid-column:1/-1;text-align:center;color:#fff;font-size:13px">Esta institución todavía no tiene sectores cargados.</p>';
   }
   const fSala = document.getElementById('fSala');
@@ -6639,35 +6795,137 @@ function leerLogoRegistro(input){
 }
 
 // ── Filas dinámicas de sectores y kinesiólogos ────────────
-function addSectorRow(nombre, camas, contId, tipo){
+// ── v3_231: ámbito del sector ───────────────────────────────────────
+// Hasta acá todos los sectores eran de internación y lo único que se elegía era
+// adultos o pediátrico. Ahora un sector puede ser de INTERNACIÓN (con camas) o
+// AMBULATORIO (consultorio de kinesiología, con agenda y turnos en vez de
+// camas). El ámbito no se guarda en la tabla de sectores —que sigue igual— sino
+// en un registro aparte por sector, así no hay que migrar nada.
+const DIAS_SEMANA = [
+  { k:'lun', label:'Lunes' },   { k:'mar', label:'Martes' },  { k:'mie', label:'Miércoles' },
+  { k:'jue', label:'Jueves' },  { k:'vie', label:'Viernes' }, { k:'sab', label:'Sábado' },
+  { k:'dom', label:'Domingo' },
+];
+
+function cfgConsultorioPorDefecto(){
+  const dias = {};
+  DIAS_SEMANA.forEach(d => {
+    const habil = !['sab','dom'].includes(d.k);
+    dias[d.k] = { activo: habil, desde: '08:00', hasta: '20:00' };
+  });
+  return { ambulatorio: true, duracionMin: 60, cupos: 4, dias };
+}
+
+function addSectorRow(nombre, camas, contId, tipo, cfgAmb){
   const cont = document.getElementById(contId || 'regSectores');
   const row = document.createElement('div');
   row.className = 'reg-sector';
   row.style.cssText = 'border:1px solid var(--border);border-radius:10px;padding:10px;margin-bottom:10px';
+  const esAmb = !!(cfgAmb && cfgAmb.ambulatorio);
+  const cfg = esAmb ? Object.assign(cfgConsultorioPorDefecto(), cfgAmb) : cfgConsultorioPorDefecto();
+  const esc = s => String(s == null ? '' : s).replace(/"/g,'&quot;');
+
   row.innerHTML =
     `<div style="display:flex;gap:6px;align-items:center;margin-bottom:8px">`+
-      `<input type="text" class="reg-sec-nombre" placeholder="Sector (ej: UTI A)" value="${nombre?String(nombre).replace(/"/g,'&quot;'):''}" data-nombre-orig="${nombre?String(nombre).replace(/"/g,'&quot;'):''}" style="flex:1">`+
-      // v3_129: tipo de sala — define si el pase es de adultos o pediátrico
-      `<select class="reg-sec-tipo" title="Tipo de sala" style="width:118px;flex-shrink:0">`+
+      `<input type="text" class="reg-sec-nombre" placeholder="Sector (ej: UTI A)" value="${esc(nombre)}" data-nombre-orig="${esc(nombre)}" style="flex:1">`+
+      `<button class="btn btn-ghost btn-sm" onclick="this.closest('.reg-sector').remove()" title="Quitar sector"><i class="ti ti-trash"></i></button>`+
+    `</div>`+
+    // v3_231: ámbito + población, en la misma línea
+    `<div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">`+
+      `<select class="reg-sec-ambito" title="Ámbito del sector" onchange="onAmbitoSectorChange(this)" style="flex:1;min-width:150px">`+
+        `<option value="internacion"${!esAmb?' selected':''}>🛏 Internación</option>`+
+        `<option value="ambulatorio"${esAmb?' selected':''}>🩺 Consultorio de kinesiología</option>`+
+      `</select>`+
+      `<select class="reg-sec-tipo" title="Población" style="width:118px;flex-shrink:0">`+
         `<option value="adultos"${tipo!=='pediatrico'?' selected':''}>Adultos</option>`+
         `<option value="pediatrico"${tipo==='pediatrico'?' selected':''}>Pediátrico</option>`+
       `</select>`+
-      `<button class="btn btn-ghost btn-sm" onclick="this.closest('.reg-sector').remove()" title="Quitar sector"><i class="ti ti-trash"></i></button>`+
     `</div>`+
-    `<div class="reg-camas" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>`+
-    `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">`+
-      `<button class="btn btn-ghost btn-sm" onclick="addCamaBox(this)"><i class="ti ti-plus"></i>Agregar cama</button>`+
-      `<span style="font-size:11px;color:var(--text-light)">o generar de golpe:</span>`+
-      `<input type="text" class="reg-cama-gen" placeholder="8 · 1-8 · 2081,2082" style="width:130px">`+
-      `<button class="btn btn-ghost btn-sm" onclick="generarCamasBoxes(this)">Crear</button>`+
+
+    // ── Bloque de internación: camas ──
+    `<div class="reg-bloque-internacion" style="display:${esAmb?'none':'block'}">`+
+      `<div class="reg-camas" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px"></div>`+
+      `<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">`+
+        `<button class="btn btn-ghost btn-sm" onclick="addCamaBox(this)"><i class="ti ti-plus"></i>Agregar cama</button>`+
+        `<span style="font-size:11px;color:var(--text-light)">o generar de golpe:</span>`+
+        `<input type="text" class="reg-cama-gen" placeholder="8 · 1-8 · 2081,2082" style="width:130px">`+
+        `<button class="btn btn-ghost btn-sm" onclick="generarCamasBoxes(this)">Crear</button>`+
+      `</div>`+
+    `</div>`+
+
+    // ── Bloque de consultorio: turnos y horarios ──
+    `<div class="reg-bloque-consultorio" style="display:${esAmb?'block':'none'};background:var(--teal-50);border:1px solid var(--teal-100);border-radius:9px;padding:10px">`+
+      `<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--teal-800);margin-bottom:8px">`+
+        `<i class="ti ti-calendar-time"></i> Turnos</div>`+
+      `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">`+
+        `<label style="flex:1;min-width:130px;font-size:11.5px;color:var(--text-muted);margin:0">Duración del turno`+
+          `<select class="reg-cons-dur" style="width:100%;margin-top:3px">`+
+            [15,20,30,45,60,90,120].map(m=>`<option value="${m}"${Number(cfg.duracionMin)===m?' selected':''}>${m} min</option>`).join('')+
+          `</select></label>`+
+        `<label style="flex:1;min-width:130px;font-size:11.5px;color:var(--text-muted);margin:0">Pacientes en simultáneo`+
+          `<input type="number" class="reg-cons-cupos" min="1" max="20" value="${Number(cfg.cupos)||1}" style="width:100%;margin-top:3px">`+
+        `</label>`+
+      `</div>`+
+      `<div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--teal-800);margin-bottom:6px">`+
+        `<i class="ti ti-clock"></i> Días y horarios de atención</div>`+
+      `<div class="reg-cons-dias">`+
+        DIAS_SEMANA.map(d=>{
+          const dd = (cfg.dias && cfg.dias[d.k]) || { activo:false, desde:'08:00', hasta:'20:00' };
+          return `<div class="reg-cons-dia" data-dia="${d.k}" style="display:flex;gap:6px;align-items:center;margin-bottom:5px">`+
+            `<label style="display:flex;align-items:center;gap:5px;width:112px;font-size:12px;margin:0;cursor:pointer">`+
+              `<input type="checkbox" class="reg-cons-dia-on" ${dd.activo?'checked':''}> ${d.label}</label>`+
+            `<input type="time" class="reg-cons-dia-desde" value="${esc(dd.desde||'08:00')}" style="flex:1;min-width:88px">`+
+            `<span style="font-size:11px;color:var(--text-light)">a</span>`+
+            `<input type="time" class="reg-cons-dia-hasta" value="${esc(dd.hasta||'20:00')}" style="flex:1;min-width:88px">`+
+          `</div>`;
+        }).join('')+
+      `</div>`+
     `</div>`;
+
   cont.appendChild(row);
   // Camas iniciales (si vinieron) o un casillero vacío para empezar
+  const addBtn = row.querySelector('[onclick="addCamaBox(this)"]');
   if(Array.isArray(camas) && camas.length){
-    camas.forEach(c => addCamaBox(row.querySelector('[onclick="addCamaBox(this)"]'), c));
-  } else {
-    addCamaBox(row.querySelector('[onclick="addCamaBox(this)"]'));
+    camas.forEach(c => addCamaBox(addBtn, c));
+  } else if(!esAmb){
+    addCamaBox(addBtn);
   }
+}
+
+// Al cambiar el ámbito se muestra el bloque que corresponde. No se borra el otro:
+// si alguien se equivoca y vuelve atrás, no perdió las camas que había cargado.
+function onAmbitoSectorChange(sel){
+  const row = sel.closest('.reg-sector');
+  if(!row) return;
+  const amb = sel.value === 'ambulatorio';
+  const bi = row.querySelector('.reg-bloque-internacion');
+  const bc = row.querySelector('.reg-bloque-consultorio');
+  if(bi) bi.style.display = amb ? 'none' : 'block';
+  if(bc) bc.style.display = amb ? 'block' : 'none';
+  if(!amb && !row.querySelector('.reg-cama-in')){
+    const addBtn = row.querySelector('[onclick="addCamaBox(this)"]');
+    if(addBtn) addCamaBox(addBtn);
+  }
+}
+
+// Lee la configuración de consultorio de una fila del formulario
+function leerCfgConsultorioFila(row){
+  const amb = row.querySelector('.reg-sec-ambito')?.value === 'ambulatorio';
+  if(!amb) return null;
+  const dias = {};
+  row.querySelectorAll('.reg-cons-dia').forEach(d=>{
+    dias[d.dataset.dia] = {
+      activo: !!d.querySelector('.reg-cons-dia-on')?.checked,
+      desde:  d.querySelector('.reg-cons-dia-desde')?.value || '08:00',
+      hasta:  d.querySelector('.reg-cons-dia-hasta')?.value || '20:00',
+    };
+  });
+  return {
+    ambulatorio: true,
+    duracionMin: Number(row.querySelector('.reg-cons-dur')?.value) || 60,
+    cupos: Math.max(1, Number(row.querySelector('.reg-cons-cupos')?.value) || 1),
+    dias,
+  };
 }
 // Un casillero de cama (editable) con su botón de quitar
 function addCamaBox(btn, valor){
@@ -6733,11 +6991,17 @@ async function doRegistrar(){
   if(!aNombre || !aApellido || !aDni){ showToast('Completá los datos del administrador','error'); return; }
 
   const sectores = [];
+  const consultorios = {};   // v3_231
   document.querySelectorAll('#regSectores .reg-sector').forEach(r=>{
     const nombre = r.querySelector('.reg-sec-nombre').value.trim();
     const tipo = r.querySelector('.reg-sec-tipo')?.value || 'adultos';
-    const camas = [...r.querySelectorAll('.reg-cama-in')].map(i=>i.value.trim()).filter(Boolean);
-    if(nombre) sectores.push({ nombre, camas, tipo });
+    const cfgAmb = leerCfgConsultorioFila(r);
+    // Un consultorio no tiene camas: si el sector es ambulatorio se guardan vacías
+    const camas = cfgAmb ? [] : [...r.querySelectorAll('.reg-cama-in')].map(i=>i.value.trim()).filter(Boolean);
+    if(nombre){
+      sectores.push({ nombre, camas, tipo });
+      consultorios[nombre] = cfgAmb;
+    }
   });
   if(!sectores.length){ showToast('Agregá al menos un sector','error'); return; }
 
@@ -6762,6 +7026,8 @@ async function doRegistrar(){
     guardarSesionKx({ token:s.token, user:aDni, name:(aNombre+' '+aApellido).trim(), role:'admin', institucion_id:Number(instId) }, false);
     // 3) Guardar sectores y kinesiólogos
     await rpc('kinexa_setup', { p_token:TOKEN, p_config:{ institucion:inst, sectores, usuarios } });
+    // 3 bis) v3_231: configuración de los sectores ambulatorios
+    try { await guardarConfigConsultorios(consultorios); } catch(eC){ console.error(eC); }
     // 4) Cargar sectores y entrar a la app
     try { const sects = await rpc('kinexa_sectores', { p_token:TOKEN }); aplicarSectoresKinexa(sects); } catch(eSec){ aplicarSectoresKinexa([]); }
     await crearSuscripcionPrueba();   // v3_203: 30 días de prueba, automáticos
@@ -6787,7 +7053,8 @@ async function abrirConfigKinexa(){
   document.getElementById('configScreen').style.display = 'block';
   try {
     const sects = await rpc('kinexa_sectores', { p_token: TOKEN });
-    (sects || []).forEach(s => addSectorRow(s.nombre, normalizarCamas(s.camas), 'cfgSectores', s.tipo));
+    await cargarConfigConsultorios();   // v3_231
+    (sects || []).forEach(s => addSectorRow(s.nombre, normalizarCamas(s.camas), 'cfgSectores', s.tipo, cfgConsultorio(s.nombre)));
     if(!(sects || []).length) addSectorRow(null, null, 'cfgSectores');
   } catch(e){ console.error(e); showToast('No se pudieron cargar los sectores','error'); }
   try {
@@ -7073,13 +7340,21 @@ async function guardarMiClave(){
 async function guardarConfigKinexa(){
   const sectores = [];
   const renombres = [];   // v3_170: sectores a los que les cambiaron el nombre
+  const consultorios = {};   // v3_231
   document.querySelectorAll('#cfgSectores .reg-sector').forEach(r=>{
     const inp = r.querySelector('.reg-sec-nombre');
     const nombre = inp.value.trim();
     const orig = (inp.dataset.nombreOrig || '').trim();
-    const camas = [...r.querySelectorAll('.reg-cama-in')].map(i=>i.value.trim()).filter(Boolean);
     const tipo = r.querySelector('.reg-sec-tipo')?.value || 'adultos';
-    if(nombre) sectores.push({ nombre, camas, tipo });
+    const cfgAmb = leerCfgConsultorioFila(r);
+    const camas = cfgAmb ? [] : [...r.querySelectorAll('.reg-cama-in')].map(i=>i.value.trim()).filter(Boolean);
+    if(nombre){
+      sectores.push({ nombre, camas, tipo });
+      consultorios[nombre] = cfgAmb;
+      // Si le cambiaron el nombre, la config vieja se da de baja para que no
+      // quede un consultorio fantasma apuntando a un sector que ya no existe.
+      if(orig && orig !== nombre && CFG_CONSULTORIOS[orig]) consultorios[orig] = null;
+    }
     if(orig && nombre && orig !== nombre) renombres.push({ de: orig, a: nombre });
   });
   if(!sectores.length){ showToast('Tiene que quedar al menos un sector','error'); return; }
@@ -7124,6 +7399,7 @@ async function guardarConfigKinexa(){
   if(btn){ btn.disabled=true; btn.innerHTML='<i class="ti ti-loader-2"></i> Guardando…'; }
   try {
     await rpc('kinexa_setup', { p_token:TOKEN, p_config:{ sectores, usuarios } });
+    try { await guardarConfigConsultorios(consultorios); } catch(eC){ console.error(eC); showToast('Los sectores se guardaron, pero falló la config del consultorio','error'); }
 
     // v3_170: mover a los pacientes al nombre nuevo del sector
     if(renombres.length){
@@ -8274,6 +8550,8 @@ async function startSession(user){
 function selectSector(sala){
   currentSector = sala || null;
   document.getElementById('sectorScreen').style.display = 'none';
+  // v3_231: un sector ambulatorio abre el consultorio, que es otra aplicación.
+  if(currentSector && esSectorAmbulatorio(currentSector)){ abrirConsultorio(); return; }
   launchApp();
 }
 
@@ -8351,6 +8629,193 @@ function launchApp(){
   renderAll();
   loadFromSupabase();
 }
+// ════════════════════════════════════════════════════════
+//  v3_231 — CONSULTORIO DE KINESIOLOGÍA
+// ════════════════════════════════════════════════════════
+// Etapa 1: registro de pacientes. Los turnos, las evaluaciones y las
+// evoluciones vienen después, pero se apoyan todas sobre esta ficha.
+//
+// Los pacientes se guardan como registros de tipo 'pac_amb' con el mecanismo
+// genérico de la base. Quedan aislados de `patients` (internación) a propósito:
+// no comparten campos ni indicadores, y mezclarlos ensuciaría los dos lados.
+// El único puente es `internacionId`, que se resuelve por DNI cuando la persona
+// además estuvo internada.
+
+let PAC_AMB = [];
+
+function _idAmb(){ return 'pa_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function _esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function abrirConsultorio(){
+  const cfg = cfgConsultorio(currentSector) || {};
+  document.getElementById('consNombreSector').textContent = currentSector || '—';
+  const dias = (cfg.dias && DIAS_SEMANA.filter(d => cfg.dias[d.k]?.activo)) || [];
+  document.getElementById('consCfgResumen').innerHTML =
+    `<i class="ti ti-clock"></i> Turnos de ${cfg.duracionMin || 60} min · ${cfg.cupos || 1} paciente${(cfg.cupos||1)===1?'':'s'} en simultáneo`
+    + (dias.length ? ` · ${dias.map(d => d.label.slice(0,3)).join(', ')}` : ' · sin días de atención configurados');
+  document.getElementById('consultorioScreen').style.display = 'block';
+  document.getElementById('consListaPacientes').innerHTML =
+    '<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:13px">Cargando pacientes…</div>';
+  await cargarPacientesAmb();
+  renderPacientesAmb();
+}
+
+function salirConsultorio(){
+  document.getElementById('consultorioScreen').style.display = 'none';
+  document.getElementById('sectorScreen').style.display = 'flex';
+}
+
+async function cargarPacientesAmb(){
+  try {
+    const regs = await rpc('kinexa_registros', { p_token: TOKEN, p_tipo: 'pac_amb' });
+    PAC_AMB = (regs || []).filter(r => r && !r._borrada);
+  } catch(e){
+    console.error('No se pudieron cargar los pacientes del consultorio:', e);
+    PAC_AMB = [];
+    showToast('No se pudieron cargar los pacientes','error');
+  }
+  return PAC_AMB;
+}
+
+// Pacientes de ESTE consultorio, filtrados por lo que se escriba en el buscador
+function pacientesAmbVisibles(){
+  const q = (document.getElementById('consBuscar')?.value || '').trim().toLowerCase();
+  return PAC_AMB
+    .filter(p => String(p.sector || '') === String(currentSector || ''))
+    .filter(p => !q || [p.apellido, p.nombre, p.dni].some(v => String(v || '').toLowerCase().includes(q)))
+    .sort((a, b) => String(a.apellido || '').localeCompare(String(b.apellido || ''), 'es'));
+}
+
+function renderPacientesAmb(){
+  const cont = document.getElementById('consListaPacientes');
+  if(!cont) return;
+  const lista = pacientesAmbVisibles();
+  if(!lista.length){
+    const hay = PAC_AMB.some(p => String(p.sector||'') === String(currentSector||''));
+    cont.innerHTML = `<div style="text-align:center;padding:2.5rem 1rem;color:var(--text-muted);font-size:13px">`
+      + (hay ? 'Ningún paciente coincide con la búsqueda.' : 'Todavía no hay pacientes en este consultorio.<br>Empezá con <strong>Nuevo paciente</strong>.')
+      + `</div>`;
+    return;
+  }
+  cont.innerHTML = lista.map(p => {
+    const edad = p.fechaNac ? (edadDesdeFechaNac(p.fechaNac)?.texto || '') : '';
+    const chips = [];
+    if(p.obraSocial) chips.push(`<span class="tag" style="cursor:default">${_esc(p.obraSocial)}</span>`);
+    if(p.sesionesAut) chips.push(`<span class="tag" style="cursor:default">${Number(p.sesionesAut)} sesiones aut.</span>`);
+    if(p.internacionId) chips.push(`<span class="tag" style="cursor:default;background:var(--teal-50);border-color:var(--teal-400);color:var(--teal-800)"><i class="ti ti-link"></i> Estuvo internado</span>`);
+    return `<div style="background:#fff;border:1px solid var(--border);border-radius:11px;padding:12px 14px;margin-bottom:9px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+        <div style="min-width:0;flex:1">
+          <div style="font-weight:700;font-size:14px">${_esc(p.apellido)}, ${_esc(p.nombre)}</div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin-top:2px">
+            DNI ${_esc(p.dni) || '—'}${edad ? ' · ' + _esc(edad) : ''}${p.celular ? ' · ' + _esc(p.celular) : ''}
+          </div>
+          ${p.diagnostico ? `<div style="font-size:12px;color:var(--text);margin-top:4px">${_esc(p.diagnostico)}</div>` : ''}
+          ${chips.length ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-top:7px">${chips.join('')}</div>` : ''}
+        </div>
+        <div style="display:flex;gap:4px;flex-shrink:0">
+          ${p.celular ? `<button class="btn btn-ghost btn-sm" title="Escribir por WhatsApp" onclick="whatsappPacienteAmb('${p.id}')"><i class="ti ti-brand-whatsapp"></i></button>` : ''}
+          <button class="btn btn-ghost btn-sm" title="Editar ficha" onclick="abrirFichaAmb('${p.id}')"><i class="ti ti-pencil"></i></button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Ficha ────────────────────────────────────────────────────────
+const _CAMPOS_AMB = ['apellido','nombre','dni','fechaNac','sexo','celular','email','obraSocial','plan',
+  'afiliado','orden','sesionesAut','pago','coseguro','derivante','diagnostico','motivo','obs'];
+const _ID_AMB = { apellido:'paApellido', nombre:'paNombre', dni:'paDni', fechaNac:'paFechaNac', sexo:'paSexo',
+  celular:'paCelular', email:'paEmail', obraSocial:'paObraSocial', plan:'paPlan', afiliado:'paAfiliado',
+  orden:'paOrden', sesionesAut:'paSesionesAut', pago:'paPago', coseguro:'paCoseguro', derivante:'paDerivante',
+  diagnostico:'paDiagnostico', motivo:'paMotivo', obs:'paObs' };
+
+function abrirFichaAmb(id){
+  const p = id ? PAC_AMB.find(x => x.id === id) : null;
+  document.getElementById('paId').value = p ? p.id : '';
+  document.getElementById('pacAmbTitulo').textContent = p ? 'Editar paciente' : 'Nuevo paciente';
+  _CAMPOS_AMB.forEach(k => {
+    const el = document.getElementById(_ID_AMB[k]);
+    if(el) el.value = p && p[k] != null ? p[k] : '';
+  });
+  const box = document.getElementById('paVinculoBox');
+  const txt = document.getElementById('paVinculoTxt');
+  const vinc = p && p.internacionId ? patients.find(x => String(x.id) === String(p.internacionId)) : null;
+  if(vinc){
+    box.style.display = 'block';
+    txt.innerHTML = `Esta persona también tiene ficha de internación (${_esc(vinc.sala || '')}). La historia de internación queda disponible en Kinexa.`;
+  } else { box.style.display = 'none'; }
+  openModal('modalPacAmb');
+}
+
+async function guardarPacienteAmb(){
+  const g = k => (document.getElementById(_ID_AMB[k])?.value || '').trim();
+  const apellido = g('apellido'), nombre = g('nombre'), dni = g('dni');
+  if(!apellido || !nombre){ showToast('Completá nombre y apellido','error'); return; }
+  if(!dni){ showToast('El DNI es obligatorio: es lo que evita fichas duplicadas','error'); return; }
+
+  const idExistente = document.getElementById('paId').value;
+  // Un mismo DNI no puede tener dos fichas en el mismo consultorio
+  const dup = PAC_AMB.find(x => x.id !== idExistente
+    && String(x.sector||'') === String(currentSector||'')
+    && String(x.dni||'').replace(/\D/g,'') === dni.replace(/\D/g,''));
+  if(dup){ showToast(`Ya hay una ficha con ese DNI: ${dup.apellido}, ${dup.nombre}`,'error'); return; }
+
+  const previo = idExistente ? PAC_AMB.find(x => x.id === idExistente) : null;
+  const p = Object.assign({}, previo || {}, {
+    id: idExistente || _idAmb(),
+    sector: currentSector || '',
+    institucion_id: currentUser?.institucion_id || null,
+    _borrada: false,
+    actualizado: new Date().toISOString(),
+    actualizadoPor: currentUser?.name || '',
+  });
+  _CAMPOS_AMB.forEach(k => { p[k] = g(k); });
+  if(!previo){ p.creado = new Date().toISOString(); p.creadoPor = currentUser?.name || ''; }
+
+  // Puente con internación: si el DNI coincide con una ficha de internados, se
+  // guarda la referencia para poder mirar esa historia desde el consultorio.
+  const soloNum = s => String(s || '').replace(/\D/g,'');
+  const enInternacion = patients.find(x => soloNum(x.dni) && soloNum(x.dni) === soloNum(dni));
+  p.internacionId = enInternacion ? enInternacion.id : (previo?.internacionId || null);
+
+  try {
+    await rpc('kinexa_registro_guardar', { p_token: TOKEN, p_tipo: 'pac_amb', p_id: p.id, p_data: p });
+    const i = PAC_AMB.findIndex(x => x.id === p.id);
+    if(i >= 0) PAC_AMB[i] = p; else PAC_AMB.push(p);
+    closeModal('modalPacAmb', true);
+    renderPacientesAmb();
+    showToast(previo ? 'Ficha actualizada ✓' : 'Paciente agregado ✓','success');
+    addLog('paciente', `${previo ? 'Editó' : 'Cargó'} paciente de consultorio: ${p.apellido}, ${p.nombre}`);
+    if(!previo && enInternacion) showToast('Se vinculó con su ficha de internación','success');
+  } catch(e){
+    console.error(e);
+    showToast('No se pudo guardar: ' + (e.message || '').slice(0,60),'error');
+  }
+}
+
+// ── WhatsApp ─────────────────────────────────────────────────────
+// No hay envío automático: la API oficial de Meta es paga y necesita plantillas
+// aprobadas. Esto abre WhatsApp con el número y el texto ya cargados; el envío
+// lo confirma la persona. Anda igual en el celular y en la computadora.
+function telAWhatsapp(tel){
+  let t = String(tel || '').replace(/\D/g, '');
+  if(!t) return '';
+  if(t.startsWith('54')) return t;                  // ya viene con código de país
+  if(t.startsWith('0')) t = t.slice(1);             // 011… → 11…
+  if(t.length === 10 && !t.startsWith('9')) t = '9' + t;   // móvil argentino
+  return '54' + t;
+}
+
+function whatsappPacienteAmb(id){
+  const p = PAC_AMB.find(x => x.id === id);
+  if(!p) return;
+  const num = telAWhatsapp(p.celular);
+  if(!num){ showToast('Ese paciente no tiene celular cargado','error'); return; }
+  const msg = `Hola ${p.nombre}, te escribimos de ${instNombreActual() || 'kinesiología'}.`;
+  window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
 function doLogout(){
   cerrarNotas();   // v3_214: que no quede la libreta abierta para el que entre después
   try { document.title = TITULO_BASE + ' — La evolución digital de la kinesiología'; } catch(e){}   // v3_218
