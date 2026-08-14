@@ -6208,7 +6208,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <button class="modal-close" onclick="closeModal('modalPase')">&times;</button>
     </div>
     <div class="modal-body">
-      <p style="font-size:13px;color:var(--text);margin:0 0 4px">Se arma un PDF cama por cama con los datos del paciente y un resumen de lo ocurrido en las últimas 24 horas.</p>
+      <p style="font-size:13px;color:var(--text);margin:0 0 4px">Se arma un PDF cama por cama con los datos del paciente y un resumen de cómo evolucionó en los últimos 4 días: weaning, decanulación, secreciones, conciencia y movilización. Los cuidados de rutina no se incluyen.</p>
       <p style="font-size:12px;color:var(--text-muted);margin:0 0 12px" id="paseResumenPrev">—</p>
 
       <!-- v3_196: a quién incluir -->
@@ -6414,7 +6414,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_229';
+const APP_VERSION = 'v3_230';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -8689,7 +8689,37 @@ async function entrarDemo(){
 // arme el pase entero, tarde o temprano inventa una PEEP o cruza dos camas, y
 // en un pase eso es grave.
 
-const PASE_VENTANA_HS = 24;
+// v3_230: el pase pasó de 24 hs a 4 días. Con una sola guardia no se ve el
+// arco de lo que importa (un weaning, una decanulación, la evolución de las
+// secreciones); con 4 días sí, y el que entra entiende hacia dónde va el
+// paciente sin tener que abrir la historia.
+const PASE_VENTANA_DIAS = 4;
+const PASE_VENTANA_HS = PASE_VENTANA_DIAS * 24;
+// Los egresos siguen siendo los del último día: más atrás es ruido.
+const PASE_EGRESOS_HS = 24;
+
+// ── Qué NO va al resumen ────────────────────────────────────────────
+// Cuidados que se hacen todos los días en todos los pacientes. Que estén
+// registrados está bien (son trazabilidad), pero en un pase ocupan lugar y
+// tapan lo importante.
+const PASE_TECNICAS_RUTINA = new Set([
+  'cambio de hmef',
+  'cambio de filtro viral/bacteriano',
+  'higiene oral',
+  'cambio de fijación',
+  'cambio de sujeción',
+  'cambio del circuito ventilatorio',
+  'control del balón de neumotaponamiento',
+  'estimulación con aire por puerto subglótico',
+]);
+
+// Campos que no aportan al pase: subpuntajes (ya va el total), contadores de
+// día que el PDF muestra aparte, y metadatos de edición.
+const PASE_CAMPOS_IGNORADOS = new Set([
+  'sofaResp','sofaCoag','sofaHep','sofaCardio','sofaNeuro','sofaRenal',
+  'hacorMomento','hacorGcs','hacorFc','hacorPh','hacorPafi','hacorFr',
+  'armDia','utiDia','diasVE','editedAt','editedBy','eabExtra',
+]);
 let _paseDatos = null;      // resultado de la última generación
 let _paseCancelar = false;
 
@@ -8704,7 +8734,7 @@ function _tsEvo(e){
   return new Date(a, (m || 1) - 1, d || 1, hh, mm).getTime();
 }
 
-function evosUltimas24h(pacId, desdeMs){
+function evosVentanaPase(pacId, desdeMs){
   return evoluciones
     .filter(e => e.patientId === pacId && !e._borrada && !e.tipo && _tsEvo(e) >= desdeMs)
     .sort((a, b) => _tsEvo(a) - _tsEvo(b));
@@ -8737,16 +8767,27 @@ function ventTextoPase(p){
   return { etiqueta: ev.label, detalle: txt };
 }
 
-// Vuelca una evolución a texto plano para que la IA la resuma
+// Vuelca una evolución a texto plano para que la IA la resuma.
+// v3_230: se sacan los cuidados de rutina y los subpuntajes. Con 4 días de
+// ventana el prompt se iba de largo y, peor, la IA se enganchaba con el cambio
+// de HMEF en vez de con el weaning.
 function evoATexto(e){
   const partes = [];
   const cuando = `${fmtDate(e.date)}${e.hora ? ' ' + e.hora : ''}${e.turno ? ' (' + e.turno + ')' : ''} — ${e.kine || '—'}`;
   partes.push(cuando);
   Object.keys(e).forEach(k => {
     if(['id','patientId','date','hora','turno','kine','kineUser','tipo','tipo_evo','ediciones','editedAt','editedBy','_borrada'].includes(k)) return;
+    if(PASE_CAMPOS_IGNORADOS.has(k)) return;   // v3_230
     const v = e[k];
     if(v === '' || v === null || v === undefined) return;
-    if(Array.isArray(v)){ if(v.length) partes.push(`${EVO_LABELS[k] || k}: ${v.join(', ')}`); return; }
+    if(Array.isArray(v)){
+      // v3_230: las técnicas de rutina no entran al resumen
+      const lista = (k === 'tecnicas')
+        ? v.filter(t => !PASE_TECNICAS_RUTINA.has(String(t).trim().toLowerCase()))
+        : v;
+      if(lista.length) partes.push(`${EVO_LABELS[k] || k}: ${lista.join(', ')}`);
+      return;
+    }
     if(typeof v === 'object'){
       const sub = Object.entries(v).filter(([, x]) => x !== '' && x != null).map(([a, b]) => `${a} ${b}`).join(', ');
       if(sub) partes.push(`${EVO_LABELS[k] || k}: ${sub}`);
@@ -8760,18 +8801,29 @@ function evoATexto(e){
 async function resumenIAPaciente(p, evos){
   if(!evos.length) return null;
   const prompt =
-`Sos kinesiólogo/a de terapia intensiva y estás redactando el pase de guardia para el equipo que entra.
+`Sos kinesiólogo/a y estás redactando el pase para el equipo que entra. El paciente está internado (puede ser terapia intensiva o sala general, adulto o pediátrico).
 
-Resumí en UN SOLO PÁRRAFO de 3 a 5 oraciones lo ocurrido con este paciente en las últimas ${PASE_VENTANA_HS} horas.
+Resumí en UN SOLO PÁRRAFO de 4 a 6 oraciones la EVOLUCIÓN de este paciente en los últimos ${PASE_VENTANA_DIAS} días. Las evoluciones vienen ordenadas de la más vieja a la más nueva: contá el arco, no cada sesión por separado. Lo que importa es hacia dónde viene yendo y en qué punto está hoy.
 
-Reglas:
+Contá, siempre que haya dato:
+- Soporte ventilatorio y su progresión: cambios de modo o de parámetros, weaning, PVE (resultado y tolerancia), extubación, pasaje a espontáneo, noches sin ARM, reconexiones.
+- Proceso de decanulación: desinflado del balón, oclusiones y cuánto tolera, válvula fonatoria, voz.
+- Secreciones: cantidad y calidad, y si cambiaron a lo largo de los días.
+- Tomas de muestra: aspirado traqueal, minibal, BAL, hisopados.
+- Estado de conciencia y neurológico: RASS/Glasgow, sedación, colaboración, orientación.
+- Movilización: hasta dónde llegó (pasiva, sedestación, bipedestación, marcha) y cómo la toleró.
+- Deglución si se evaluó, y lo que queda pendiente para el próximo turno.
+
+NO menciones cuidados de rutina que se hacen todos los días: cambio de HMEF o de filtro, higiene oral, cambio de fijación o sujeción, cambio de circuito, control del balón. Tampoco enumeres técnicas una por una si no cambiaron nada.
+
+Reglas de forma:
 - Español rioplatense, registro clínico, impersonal ("se realizó", "tolera", "presenta").
-- Usá SOLO los datos que te paso. No agregues nada que no esté.
-- Priorizá: cambios en el soporte ventilatorio, pruebas realizadas (PVE, oclusión, deglución), secreciones, tolerancia a la movilización y lo que quede pendiente para el próximo turno.
-- No repitas el nombre del paciente ni la cama.
-- No uses viñetas ni títulos. Solo el párrafo.
+- Usá SOLO los datos que te paso. No inventes ni completes lo que falte.
+- Marcá el paso del tiempo cuando aporte ("en las últimas 48 h", "desde el martes").
+- Si en estos días no pasó nada relevante, decilo en una sola oración: no rellenes.
+- No repitas el nombre del paciente ni la cama. Sin viñetas ni títulos: solo el párrafo.
 
-EVOLUCIONES:
+EVOLUCIONES (de la más vieja a la más nueva):
 ${evos.map((e, i) => `[${i + 1}] ${evoATexto(e)}`).join('\n\n')}`;
   try {
     const t = await llamarGemini(prompt);
@@ -8796,9 +8848,10 @@ async function generarPaseSector(){
     return;
   }
 
-  // Egresos de las últimas 24 hs, que en un pase se mencionan
+  // Egresos del último día, que en un pase se mencionan
+  const desdeEgresosMs = Date.now() - PASE_EGRESOS_HS * 3600 * 1000;   // v3_230
   const egresos = evoluciones
-    .filter(e => ['alta','traslado','obito','cama'].includes(e.tipo) && !e._borrada && _tsEvo(e) >= desdeMs)   // v3_220
+    .filter(e => ['alta','traslado','obito','cama'].includes(e.tipo) && !e._borrada && _tsEvo(e) >= desdeEgresosMs)   // v3_220
     .map(e => ({ evo: e, pac: patients.find(x => x.id === e.patientId) }))
     .filter(x => x.pac && x.pac.sala === sector);
 
@@ -8811,7 +8864,7 @@ async function generarPaseSector(){
   if(acciones) acciones.style.display = 'none';
 
   const filas = activos.map(p => {
-    const evos = evosUltimas24h(p.id, desdeMs);
+    const evos = evosVentanaPase(p.id, desdeMs);
     return { p, evos, resumen: null };
   });
 
@@ -8820,7 +8873,7 @@ async function generarPaseSector(){
   const avanzar = () => {
     hechos++;
     if(barra) barra.style.width = Math.round(hechos / Math.max(1, conEvo.length) * 100) + '%';
-    if(txt) txt.textContent = `Resumiendo evoluciones… ${hechos} de ${conEvo.length}`;
+    if(txt) txt.textContent = `Resumiendo los últimos ${PASE_VENTANA_DIAS} días… ${hechos} de ${conEvo.length}`;
   };
 
   // De a 4 en paralelo: una llamada por paciente, para que la IA no cruce datos
@@ -8889,7 +8942,7 @@ async function construirPDFPase(datos){
     doc.text(`${inst} · ${sectorLbl}`, M, 18.5);
     doc.setFontSize(8);
     doc.text(`Generado ${sello}`, W - M, 12, { align: 'right' });
-    doc.text(`Últimas ${PASE_VENTANA_HS} h · ${datos.filas.length} pacientes${datos.soloHoy ? ' (los de hoy)' : ' (todo el sector)'}`, W - M, 18.5, { align: 'right' });
+    doc.text(`Últimos ${PASE_VENTANA_DIAS} días · ${datos.filas.length} pacientes${datos.soloHoy ? ' (los de hoy)' : ' (todo el sector)'}`, W - M, 18.5, { align: 'right' });
     y = 36;
     pie();
   };
@@ -9027,7 +9080,7 @@ function paseSoloHoy(){
 function actualizarPreviewPase(){
   const n = pacientesDelPase(paseSoloHoy()).length;
   const el = document.getElementById('paseResumenPrev');
-  if(el) el.textContent = `${n} paciente${n === 1 ? '' : 's'} en el pase · evoluciones de las últimas ${PASE_VENTANA_HS} horas`;
+  if(el) el.textContent = `${n} paciente${n === 1 ? '' : 's'} en el pase · evoluciones de los últimos ${PASE_VENTANA_DIAS} días`;
 }
 
 function abrirPase(){
@@ -13258,7 +13311,23 @@ function _claveCrono(e){
 // evoluciones espontáneas que llega hasta hoy y se toma su inicio. Los otros
 // dos datos (extubación y `finARM`) solo se usan si son anteriores a esa racha,
 // donde la afinan; si son posteriores, están mal y se descartan.
+// v3_230: día calendario siguiente a una fecha 'YYYY-MM-DD'
+function _diaSiguiente(fecha){
+  if(!fecha) return null;
+  const [a, m, d] = String(fecha).split('-').map(Number);
+  if(!a || !m || !d) return null;
+  const dt = new Date(a, m - 1, d + 1);
+  const p = n => String(n).padStart(2, '0');
+  return `${dt.getFullYear()}-${p(dt.getMonth() + 1)}-${p(dt.getDate())}`;
+}
+
+// v3_230: cuando la fecha de salida se dedujo de un hueco de documentación (no
+// hay evolución que muestre el momento exacto de la desconexión), queda acá el
+// detalle para poder aclarárselo al usuario en el cartel.
+let _veSalidaInferida = null;
+
 function fechaSalidaARM(patientId){
+  _veSalidaInferida = null;
   const p = patients.find(x => x.id === patientId);
   const evos = evoluciones
     .filter(e => e.patientId === patientId && !e.tipo)
@@ -13291,8 +13360,9 @@ function fechaSalidaARM(patientId){
 
   let inicioRacha = ultima.date;
   let reconexionNocturna = false;
+  let cortante = null;   // v3_230: la evolución que cortó la racha hacia atrás
   for(let i = conDatoVent.length - 1; i >= 0; i--){
-    if(!espontanea(conDatoVent[i])) break;
+    if(!espontanea(conDatoVent[i])){ cortante = conDatoVent[i]; break; }
     inicioRacha = conDatoVent[i].date;
     // v3_229: el traqueostomizado que se reconecta al ventilador de noche y se
     // desconecta a la mañana queda registrado como espontáneo en TODAS las
@@ -13304,6 +13374,24 @@ function fechaSalidaARM(patientId){
   // Si hubo reconexión nocturna, la fecha es esa y punto: no se afina con la
   // extubación ni con finARM, que son anteriores y volverían a inflar el conteo.
   if(reconexionNocturna) return inicioRacha;
+
+  // ── v3_230: hueco de documentación ──────────────────────────────
+  // La racha arranca en la PRIMERA evolución que muestra al paciente
+  // espontáneo, pero eso subestima la salida cuando hay días sin registro
+  // ventilatorio en el medio. Caso real: última evolución en ARM el 10/08,
+  // ninguna el 11/08, y la del 12/08 ya lo muestra espontáneo. La desconexión
+  // ocurrió el 10 o el 11, no el 12, y el contador arrancaba dos días tarde.
+  //
+  // Como el 10/08 terminó en ARM, el primer día que pudo estar íntegramente
+  // sin ventilador es el 11/08. Se toma ese, que es la fecha más temprana
+  // compatible con lo documentado, y se marca como inferida para avisarlo.
+  if(cortante && enARM(cortante)){
+    const sig = _diaSiguiente(cortante.date);
+    if(sig && sig < inicioRacha){
+      _veSalidaInferida = { ultimaARM: cortante.date, primeraEsp: inicioRacha };
+      inicioRacha = sig;
+    }
+  }
 
   // ── Datos que pueden precisar el momento exacto de la salida ──
   // Solo valen si son ANTERIORES o iguales al inicio de la racha: si dicen una
@@ -13380,6 +13468,7 @@ function actualizarHintVE(patientId, mostrar){
   const ref = document.getElementById('eDate')?.value || today();
   const f   = fechaSalidaARM(patientId);
   const nCalc = nochesVentilacionEspontanea(patientId, ref);
+  const inferida = _veSalidaInferida;   // v3_230
   if(nCalc === null || !f){ ocultar(); return; }
 
   // ── La pregunta solo aparece si hay al menos una noche para confirmar ──
@@ -13409,6 +13498,13 @@ function actualizarHintVE(patientId, mostrar){
     txt = `<strong>${ORDINAL_NOCHE[n]} noche en ventilación espontánea</strong> `
         + `(sin ARM desde el ${fmtDate(f)})`
         + (resp === 'Si' ? `, confirmada.` : ` — falta confirmar la noche.`);
+    // v3_230: si la fecha se dedujo de un hueco de registro, se avisa
+    if(inferida){
+      txt += `<br><span style="opacity:.85">Fecha estimada: la última evolución que lo muestra en ARM `
+           + `es del ${fmtDate(inferida.ultimaARM)} y la primera espontánea del `
+           + `${fmtDate(inferida.primeraEsp)}. Si sabés el día exacto, cargalo en `
+           + `<strong>Fin de ARM</strong> en la ficha del paciente.</span>`;
+    }
   } else {
     txt = `<strong>Pasó las ${NOCHES_VE_MAX} noches en ventilación espontánea</strong> `
         + `(sin ARM desde el ${fmtDate(f)}). A partir de acá ya no se cuenta.`;
