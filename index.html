@@ -1061,6 +1061,8 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <button class="btn btn-ghost btn-sm" onclick="agendaHoy()" title="Ir a hoy">Hoy</button>
       </div>
       <div style="display:flex;gap:6px;margin-bottom:12px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="abrirTurno(null, document.getElementById('agendaFecha').value, '')">
+          <i class="ti ti-calendar-plus"></i>Dar turno</button>
         <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text-muted);margin:0;cursor:pointer">
           <input type="checkbox" id="agendaSoloMios" onchange="renderAgenda()"> Solo mis turnos
         </label>
@@ -6762,7 +6764,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_236';
+const APP_VERSION = 'v3_237';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -8979,13 +8981,21 @@ function renderPacientesAmb(){
         </div>
         <div style="display:flex;gap:4px;flex-shrink:0">
           ${p.celular ? `<button class="btn btn-ghost btn-sm" title="Escribir por WhatsApp" onclick="whatsappPacienteAmb('${p.id}')"><i class="ti ti-brand-whatsapp"></i></button>` : ''}
-          <button class="btn btn-ghost btn-sm" title="Ver su agenda" onclick="irAAgendaDe('${p.id}')"><i class="ti ti-calendar"></i></button>
+          <button class="btn btn-ghost btn-sm" title="Dar turno" onclick="darTurnoA('${p.id}')"><i class="ti ti-calendar-plus"></i></button>
           <button class="btn btn-ghost btn-sm" title="Historia y tratamientos" onclick="abrirHistoriaAmb('${p.id}')"><i class="ti ti-folder"></i></button>
           <button class="btn btn-ghost btn-sm" title="Editar ficha" onclick="abrirFichaAmb('${p.id}')"><i class="ti ti-pencil"></i></button>
         </div>
       </div>
     </div>`;
   }).join('');
+}
+
+// v3_237: dar turno directo desde la ficha, con el paciente ya elegido. Es lo
+// que se busca al tocar el almanaque en la lista; mandar a la agenda a buscar
+// una franja era un rodeo.
+function darTurnoA(pacId){
+  const f = document.getElementById('agendaFecha')?.value || today();
+  abrirTurno(null, f, '', pacId);
 }
 
 // Salta a la agenda en el día del próximo turno del paciente
@@ -9763,7 +9773,16 @@ function _diaSemanaKey(fecha){
   return ['dom','lun','mar','mie','jue','vie','sab'][d.getDay()];
 }
 
-function _hhmmAMin(s){ const [a,b] = String(s||'').split(':').map(Number); return (a*60 + (b||0)) || 0; }
+// v3_237: devuelve null si la hora no es válida, en vez de 0. Antes un valor
+// vacío se leía como medianoche y la grilla salía sin ninguna franja, con un
+// mensaje que no dejaba hacer nada.
+function _hhmmAMin(s){
+  const m = String(s || '').trim().match(/^(\d{1,2}):(\d{2})/);
+  if(!m) return null;
+  const hh = Number(m[1]), mm = Number(m[2]);
+  if(!(hh >= 0 && hh <= 23 && mm >= 0 && mm <= 59)) return null;
+  return hh * 60 + mm;
+}
 function _minAHhmm(m){ const p = n => String(n).padStart(2,'0'); return `${p(Math.floor(m/60))}:${p(m%60)}`; }
 
 async function cargarTurnos(){
@@ -9847,21 +9866,39 @@ function renderAgenda(){
   const delDia = turnosDelDia(fecha);
   const resumen = document.getElementById('agendaResumen');
 
+  // v3_237: pase lo que pase con la configuración, siempre tiene que haber una
+  // forma de dar un turno. Antes, si la grilla salía vacía, no quedaba salida.
+  const botonSuelto = (txt) => `<div style="margin-top:12px"><button class="btn btn-primary btn-sm" onclick="abrirTurno(null,'${fecha}','')">
+      <i class="ti ti-calendar-plus"></i>${txt || 'Dar un turno'}</button></div>`;
+
   if(!dia || !dia.activo){
     if(resumen) resumen.textContent = '';
     cont.innerHTML = `<div style="text-align:center;padding:2.5rem 1rem;color:var(--text-muted);font-size:13px">
       <i class="ti ti-calendar-off" style="font-size:26px;display:block;margin-bottom:8px;opacity:.5"></i>
       El consultorio no atiende este día.${delDia.length ? `<br><strong>Hay ${delDia.length} turno${delDia.length===1?'':'s'} cargado${delDia.length===1?'':'s'}</strong> igual.` : ''}
       <br><span style="font-size:11.5px">Se configura en Configuración → sector.</span>
-      <div style="margin-top:12px"><button class="btn btn-ghost btn-sm" onclick="abrirTurno(null,'${fecha}','')">
-        <i class="ti ti-plus"></i>Cargar un turno igual</button></div></div>`
+      ${botonSuelto('Dar un turno igual')}</div>`
       + (delDia.length ? delDia.map(t => tarjetaTurno(t)).join('') : '');
     return;
   }
 
-  const paso = Number(cfg.duracionMin) || 60;
+  const paso = Math.max(5, Number(cfg.duracionMin) || 60);
   const cupos = Math.max(1, Number(cfg.cupos) || 1);
-  const ini = _hhmmAMin(dia.desde), fin = _hhmmAMin(dia.hasta);
+  let ini = _hhmmAMin(dia.desde), fin = _hhmmAMin(dia.hasta);
+
+  // v3_237: si los horarios están vacíos, invertidos o no entra ni una franja,
+  // se cae a 08:00–20:00 y se avisa qué quedó guardado. Es preferible una agenda
+  // usable con un aviso claro que una pantalla trabada.
+  let avisoHorario = '';
+  const invalido = (ini === null || fin === null || fin <= ini || (fin - ini) < paso);
+  if(invalido){
+    avisoHorario = `<div style="background:var(--amber-50);border:1px solid var(--amber-100);border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:var(--amber-800)">
+      <i class="ti ti-alert-triangle"></i> El horario guardado para este día es
+      <strong>${_esc(dia.desde || '(vacío)')} a ${_esc(dia.hasta || '(vacío)')}</strong>, y con turnos de ${paso} min no entra ninguna franja.
+      Se muestra una grilla de 08:00 a 20:00 para que puedas trabajar.
+      Corregilo en <strong>Configuración → sector</strong>.</div>`;
+    ini = _hhmmAMin('08:00'); fin = _hhmmAMin('20:00');
+  }
 
   const realizados = delDia.filter(t => t.estado === 'presente').length;
   if(resumen) resumen.textContent = `${delDia.length} turno${delDia.length===1?'':'s'} · ${realizados} con asistencia`;
@@ -9910,9 +9947,10 @@ function renderAgenda(){
         <div style="flex:1;min-width:0">${tarjetaTurno(t)}</div></div>`).join('')}
     </div>` : '';
 
-  cont.innerHTML = (filas.length
+  cont.innerHTML = avisoHorario + (filas.length
     ? filas.join('')
-    : `<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:13px">El horario configurado para este día no entra ni un turno de ${paso} min.</div>`)
+    : `<div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:13px">
+        No se pudo armar la grilla de este día.${botonSuelto()}</div>`)
     + bloqueFuera;
 }
 
@@ -9931,7 +9969,7 @@ function tarjetaTurno(t){
 }
 
 // ── Alta y edición de turnos ─────────────────────────────────────
-async function abrirTurno(id, fecha, hora){
+async function abrirTurno(id, fecha, hora, pacIdPre){
   const t = id ? TURNOS.find(x => x.id === id) : null;
   const cfg = cfgConsultorio(currentSector) || cfgConsultorioPorDefecto();
 
@@ -9950,8 +9988,9 @@ async function abrirTurno(id, fecha, hora){
   const sel = document.getElementById('tuPaciente');
   const lista = PAC_AMB.filter(p => String(p.sector||'') === String(currentSector||''))
     .sort((a,b)=> String(a.apellido||'').localeCompare(String(b.apellido||''),'es'));
+  const pacSel = t ? t.pacienteId : (pacIdPre || '');   // v3_237
   sel.innerHTML = '<option value="">Elegí el paciente…</option>' +
-    lista.map(p => `<option value="${p.id}"${t && t.pacienteId === p.id ? ' selected' : ''}>${_esc(p.apellido)}, ${_esc(p.nombre)}</option>`).join('');
+    lista.map(p => `<option value="${p.id}"${String(pacSel) === String(p.id) ? ' selected' : ''}>${_esc(p.apellido)}, ${_esc(p.nombre)}</option>`).join('');
   sel.onchange = pintarSesionesTurno;
 
   // Kinesiólogos del equipo
@@ -10048,7 +10087,11 @@ async function guardarTurno(){
     const i = TURNOS.findIndex(x => x.id === t.id);
     if(i >= 0) TURNOS[i] = t; else TURNOS.push(t);
     closeModal('modalTurno', true);
-    renderAgenda();
+    // v3_237: si el turno quedó en otro día, la agenda salta ahí. Si no, uno
+    // guarda y no ve nada, y parece que no se guardó.
+    const inpF = document.getElementById('agendaFecha');
+    if(inpF && inpF.value !== fecha) inpF.value = fecha;
+    consTab('agenda');
     const pac = PAC_AMB.find(p => p.id === pacId);
     showToast(previo ? 'Turno actualizado ✓' : 'Turno asignado ✓','success');
     addLog('turno', `${previo ? 'Editó' : 'Asignó'} turno ${fmtDate(fecha)} ${hora} — ${pac ? pac.apellido + ', ' + pac.nombre : ''}`);
