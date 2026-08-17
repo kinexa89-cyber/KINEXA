@@ -6811,7 +6811,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_246';
+const APP_VERSION = 'v3_247';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -24049,6 +24049,14 @@ async function guardarEvalDeglusion(){
   closeModal('modalDeglusion', true);
   // Actualizar banner en el modal de evolución
   renderBannerDeglusion(degPacId);
+  // v3_247: ofrecer el informe en el momento. Recién evaluado es cuando hace
+  // falta imprimirlo: para dejarlo en la historia clínica o adjuntarlo a la
+  // derivación. Buscarlo después en el historial es un paso que no se hace.
+  setTimeout(() => {
+    if(confirm('Evaluación guardada.\n\n¿Querés descargar el informe imprimible?')){
+      descargarPDFDeglusion(eval_.id);
+    }
+  }, 350);
 }
 
 // v3_207: hasta ahora solo se veía el resultado de la última evaluación. Saber
@@ -24069,6 +24077,165 @@ const DEG_LABELS = {
   etapaOralPrep:'Etapa oral preparatoria', etapaOral:'Etapa oral', etapaFaringea:'Etapa faríngea', etapaEsofagica:'Etapa esofágica',
   alimSemi:'Semisólidos', alimLiq:'Líquidos', alimSol:'Sólidos', obs:'Observaciones'
 };
+
+// ── v3_247: informe imprimible de la evaluación de deglución ──────────
+// Lo pidieron para dejar constancia en la historia clínica en papel y para
+// acompañar las derivaciones a fonoaudiología o a FEES/videodeglución.
+// Las secciones siguen el mismo orden del formulario, así el que lo lee al
+// lado de la cama encuentra las cosas donde espera encontrarlas.
+const DEG_SECCIONES_FORMAL = [
+  ['Estado clínico al momento de la evaluación',
+    ['fc','fr','spo2','ta','temp','gcs','rass']],
+  ['Pares craneales',
+    ['pc','pcObs']],
+  ['Praxias orofaciales',
+    ['praxCierre','praxLengua','praxPaladar','praxMandibula','praxMejillas','praxHioides']],
+  ['Musculatura',
+    ['muscFacial','muscLingual','muscFaringea']],
+  ['Voz',
+    ['vozTono','vozVolumen','vozClaridad']],
+  ['Reflejos y protección de la vía aérea',
+    ['tosVol','carraspeo','reflNauseoso','reflDeglut','reflRDD','reflTosVAA']],
+  ['Laringoscopia oral funcional (LOF)',
+    ['lofVoz','lofAscLar','lofHigiene','lofTosPost','blueTest']],
+  ['Valoración con consistencias',
+    ['val1','val2','val3','val4','val5']],
+  ['Etapas de la deglución',
+    ['etapaOralPrep','etapaOral','etapaFaringea','etapaEsofagica']],
+  ['Tolerancia alimentaria',
+    ['alimSemi','alimLiq','alimSol']],
+];
+const GUSS_ROTULOS = {
+  rass:'Vigil y colaborador (RASS ≥ -1)', estridor:'Ausencia de estridor',
+  tos:'Tos voluntaria o refleja presente', saliva:'Deglute saliva',
+  babeo:'Sin babeo', vozHumeda:'Sin voz húmeda',
+  semisolido:'Prueba de semisólido', liquido:'Prueba de líquido', solido:'Prueba de sólido',
+};
+
+async function descargarPDFDeglusion(evalId){
+  const ev = (evalDeglusion || []).find(e => String(e.id) === String(evalId));
+  if(!ev){ showToast('No se encontró la evaluación','error'); return; }
+  const p = patients.find(x => x.id === ev.patientId);
+  if(!p){ showToast('No se encontró el paciente','error'); return; }
+
+  try { showToast('Generando el informe…','success'); await cargarJsPDF(); }
+  catch(e){ showToast(e.message || 'No se pudo cargar el generador de PDF','error'); return; }
+
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit:'mm', format:'a4' });
+  const M = 14, W = 210, ANCHO = W - M * 2;
+  const VIOLETA = [124, 58, 237], GRIS = [110, 110, 120], NEGRO = [25, 25, 30];
+  let y = 0, pagina = 1;
+
+  const inst = (typeof instNombreActual === 'function' ? instNombreActual() : '') || 'Institución';
+  const esGUSS = ev.tipo === 'A';
+  const titulo = esGUSS ? 'Screening de deglución — GUSS-ICU' : 'Evaluación formal de la deglución';
+  const f = new Date();
+  const sello = `${String(f.getDate()).padStart(2,'0')}/${String(f.getMonth()+1).padStart(2,'0')}/${f.getFullYear()} ` +
+                `${String(f.getHours()).padStart(2,'0')}:${String(f.getMinutes()).padStart(2,'0')}`;
+
+  const pie = () => {
+    doc.setFontSize(7).setTextColor(...GRIS).setFont(undefined,'normal');
+    doc.text('Documento con datos de salud. Uso exclusivo del equipo tratante — no difundir.', M, 288);
+    doc.text('Kinexa · pág. ' + pagina, W - M, 288, { align:'right' });
+  };
+  const encabezado = () => {
+    doc.setFillColor(...VIOLETA).rect(0, 0, W, 26, 'F');
+    doc.setTextColor(255,255,255).setFontSize(14).setFont(undefined,'bold');
+    doc.text(titulo, M, 12);
+    doc.setFontSize(9).setFont(undefined,'normal');
+    doc.text(inst, M, 18.5);
+    doc.setFontSize(8);
+    doc.text('Generado ' + sello, W - M, 12, { align:'right' });
+    doc.text('Evaluación del ' + fmtDate(ev.fecha), W - M, 18.5, { align:'right' });
+    y = 36; pagina === 1 || null; pie();
+  };
+  const nuevaPagina = () => { doc.addPage(); pagina++; encabezado(); };
+  const espacio = alto => { if(y + alto > 278) nuevaPagina(); };
+
+  encabezado();
+
+  // ── Datos del paciente ──
+  espacio(24);
+  doc.setFillColor(243,240,252).roundedRect(M, y - 4.5, ANCHO, 17, 1.5, 1.5, 'F');
+  doc.setFontSize(11).setFont(undefined,'bold').setTextColor(...NEGRO);
+  doc.text(`${p.apellido}, ${p.nombre}`, M + 3, y + 1.5);
+  doc.setFontSize(8.5).setFont(undefined,'normal').setTextColor(...GRIS);
+  const datos = [];
+  if(p.dni) datos.push('DNI ' + p.dni);
+  if(typeof edadTextoPaciente === 'function'){ const e = edadTextoPaciente(p); if(e) datos.push(e); }
+  if(p.sala) datos.push((SALA_LABEL[p.sala] || p.sala) + (p.cama ? ' · cama ' + p.cama : ''));
+  doc.text(datos.join('   ·   '), M + 3, y + 7);
+  if(p.diagnostico){
+    doc.text(doc.splitTextToSize('Diagnóstico: ' + p.diagnostico, ANCHO - 6)[0], M + 3, y + 11.5);
+  }
+  y += 22;
+
+  // ── Resultado ──
+  espacio(20);
+  doc.setFontSize(10).setFont(undefined,'bold').setTextColor(...VIOLETA);
+  doc.text('RESULTADO', M, y); y += 5.5;
+  doc.setDrawColor(...VIOLETA).setLineWidth(0.4).line(M, y - 3.2, W - M, y - 3.2);
+  doc.setFontSize(12).setFont(undefined,'bold').setTextColor(...NEGRO);
+  doc.splitTextToSize(ev.resultadoTxt || '—', ANCHO).forEach(ln => { doc.text(ln, M, y); y += 5.4; });
+  if(ev.score != null){
+    doc.setFontSize(9.5).setFont(undefined,'normal').setTextColor(...GRIS);
+    doc.text(`Puntaje GUSS-ICU: ${ev.score} / 10`, M, y); y += 5;
+  }
+  y += 3;
+
+  // ── Detalle ──
+  const seccion = (rot, filas) => {
+    const utiles = filas.filter(([, v]) => v !== '' && v != null);
+    if(!utiles.length) return;
+    espacio(12 + utiles.length * 4.6);
+    doc.setFontSize(9).setFont(undefined,'bold').setTextColor(...VIOLETA);
+    doc.text(rot.toUpperCase(), M, y); y += 4.6;
+    doc.setDrawColor(220,216,240).setLineWidth(0.2).line(M, y - 2.6, W - M, y - 2.6);
+    utiles.forEach(([r, v]) => {
+      const val = doc.splitTextToSize(String(v), ANCHO - 62);
+      espacio(val.length * 4 + 1);
+      doc.setFontSize(8.5).setFont(undefined,'normal').setTextColor(...GRIS);
+      doc.text(doc.splitTextToSize(r, 56)[0], M, y);
+      doc.setTextColor(...NEGRO).setFont(undefined,'bold');
+      val.forEach((ln, i) => doc.text(ln, M + 60, y + i * 4));
+      y += Math.max(4.6, val.length * 4 + 0.6);
+    });
+    y += 3.5;
+  };
+
+  if(esGUSS && ev.guss){
+    seccion('Ítems evaluados', Object.entries(ev.guss)
+      .filter(([k]) => k !== 'obs')
+      .map(([k, v]) => [GUSS_ROTULOS[k] || k.replace(/_/g,' '),
+        typeof v === 'boolean' ? (v ? 'Sí' : 'No') : v]));
+    if(ev.guss.obs) seccion('Observaciones', [['', ev.guss.obs]]);
+  } else if(ev.formal){
+    DEG_SECCIONES_FORMAL.forEach(([rot, claves]) => {
+      seccion(rot, claves.map(k => [DEG_LABELS[k] || k, ev.formal[k]]));
+    });
+    // Cualquier campo que no esté en las secciones, para no perder nada
+    const yaPuestos = new Set(DEG_SECCIONES_FORMAL.flatMap(([, c]) => c).concat(['obs']));
+    const resto = Object.entries(ev.formal).filter(([k, v]) => !yaPuestos.has(k) && v !== '' && v != null);
+    if(resto.length) seccion('Otros datos', resto.map(([k, v]) => [DEG_LABELS[k] || k, v]));
+    if(ev.formal.obs) seccion('Observaciones', [['', ev.formal.obs]]);
+  }
+
+  // ── Firma ──
+  espacio(30);
+  y = Math.max(y + 8, 244);
+  doc.setDrawColor(...GRIS).setLineWidth(0.3).line(M, y, M + 72, y);
+  doc.setFontSize(8.5).setFont(undefined,'normal').setTextColor(...GRIS);
+  doc.text('Firma y sello', M, y + 4.5);
+  doc.setFontSize(9).setFont(undefined,'bold').setTextColor(...NEGRO);
+  doc.text(ev.kine || '', M, y - 2);
+  doc.setFontSize(8.5).setFont(undefined,'normal').setTextColor(...GRIS);
+  doc.text('Kinesiología · ' + inst, M, y + 9);
+
+  const limpio = s => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^A-Za-z0-9]+/g,'_');
+  doc.save(`Deglucion_${esGUSS?'GUSS':'Formal'}_${limpio(p.apellido)}_${ev.fecha}.pdf`);
+  try { addLog('eval_deg_pdf', `Informe de deglución descargado — ${p.apellido} (${fmtDate(ev.fecha)})`); } catch(_){}
+}
 
 function _degDetalleHTML(ev){
   const filas = [];
@@ -24108,7 +24275,16 @@ function verHistorialDeglusion(patientId){
         </div>
         <i class="ti ti-chevron-down deg-flecha"></i>
       </div>
-      <div class="deg-cuerpo">${_degDetalleHTML(ev)}</div>
+      <div class="deg-cuerpo">
+        ${_degDetalleHTML(ev)}
+        <div style="margin-top:10px;padding-top:9px;border-top:1px solid var(--border)">
+          <button type="button" class="btn btn-ghost btn-sm"
+            style="border:1.5px solid var(--purple-400);color:var(--purple-800)"
+            onclick="event.stopPropagation(); descargarPDFDeglusion('${ev.id}')">
+            <i class="ti ti-file-download"></i> Descargar informe imprimible
+          </button>
+        </div>
+      </div>
     </div>`).join('')
     : '<div style="padding:22px;text-align:center;color:var(--text-muted);font-size:13px">Todavía no hay evaluaciones.</div>';
   openModal('modalDegHistorial');
