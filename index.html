@@ -2895,74 +2895,11 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             </div>
           </div>
 
-          <!-- ══ v3_216: HACOR ══ -->
-          <div style="margin-top:10px">
-            <span class="tag" id="tagHACOR" onclick="toggleHACOR(this)" style="font-weight:600;border-color:var(--red-200);color:var(--red-700);background:var(--red-50)">
-              <i class="ti ti-calculator"></i> Calcular HACOR (riesgo de fracaso de la VNI)
-            </span>
-          </div>
-          <div id="eHACORPanel" style="display:none;margin-top:10px;border:1px solid var(--red-200);border-radius:10px;padding:11px 13px;background:#fff">
-            <div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-bottom:9px">
-              Escala de Duan (2017), 0 a 25 puntos. Se evalúa idealmente <strong>entre la 1ª y la 2ª hora</strong> de iniciada la VNI.
-              Cargá los valores <strong>de ese momento</strong>, con la VNI ya puesta: no los del ingreso ni los de Signos vitales si son de antes del soporte.
-            </div>
-            <div class="form-row">
-              <div class="form-group"><label>Momento de la evaluación</label>
-                <select id="eHACORMomento" onchange="calcHACOR()">
-                  <option value="">-</option>
-                  <option>Al inicio de la VNI</option>
-                  <option>1–2 h de VNI</option>
-                  <option>12 h de VNI</option>
-                  <option>24 h de VNI</option>
-                  <option>48 h de VNI</option>
-                </select>
-              </div>
-              <div class="form-group"><label>Glasgow (GCS)</label>
-                <input type="number" id="eHACORGcs" inputmode="numeric" min="3" max="15" placeholder="3–15" oninput="calcHACOR()">
-              </div>
-            </div>
-            <div class="form-row four">
-              <div class="form-group"><label>FC (lpm)</label><input type="number" id="eHACORFc" inputmode="numeric" oninput="calcHACOR()"></div>
-              <div class="form-group"><label>pH</label><input type="number" id="eHACORPh" inputmode="decimal" step="0.01" oninput="calcHACOR()"></div>
-              <div class="form-group"><label>PaO₂/FiO₂</label><input type="number" id="eHACORPafi" inputmode="decimal" oninput="calcHACOR()"></div>
-              <div class="form-group"><label>FR (rpm)</label><input type="number" id="eHACORFr" inputmode="numeric" oninput="calcHACOR()"></div>
-            </div>
-            <div id="eHACORBox" style="margin-top:6px;background:var(--gray-50);border-radius:8px;padding:9px 12px">
-              <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
-                <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">HACOR</span>
-                <span style="font-size:22px;font-weight:800" id="eHACORValor">—</span>
-                <span style="font-size:12px;color:var(--text-muted)">/ 25</span>
-                <span style="font-size:12.5px;font-weight:700" id="eHACORCat"></span>
-              </div>
-              <div style="font-size:11px;color:var(--text-muted);margin-top:3px" id="eHACORDetalle"></div>
-              <div id="eHACORFaltan" style="font-size:11px;color:var(--amber-600);display:none;margin-top:3px"></div>
-            </div>
-            <input type="hidden" id="eHACORTotal">
-          </div>
         </div>
         <div id="eSubCNAF" style="display:none" class="dec-sublevel">
           <div class="form-row">
             <div class="form-group"><label>Flujo (L/min)</label><input type="number" id="eCNAFflujo" inputmode="decimal" placeholder="20–60" oninput="calcROX()"></div>
             <div class="form-group"><label>FiO₂ (%)</label><input type="text" id="eCNAFfio2" inputmode="numeric" maxlength="3" placeholder="21–100" oninput="filtrarFiO2(this); calcROX()" onblur="normalizarFiO2(this); calcROX()"></div>
-          </div>
-          <!-- v3_217: SpO₂ y FR propias del ROX, medidas CON la CNAF puesta -->
-          <div class="form-row">
-            <div class="form-group"><label>SpO₂ con CNAF (%)</label>
-              <input type="number" id="eROXSpo2" inputmode="numeric" min="50" max="100" placeholder="%" oninput="calcROX()"></div>
-            <div class="form-group"><label>FR con CNAF (rpm)</label>
-              <input type="number" id="eROXFr" inputmode="numeric" min="5" max="80" placeholder="rpm" oninput="calcROX()"></div>
-          </div>
-          <div id="eROXBox" style="display:none;margin-top:8px;background:var(--teal-50);border:1px solid var(--teal-100);border-radius:8px;padding:8px 12px">
-            <div style="display:flex;align-items:baseline;gap:8px">
-              <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--teal-800)">Índice ROX</span>
-              <span style="font-size:20px;font-weight:800" id="eROXValor">—</span>
-              <span style="font-size:12px;font-weight:700" id="eROXCat"></span>
-            </div>
-            <div style="font-size:11px;color:var(--text-muted)" id="eROXDetalle"></div>
-            <div id="eROXFaltan" style="font-size:11px;color:var(--amber-600);display:none">Cargá SpO₂ y FR medidas con la CNAF puesta.</div>
-            <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px">
-              Los valores tienen que ser los del momento en que el paciente ya está con la CNAF, no los del ingreso.
-            </div>
           </div>
         </div>
       </div>
@@ -3068,6 +3005,116 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+
+      <!-- ══ v3_245: SCORES DE SOPORTE NO INVASIVO ══════════════════
+           Antes el HACOR vivía adentro del bloque de VNI inicial, y el ROX y
+           el WOB adentro del de CNAF inicial. Si el paciente llegaba con cánula
+           nasal y vos le colocabas VNI, el contenedor de VNI estaba oculto y no
+           había forma de puntuar el HACOR — justo en la sesión donde más falta
+           hace, porque el HACOR se mide entre la 1ª y la 2ª hora de iniciada.
+           Ahora los tres viven acá afuera y aparecen si el soporte que los
+           justifica está al inicio O al final de la sesión. -->
+      <div id="eScoresNoInv" style="display:none;margin-top:12px">
+        <div id="eScoresMomento" style="font-size:11.5px;color:var(--text-muted);background:var(--gray-50);border-radius:8px;padding:7px 11px;margin-bottom:10px;line-height:1.5"></div>
+
+        <!-- ══ v3_216: HACOR ══ -->
+        <div id="eHACORWrap" style="display:none;margin-top:10px">
+          <span class="tag" id="tagHACOR" onclick="toggleHACOR(this)" style="font-weight:600;border-color:var(--red-200);color:var(--red-700);background:var(--red-50)">
+            <i class="ti ti-calculator"></i> Calcular HACOR (riesgo de fracaso de la VNI)
+          </span>
+        </div>
+        <div id="eHACORPanel" style="display:none;margin-top:10px;border:1px solid var(--red-200);border-radius:10px;padding:11px 13px;background:#fff">
+          <div style="font-size:11.5px;color:var(--text-muted);line-height:1.5;margin-bottom:9px">
+            Escala de Duan (2017), 0 a 25 puntos. Se evalúa idealmente <strong>entre la 1ª y la 2ª hora</strong> de iniciada la VNI.
+            Cargá los valores <strong>de ese momento</strong>, con la VNI ya puesta: no los del ingreso ni los de Signos vitales si son de antes del soporte.
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Momento de la evaluación</label>
+              <select id="eHACORMomento" onchange="calcHACOR()">
+                <option value="">-</option>
+                <option>Al inicio de la VNI</option>
+                <option>1–2 h de VNI</option>
+                <option>12 h de VNI</option>
+                <option>24 h de VNI</option>
+                <option>48 h de VNI</option>
+              </select>
+            </div>
+            <div class="form-group"><label>Glasgow (GCS)</label>
+              <input type="number" id="eHACORGcs" inputmode="numeric" min="3" max="15" placeholder="3–15" oninput="calcHACOR()">
+            </div>
+          </div>
+          <div class="form-row four">
+            <div class="form-group"><label>FC (lpm)</label><input type="number" id="eHACORFc" inputmode="numeric" oninput="calcHACOR()"></div>
+            <div class="form-group"><label>pH</label><input type="number" id="eHACORPh" inputmode="decimal" step="0.01" oninput="calcHACOR()"></div>
+            <div class="form-group"><label>PaO₂/FiO₂</label><input type="number" id="eHACORPafi" inputmode="decimal" oninput="calcHACOR()"></div>
+            <div class="form-group"><label>FR (rpm)</label><input type="number" id="eHACORFr" inputmode="numeric" oninput="calcHACOR()"></div>
+          </div>
+          <div id="eHACORBox" style="margin-top:6px;background:var(--gray-50);border-radius:8px;padding:9px 12px">
+            <div style="display:flex;align-items:baseline;gap:9px;flex-wrap:wrap">
+              <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted)">HACOR</span>
+              <span style="font-size:22px;font-weight:800" id="eHACORValor">—</span>
+              <span style="font-size:12px;color:var(--text-muted)">/ 25</span>
+              <span style="font-size:12.5px;font-weight:700" id="eHACORCat"></span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:3px" id="eHACORDetalle"></div>
+            <div id="eHACORFaltan" style="font-size:11px;color:var(--amber-600);display:none;margin-top:3px"></div>
+          </div>
+          <input type="hidden" id="eHACORTotal">
+        </div>
+
+        <div id="eROXWOBWrap" style="display:none;margin-top:10px">
+        <!-- v3_217: SpO₂ y FR propias del ROX, medidas CON la CNAF puesta -->
+        <div class="form-row">
+          <div class="form-group"><label>SpO₂ con CNAF (%)</label>
+            <input type="number" id="eROXSpo2" inputmode="numeric" min="50" max="100" placeholder="%" oninput="calcROX()"></div>
+          <div class="form-group"><label>FR con CNAF (rpm)</label>
+            <input type="number" id="eROXFr" inputmode="numeric" min="5" max="80" placeholder="rpm" oninput="calcROX()"></div>
+        </div>
+        <div id="eROXBox" style="display:none;margin-top:8px;background:var(--teal-50);border:1px solid var(--teal-100);border-radius:8px;padding:8px 12px">
+          <div style="display:flex;align-items:baseline;gap:8px">
+            <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--teal-800)">Índice ROX</span>
+            <span style="font-size:20px;font-weight:800" id="eROXValor">—</span>
+            <span style="font-size:12px;font-weight:700" id="eROXCat"></span>
+          </div>
+          <div style="font-size:11px;color:var(--text-muted)" id="eROXDetalle"></div>
+          <div id="eROXFaltan" style="font-size:11px;color:var(--amber-600);display:none">Cargá SpO₂ y FR medidas con la CNAF puesta.</div>
+          <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px">
+            Los valores tienen que ser los del momento en que el paciente ya está con la CNAF, no los del ingreso.
+          </div>
+        </div>
+
+        <!-- v3_244: escala de trabajo respiratorio (Apigo, Crit Care 2020).
+             Combina la FR con la activación de músculos accesorios. Se puntúa
+             al lado de la cama, sin equipamiento, y el corte está en 4. -->
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">
+          <div class="dec-label">Trabajo respiratorio (WOB score)</div>
+          <div class="form-row">
+            <div class="form-group"><label>FR para el WOB (rpm)</label>
+              <input type="number" id="eWOBFr" inputmode="numeric" min="5" max="80" placeholder="rpm" oninput="calcWOB()">
+              <div class="form-hint">≤20 = 1 · 21–25 = 2 · 26–30 = 3 · &gt;30 = 4</div>
+            </div>
+          </div>
+          <div class="dec-label" style="margin-top:6px">Músculos accesorios <span style="font-weight:400;text-transform:none;letter-spacing:0">— 1 punto cada uno</span></div>
+          <div class="tag-group" id="tagsWOB">
+            <span class="mtag" onclick="toggleTag(this); calcWOB()" title="Se mira si las narinas se abren al inspirar, parado a un metro del paciente">Aleteo nasal</span>
+            <span class="mtag" onclick="toggleTag(this); calcWOB()" title="Se palpa la inserción clavicular con dos dedos y se busca aumento de tensión en la inspiración">Esternocleidomastoideo</span>
+            <span class="mtag" onclick="toggleTag(this); calcWOB()" title="Se palpa el abdomen y se busca aumento de tensión durante la espiración">Abdominales (espiración)</span>
+          </div>
+          <div id="eWOBBox" style="display:none;margin-top:8px;background:var(--teal-50);border:1px solid var(--teal-100);border-radius:8px;padding:8px 12px">
+            <div style="display:flex;align-items:baseline;gap:8px">
+              <span style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--teal-800)">WOB score</span>
+              <span style="font-size:20px;font-weight:800" id="eWOBValor">—</span>
+              <span style="font-size:12px;font-weight:700" id="eWOBCat"></span>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted)" id="eWOBDetalle"></div>
+            <div style="font-size:10.5px;color:var(--text-muted);margin-top:4px">
+              Escala de 1 a 7 (Apigo y col., <em>Critical Care</em> 2020). Por encima de 4 los autores sugieren revalorar la necesidad de intubación.
+            </div>
+          </div>
+        </div>
         </div>
       </div>
 
@@ -3747,7 +3794,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 
     <!-- PVE -->
     <div class="accordion-header" onclick="toggleAccordion('accPVE')">
-      <span><i class="ti ti-activity" style="margin-right:6px;color:var(--teal-600)"></i>Prueba de ventilación espontánea (PVE)</span>
+      <span><i class="ti ti-activity" style="margin-right:6px;color:var(--teal-600)"></i>Weaning</span>
       <i class="ti ti-chevron-down accordion-arrow" id="arrPVE"></i>
     </div>
     <div class="accordion-body" id="accPVE">
@@ -3768,6 +3815,23 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <input class="f-auto" type="text" id="eNPVEDisplay" readonly>
           <div class="form-hint">Calculado automáticamente</div>
         </div>
+      </div>
+
+      <!-- v3_244: el cuff leak test pasa a ser una pregunta al mismo nivel que
+           la PVE. Antes vivía al final del bloque y solo para quemados. -->
+      <div id="pveSubCuffLeak" style="display:none;margin-top:4px">
+        <div class="form-row">
+          <div class="form-group">
+            <label>¿Se hizo cuff leak test?</label>
+            <select id="eCuffLeak" onchange="onCuffLeakChange(this.value)">
+              <option value="">-</option>
+              <option value="no_evaluado">No</option>
+              <option value="negativo">Sí — negativo (hay fuga)</option>
+              <option value="positivo">Sí — positivo (no hay fuga)</option>
+            </select>
+          </div>
+        </div>
+        <div id="cuffLeakHint" class="form-hint" style="display:none;margin:-4px 0 10px"></div>
       </div>
 
       <!-- PVE = NO -->
@@ -4022,23 +4086,6 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         </div>
       </div>
     </div><!-- fin pveTQTBlock -->
-
-    <!-- Cuff Leak Test: solo pacientes quemados -->
-    <div id="pveSubCuffLeak" style="display:none;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);margin-bottom:8px">Cuff Leak Test</div>
-        <div class="form-group">
-          <select id="eCuffLeak">
-            <option value="">-</option>
-            <option value="positivo">Positivo — No hay fuga (edema subglótico)</option>
-            <option value="negativo">Negativo — Hay fuga (sin edema significativo)</option>
-            <option value="no_evaluado">No evaluado</option>
-          </select>
-          <div class="form-hint" style="color:var(--amber-600);margin-top:4px">
-            <strong>Positivo</strong> (sin fuga) = riesgo de edema post extubación &nbsp;·&nbsp;
-            <strong>Negativo</strong> (hay fuga) = vía aérea permeable
-          </div>
-        </div>
-      </div>
     </div>
 
     <hr class="sep">
@@ -6764,7 +6811,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_243';
+const APP_VERSION = 'v3_245';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -13695,6 +13742,12 @@ function limpiarMotivoReconexionARM(){
   document.querySelectorAll('#tagsPVETQTMotivo .mtag.active').forEach(t=>t.classList.remove('active'));
 }
 
+// v3_244: los tags del WOB también hay que limpiarlos al abrir una evolución nueva
+function limpiarTagsWOB(){
+  document.querySelectorAll('#tagsWOB .mtag.active').forEach(t=>t.classList.remove('active'));
+  try { calcWOB(); } catch(_){}
+}
+
 function onPVETQTColocadoChange(val){
   document.getElementById('pveTQTDetalle').style.display = val==='Si' ? 'block' : 'none';
   if(val!=='Si'){
@@ -14688,6 +14741,51 @@ function calcROX(){
   detEl.textContent = `(SpO₂ ${spo2} / FiO₂ ${(fio2/100).toFixed(2)}) / FR ${fr} rpm`;
 }
 
+// v3_244: WOB score (Apigo y col., Critical Care 2020;24:477).
+// Escala de cabecera, sin equipamiento: la FR aporta de 1 a 4 puntos y cada
+// músculo accesorio activado suma 1. El rango va de 1 a 7 y el punto de corte
+// que proponen los autores es 4 — por encima, revalorar necesidad de intubación.
+const WOB_MUSCULOS = ['Aleteo nasal','Esternocleidomastoideo','Abdominales (espiración)'];
+function _wobPuntosFR(fr){
+  if(isNaN(fr) || fr <= 0) return null;
+  if(fr <= 20) return 1;
+  if(fr <= 25) return 2;
+  if(fr <= 30) return 3;
+  return 4;
+}
+function _wobMusculos(){
+  return [...document.querySelectorAll('#tagsWOB .mtag.active')].map(t => t.textContent.trim());
+}
+function _wobCalculado(){
+  const pFR = _wobPuntosFR(parseFloat(document.getElementById('eWOBFr')?.value));
+  if(pFR === null) return null;
+  return pFR + _wobMusculos().length;
+}
+function calcWOB(){
+  const box = document.getElementById('eWOBBox');
+  if(!box) return;
+  const fr = parseFloat(document.getElementById('eWOBFr')?.value);
+  const pFR = _wobPuntosFR(fr);
+  const mus = _wobMusculos();
+  // Sin FR no hay score: los músculos solos no alcanzan
+  if(pFR === null){
+    box.style.display = mus.length ? 'block' : 'none';
+    document.getElementById('eWOBValor').textContent = '—';
+    document.getElementById('eWOBCat').textContent = '';
+    document.getElementById('eWOBDetalle').textContent = mus.length ? 'Cargá la FR para calcular el score.' : '';
+    return;
+  }
+  box.style.display = 'block';
+  const total = pFR + mus.length;
+  document.getElementById('eWOBValor').textContent = total;
+  const catEl = document.getElementById('eWOBCat');
+  if(total <= 4){ catEl.textContent = 'Tolerable — seguir con soporte no invasivo'; catEl.style.color = 'var(--teal-700)'; }
+  else { catEl.textContent = 'Elevado — revalorar necesidad de intubación'; catEl.style.color = 'var(--red-600)'; }
+  document.getElementById('eWOBDetalle').textContent =
+    `FR ${fr} rpm = ${pFR} ${pFR === 1 ? 'punto' : 'puntos'}` +
+    (mus.length ? ` + ${mus.length} músculo${mus.length > 1 ? 's' : ''} (${mus.join(', ')})` : ' + sin músculos accesorios');
+}
+
 function calcMRCEvo(){
   const vals = MRC_CAMPOS_EVO.map(id=>{ const v = parseInt(document.getElementById(id)?.value); return isNaN(v) ? null : v; });
   const llenos = vals.filter(v=>v!==null);
@@ -14839,10 +14937,12 @@ function precargarVentilacionUltimaEvo(patientId){
 // el dato quedaba adentro y se guardaba igual.
 const CAMPOS_O2_NO_INVASIVO = ['eCNflujo','eMVfio2','eMRflujo','eCNAFflujo','eCNAFfio2',
   'eROXSpo2','eROXFr',   // v3_217
+  'eWOBFr',              // v3_244
   'eVNIModo','eVNIPi','eVNIVt','eVNIFr','eVNIPeep','eVNIFio2','eVNIMascara',
   'eVNIMotivo','eVNIHoras'];   // v3_216
 const CLAVES_O2_NO_INVASIVO = ['cnFlujo','mvFio2','mrFlujo','cnafFlujo','cnafFio2',
   'roxSpo2','roxFr','rox',
+  'wobFr','wobMusculos','wob',   // v3_244
   'vniModo','vniPi','vniVt','vniFr','vniPeep','vniFio2','vniMascara',
   'vniMotivo','vniHoras'];
 // Una evolución está en ARM invasiva si tiene TET/TQT y no tiene interfaz espontánea
@@ -15684,17 +15784,37 @@ function actualizarBloquesRespiratorios(){
 
 // v3_207: el cuff leak test evalúa el edema de vía aérea antes de extubar, así
 // que solo tiene sentido con TET. En un traqueostomizado no se extuba nada.
-// Antes se mostraba a todo paciente quemado, estuviera intubado o no.
+// v3_244: antes se mostraba solo al paciente quemado. Lo pidieron los kinesiólogos
+// para todo paciente con TET: el edema laríngeo post-intubación no es exclusivo
+// de la injuria por inhalación, y la prueba es parte de la decisión de extubar
+// en cualquier paciente con intubación prolongada.
 function actualizarCuffLeak(){
   const box = document.getElementById('pveSubCuffLeak');
   if(!box) return;
-  const p = patients.find(x => x.id === currentEvoPacId);
-  const esQuemado = p?.tipoKine === 'quemado';
   const iface = String(document.getElementById('eInterfazPrincipal')?.value || '');
-  const conTET = iface === 'TET';
-  const ver = esQuemado && conTET;
+  const ver = iface === 'TET';
   box.style.display = ver ? 'block' : 'none';
   if(!ver){ const el = document.getElementById('eCuffLeak'); if(el) el.value = ''; }
+  if(!ver) onCuffLeakChange('');
+}
+
+// v3_244: la interpretación aparece recién cuando se elige un resultado, para
+// no llenar el formulario de texto que nadie está leyendo todavía.
+function onCuffLeakChange(v){
+  const el = document.getElementById('cuffLeakHint');
+  if(!el) return;
+  if(v === 'positivo'){
+    el.style.display = 'block';
+    el.style.color = 'var(--amber-600)';
+    el.innerHTML = '<strong>Sin fuga</strong> — sugiere edema subglótico y riesgo de estridor post extubación. Suele indicar postergar la extubación o considerar corticoides.';
+  } else if(v === 'negativo'){
+    el.style.display = 'block';
+    el.style.color = 'var(--teal-600)';
+    el.innerHTML = '<strong>Hay fuga</strong> — vía aérea permeable, sin signos de edema significativo.';
+  } else {
+    el.style.display = 'none';
+    el.innerHTML = '';
+  }
 }
 
 // ── v3_209: humidificación de la vía aérea artificial ──────────────
@@ -15811,6 +15931,7 @@ function setInterfazEsp(tipo){
   document.getElementById('eSubVANO2').style.display = tipo === 'VAN_O2' ? 'block' : 'none';
   document.getElementById('eSubVNI').style.display  = (tipo === 'VNI' || tipo === 'VNI_CNAF') ? 'block' : 'none';
   document.getElementById('eSubCNAF').style.display = (tipo === 'CNAF' || tipo === 'VNI_CNAF') ? 'block' : 'none';
+  actualizarScoresNoInvasivos();   // v3_245
   calcROX();
   document.getElementById('tqtBlock').style.display = esTQT ? 'block' : 'none';
   actualizarSeccionDecanulacion(esTQT);
@@ -16074,6 +16195,7 @@ function limpiarSoporteFinal(){
     .forEach(id => { const e = document.getElementById(id); if(e) e.style.display = 'none'; });
   const t = document.getElementById('tagModSoporte');
   if(t) t.classList.remove('active');
+  actualizarScoresNoInvasivos();   // v3_245: al sacar el soporte final, revisar los scores
 }
 
 function setSoporteFinal(tipo){
@@ -16088,6 +16210,7 @@ function setSoporteFinal(tipo){
   document.getElementById('eSubF_VNI').style.display   = (tipo === 'VNI'  || tipo === 'VNI_CNAF') ? 'block' : 'none';
   document.getElementById('eSubF_ARM').style.display   = tipo === 'ARM' ? 'block' : 'none';
   actualizarBloquesRespiratorios();   // v3_224: la intubación abre los bloques de ARM
+  actualizarScoresNoInvasivos();      // v3_245
   marcarModalSucio('modalEvo');
 }
 
@@ -17348,6 +17471,7 @@ const EVO_LABELS = {
   cnFlujo:'Cánula nasal (L/min)', mvFio2:'Máscara Venturi FiO₂ (%)', mrFlujo:'Máscara reservorio (L/min)',
   cnafFlujo:'CNAF flujo (L/min)', cnafFio2:'CNAF FiO₂ (%)',
   roxSpo2:'SpO₂ con CNAF (%)', roxFr:'FR con CNAF (rpm)', rox:'Índice ROX',
+  wobFr:'FR para el WOB (rpm)', wobMusculos:'Músculos accesorios', wob:'WOB score',
   vniModo:'VNI modo', vniPi:'VNI Pi', vniVt:'VNI Vt', vniFr:'VNI FR', vniPeep:'VNI PEEP', vniFio2:'VNI FiO₂ (%)', vniMascara:'VNI máscara',
   aerosolVia:'Aerosolterapia — vía', ti:'Ti (s)', pausaInsp:'Pausa inspiratoria (s)', pausaInsp2:'Pausa inspiratoria (s) (post-mod.)', pc:'Presión control', peept:'PEEP total', rinsp:'Resistencia insp.', flujo:'Flujo (L/min)',
   mp:'Poder mecánico', p01:'P0.1', deltaPocc:'ΔPocc', hco3:'HCO₃', lactato:'Lactato',
@@ -17423,6 +17547,7 @@ const EVO_SKIP_CAMPOS = new Set([
   'hacor','hacorMomento','hacorGcs','hacorFc','hacorPh','hacorPafi','hacorFr',
   'sofa','sofaResp','sofaCoag','sofaHep','sofaCardio','sofaNeuro','sofaRenal',  // sección SOFA
   'roxSpo2','roxFr','rox',                                           // sección Ventilación / Interfaz
+  'wobFr','wobMusculos','wob',                                       // sección Ventilación / Interfaz
   'humidMotivoPasiva',                                               // va con la humidificación
   'pveFlujoRel','pveFlujoCalc',                                      // sección PVE
   'cnFlujo','mvFio2','mrFlujo','cnafFlujo','cnafFio2',
@@ -17575,6 +17700,16 @@ function fmtROX(e){
   return `${n.toFixed(2)} — ${cat}`;
 }
 
+// v3_244: WOB score con su lectura (Apigo: >4 sugiere revalorar intubación)
+function fmtWOB(e){
+  if(e?.wob === '' || e?.wob === null || e?.wob === undefined) return '';
+  const n = Number(e.wob);
+  if(!isFinite(n)) return '';
+  const mus = Array.isArray(e.wobMusculos) && e.wobMusculos.length
+    ? ' (' + e.wobMusculos.join(', ') + ')' : '';
+  return `${n} / 7 — ${n > 4 ? 'elevado' : 'tolerable'}${mus}`;
+}
+
 // HACOR con su lectura, para que el número no quede solo
 function fmtHACOR(e){
   if(e?.hacor === '' || e?.hacor === null || e?.hacor === undefined) return '';
@@ -17670,6 +17805,7 @@ function evoCardHTML(e, i){
     [_sinO2NI(e.cnafFlujo),'CNAF flujo (L/min)'], [_sinO2NI(e.cnafFio2),'CNAF FiO₂ (%)'],
     [_sinO2NI(e.roxSpo2),'SpO₂ con CNAF (%)'], [_sinO2NI(e.roxFr),'FR con CNAF (rpm)'],
     [_sinO2NI(fmtROX(e)),'Índice ROX'],
+    [_sinO2NI(fmtWOB(e)),'WOB score'],   // v3_244
     [_sinO2NI(e.vniModo),'VNI modo'], [_sinO2NI(e.vniPi),'VNI Pi'], [_sinO2NI(e.vniVt),'VNI Vt'], [_sinO2NI(e.vniFr),'VNI FR'],
     [_sinO2NI(e.vniPeep),'VNI PEEP'], [_sinO2NI(e.vniFio2),'VNI FiO₂ (%)'], [_sinO2NI(e.vniMascara),'VNI máscara'],
     // v3_216
@@ -19530,7 +19666,7 @@ function openEvolucion(patientId){
     'eTCT1','eTCT2','eTCT3','eTCT4','eTCTScore',
     'eQxDiaPOP','eQxCarga','eQxHerida',
     'eAmpNivel','eAmpMunon','eAmpVendaje',
-    'eCNAFflujo','eCNAFfio2','eROXSpo2','eROXFr',
+    'eCNAFflujo','eCNAFfio2','eROXSpo2','eROXFr','eWOBFr',   // v3_244
     'eVNIModo','eVNIPi','eVNIVt','eVNIFr','eVNIPeep','eVNIFio2','eVNIMascara',
     'eMRCAbdHombD','eMRCFlexCodoD','eMRCExtMunD','eMRCAbdHombI','eMRCFlexCodoI','eMRCExtMunI',
     'eMRCFlexCadD','eMRCExtRodD','eMRCDorsiTobD','eMRCFlexCadI','eMRCExtRodI','eMRCDorsiTobI',
@@ -19583,6 +19719,7 @@ function openEvolucion(patientId){
     const el=document.getElementById(id); if(el) el.style.display='none';
   });
   limpiarMotivoReconexionARM();
+  limpiarTagsWOB();   // v3_244
   document.getElementById('pveTETBlock').style.display = 'block';
   document.getElementById('pveTQTBlock').style.display = 'none';
   // Reset árbol Proceso de Decanulación (canulaTQTBlock eliminado en v3_97)
@@ -20181,6 +20318,61 @@ function toggleHACOR(el){
 // soporte. Rellenarlos automáticamente daba un puntaje que parecía válido pero
 // correspondía a otro momento clínico: el error más peligroso posible en una
 // escala que decide si se intuba o no. Se cargan siempre a mano.
+
+// ── v3_245: qué scores corresponden, mirando inicio Y final de la sesión ──
+// El HACOR aplica si hubo VNI en algún momento; el ROX y el WOB, si hubo CNAF.
+// Si el soporte cambió durante la sesión, se avisa a qué momento referirlos:
+// puntuar el HACOR con los valores de antes de colocar la VNI no significa nada.
+function actualizarScoresNoInvasivos(){
+  const wrap = document.getElementById('eScoresNoInv');
+  if(!wrap) return;
+  const ini = String(document.getElementById('eInterfazEsp')?.value || '');
+  const fin = String(document.getElementById('eSoporteFinalTipo')?.value || '');
+
+  const conVNI  = t => t === 'VNI'  || t === 'VNI_CNAF';
+  const conCNAF = t => t === 'CNAF' || t === 'VNI_CNAF';
+
+  const hayVNI  = conVNI(ini)  || conVNI(fin);
+  const hayCNAF = conCNAF(ini) || conCNAF(fin);
+
+  wrap.style.display = (hayVNI || hayCNAF) ? 'block' : 'none';
+
+  const hacorWrap = document.getElementById('eHACORWrap');
+  if(hacorWrap) hacorWrap.style.display = hayVNI ? 'block' : 'none';
+  const rwWrap = document.getElementById('eROXWOBWrap');
+  if(rwWrap) rwWrap.style.display = hayCNAF ? 'block' : 'none';
+
+  // Nota de contexto: solo cuando el soporte cambió en la sesión
+  const nota = document.getElementById('eScoresMomento');
+  if(nota){
+    const NOM = { VAN_AA:'aire ambiente', VAN_O2:'VAN con O₂', CNAF:'CNAF',
+                  VNI:'VNI', VNI_CNAF:'VNI + CNAF', TQT_O2:'TQT con O₂',
+                  TQT_AA:'TQT aire ambiente', ARM:'ARM' };
+    if(fin && ini && fin !== ini){
+      nota.style.display = 'block';
+      nota.innerHTML = '<i class="ti ti-info-circle"></i> El paciente pasó de <strong>' +
+        (NOM[ini] || ini) + '</strong> a <strong>' + (NOM[fin] || fin) +
+        '</strong> en esta sesión. Cargá los valores del momento en que ya estaba con el soporte que estás puntuando, no los del inicio.';
+    } else {
+      nota.style.display = 'none';
+      nota.innerHTML = '';
+    }
+  }
+
+  // Si un score dejó de corresponder, se limpia para no guardar datos huérfanos
+  if(!hayVNI){
+    ['eHACORMomento','eHACORGcs','eHACORFc','eHACORPh','eHACORPafi','eHACORFr','eHACORTotal']
+      .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+    try { calcHACOR(); } catch(_){}
+  }
+  if(!hayCNAF){
+    ['eROXSpo2','eROXFr','eWOBFr'].forEach(id => {
+      const el = document.getElementById(id); if(el) el.value = '';
+    });
+    try { limpiarTagsWOB(); } catch(_){}
+    try { calcROX(); } catch(_){}
+  }
+}
 
 function calcHACOR(){
   const G = id => document.getElementById(id)?.value ?? '';
@@ -20975,6 +21167,7 @@ const EVO_FIELD_MAP = {
   cnFlujo:'eCNflujo', mvFio2:'eMVfio2', mrFlujo:'eMRflujo',
   cnafFlujo:'eCNAFflujo', cnafFio2:'eCNAFfio2',
   roxSpo2:'eROXSpo2', roxFr:'eROXFr',   // v3_217
+  wobFr:'eWOBFr',                       // v3_244
   vniModo:'eVNIModo', vniPi:'eVNIPi', vniVt:'eVNIVt', vniFr:'eVNIFr', vniPeep:'eVNIPeep', vniFio2:'eVNIFio2', vniMascara:'eVNIMascara',
   modo:'eModo', curvaFlujo:'eCurvaFlujo', vt:'eVT', vtkg:'eVTkg', fr:'eFR', frReal:'eFRreal', peep:'ePEEP',
   fc:'eFC', tas:'eTAS', tad:'eTAD', tam:'eTAM', spo2Mon:'eSpO2Mon', frMon:'eFRMon',
@@ -21190,6 +21383,16 @@ function precargarCamposEvolucion(evo){
   cargarTagsDec('tagsDecMotivoOclusion', evo.decMotivoOclusion);
   cargarTagsDec('tagsDecMotivoValvula', evo.decMotivoValvula);
   cargarTagsDec('tagsDecMotivoNoDecanulacion', evo.decMotivoNoDecanulacion);
+
+  // v3_244: repintar el WOB y la interpretación del cuff leak al abrir una
+  // evolución ya guardada, si no el score aparece vacío aunque el dato esté.
+  try { actualizarScoresNoInvasivos(); } catch(_){}   // v3_245
+  const wobMus = Array.isArray(evo.wobMusculos) ? evo.wobMusculos : [];
+  document.querySelectorAll('#tagsWOB .mtag').forEach(t => {
+    t.classList.toggle('active', wobMus.includes(t.textContent.trim()));
+  });
+  try { calcWOB(); } catch(_){}
+  try { onCuffLeakChange(evo.cuffLeak || ''); } catch(_){}
 
   // Setting ventilatorio modificado (sub-bloque 2)
   if(evo.modSetting){
@@ -21417,6 +21620,7 @@ async function guardarEvolucion(){
     cnafFlujo:GN('eCNAFflujo'), cnafFio2:GN('eCNAFfio2'),
     // v3_217: SpO₂ y FR medidas con la CNAF puesta, y el ROX que sale de ellas
     roxSpo2:GN('eROXSpo2'), roxFr:GN('eROXFr'), rox: _roxCalculado(),
+    wobFr:GN('eWOBFr'), wobMusculos:_wobMusculos(), wob:_wobCalculado(),   // v3_244
     vniModo:G('eVNIModo'), vniPi:GN('eVNIPi'), vniVt:GN('eVNIVt'), vniFr:GN('eVNIFr'), vniPeep:GN('eVNIPeep'), vniFio2:GN('eVNIFio2'), vniMascara:G('eVNIMascara'),
     modo:G('eModo'), curvaFlujo:G('eCurvaFlujo'), vt:GN('eVT'), vtkg:GN('eVTkg'), fr:GN('eFR'), frReal:GN('eFRreal'), peep:GN('ePEEP'),
     fc:GN('eFC'), tas:GN('eTAS'), tad:GN('eTAD'), tam:G('eTAM'), spo2Mon:GN('eSpO2Mon'), frMon:GN('eFRMon'), pic:GN('ePIC'), etco2:GN('eEtCO2'), temp:GN('eTemp'),
@@ -23151,6 +23355,15 @@ function catalogoIndicadores(mesStr){
   ]},
 
   { g:'Soporte no invasivo y oxigenoterapia', icono:'ti-mask', filas:[
+    { l:'Evaluaciones de WOB score',      f:s=>_pveFiltro(s,mesStr,e=>e.wob!=null&&e.wob!==''&&isFinite(Number(e.wob))) },
+    { l:'— Tolerable (≤ 4)',              f:s=>_pveFiltro(s,mesStr,e=>isFinite(Number(e.wob))&&e.wob!==''&&e.wob!=null&&Number(e.wob)<=4), sub:true },
+    { l:'— Elevado (> 4) · revalorar IOT', f:s=>_pveFiltro(s,mesStr,e=>isFinite(Number(e.wob))&&e.wob!==''&&e.wob!=null&&Number(e.wob)>4), sub:true },
+    ...WOB_MUSCULOS.map(m => (
+      { l:'   · '+m, f:s=>_pveFiltro(s,mesStr,e=>Array.isArray(e.wobMusculos)&&e.wobMusculos.includes(m)), sub:true }
+    )),
+    { l:'Cuff leak test realizados',      f:s=>_pveFiltro(s,mesStr,e=>e.cuffLeak&&e.cuffLeak!=='no_evaluado') },
+    { l:'— Negativo (hay fuga)',          f:s=>_pveFiltro(s,mesStr,e=>e.cuffLeak==='negativo'), sub:true },
+    { l:'— Positivo (sin fuga · edema)',  f:s=>_pveFiltro(s,mesStr,e=>e.cuffLeak==='positivo'), sub:true },
     { l:'Días de VNI',                   f:s=>diasInterfazEnMes(mesStr,s,'VNI'), destacar:true },
     { l:'— Electiva (1ª línea)',         f:s=>vniPorMotivoEnMes(mesStr,s,'electiva'), sub:true },
     { l:'— Cambio de interfaz (sin PVE)',f:s=>vniPorMotivoEnMes(mesStr,s,'cambio_interfaz'), sub:true },
