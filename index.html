@@ -6764,7 +6764,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_237';
+const APP_VERSION = 'v3_238';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -21744,7 +21744,7 @@ function renderIndPrestaciones(mesStr){
   body.innerHTML = `
   <div class="kpi-row" style="margin-bottom:16px">
     <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-checklist"></i></div><div class="kpi-content"><div class="label">Técnicas registradas</div><div class="value">${totalTecnicas}</div><div class="sub">${entries.length} técnicas distintas</div></div></div>
-    <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-clipboard-check"></i></div><div class="kpi-content"><div class="label">Prestaciones generales</div><div class="value">${totalPrestGen}</div><div class="sub">ARM/TQT ×6 · resto ×2</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-clipboard-check"></i></div><div class="kpi-content"><div class="label">Prestaciones generales</div><div class="value">${totalPrestGen}</div><div class="sub">×6 por día con VAA · ×2 sin VAA</div></div></div>
     <div class="kpi-card"><div class="kpi-icon amber"><i class="ti ti-stethoscope"></i></div><div class="kpi-content"><div class="label">Procedimientos</div><div class="value">${procedimientosTotalEnMes(indSectorSel,mesStr)+fichasNeuroEnMes(indSectorSel,mesStr)}</div><div class="sub">PVE, decanulación, evaluaciones</div></div></div>
     <div class="kpi-card"><div class="kpi-icon purple"><i class="ti ti-notes"></i></div><div class="kpi-content"><div class="label">Evoluciones del mes</div><div class="value">${evolucionesEnMes(indSectorSel,mesStr)}</div><div class="sub">registros clínicos</div></div></div>
   </div>
@@ -22010,7 +22010,10 @@ function _sectoresDeTraslado(e){
 
 // Tramos de internación: [{ desde:'YYYY-MM-DD', sala }], del más viejo al más nuevo
 const _tramosCache = new Map();
-function limpiarCacheSectores(){ _tramosCache.clear(); _trasIdx = null; }
+function limpiarCacheSectores(){
+  _tramosCache.clear(); _trasIdx = null;
+  try { _diasPacCache.clear(); } catch(_){}   // v3_238
+}
 
 function tramosSectores(pacId){
   if(_tramosCache.has(pacId)) return _tramosCache.get(pacId);
@@ -22109,6 +22112,7 @@ const PRESTACIONES_ESP = [
   'Asistencia IOT',
   'Asistencia TQT percutánea',
   'Asistencia BAL',
+  'Asistencia a fibrobroncoscopía',   // v3_238: estaba en el formulario pero no en esta lista
   'Asistencia decúbito prono',
   'Asistencia decúbito supino',
   'Cambio de cánula de TQT',
@@ -22148,11 +22152,56 @@ const evoConVAA = e => {
   return itf === 'TET' || itf === 'TQT' || itf.includes('TQT espontáneo');
 };
 
+// ── v3_238: las generales se cuentan por PACIENTE-DÍA, no por evolución ──
+// La prestación general representa la carga de trabajo que genera el paciente
+// ese día: 6 si tiene vía aérea artificial, 2 si no. Si el paciente se evoluciona
+// dos veces el mismo día (mañana y tarde, o dos kinesiólogos), sigue siendo UN
+// día de ese paciente. Antes cada evolución sumaba por separado, así que un
+// paciente en ARM con dos evoluciones sumaba 12 en un solo día.
+//
+// Criterios cuando el día tiene más de una evolución:
+//   · vía aérea → si CUALQUIERA de las evoluciones del día tiene VAA, el día vale 6
+//     (el paciente se intubó o se extubó en el medio: igual hubo VAA ese día).
+//   · sector    → el día se le atribuye al sector de la ÚLTIMA evolución, que es
+//     donde el paciente terminó internado.
+const _diasPacCache = new Map();
+function _diasPacienteDelMes(mesStr){
+  const clave = String(mesStr || '');
+  if(_diasPacCache.has(clave)) return _diasPacCache.get(clave);
+  // Orden dentro del día: primero por hora cargada, y a igual hora por id
+  // (los id son marcas de tiempo crecientes, así que respetan el orden de carga).
+  const orden = e => String(e.hora || '') + '|' + String(e.id || '').padStart(20, '0');
+  const dias = new Map();
+  evoluciones.forEach(e => {
+    if(!e || e.tipo || !e.date) return;              // fuera traslado/alta/óbito
+    if(!enPeriodo(e.date, mesStr)) return;
+    const k = e.patientId + '|' + e.date;
+    const o = orden(e);
+    const prev = dias.get(k);
+    if(!prev){
+      dias.set(k, { vaa: evoConVAA(e), sala: salaDeEvolucion(e), _ord: o });
+    } else {
+      if(evoConVAA(e)) prev.vaa = true;              // basta con que uno tenga VAA
+      if(o >= prev._ord){ prev.sala = salaDeEvolucion(e); prev._ord = o; }
+    }
+  });
+  const arr = [...dias.values()];
+  _diasPacCache.set(clave, arr);
+  return arr;
+}
+
+// Paciente-día atendidos en el período (el denominador de las generales)
+function pacienteDiasEnMes(sala, mesStr, filtro){
+  return _diasPacienteDelMes(mesStr).filter(d =>
+    (!sala || d.sala === sala) && (!filtro || filtro(d))
+  ).length;
+}
+
 function prestacionesGeneralesEnMes(sala, mesStr){
-  // Vía aérea artificial (TET / TQT, en ARM o espontáneo) → 6 prestaciones por
-  // evolución; el resto → 2
-  return _evosDelMes(sala, mesStr)
-    .reduce((total, e) => total + (evoConVAA(e) ? 6 : 2), 0);
+  // Vía aérea artificial (TET / TQT, en ARM o espontáneo) → 6 por paciente-día;
+  // el resto → 2 por paciente-día
+  return _diasPacienteDelMes(mesStr)
+    .reduce((total, d) => (sala && d.sala !== sala) ? total : total + (d.vaa ? 6 : 2), 0);
 }
 
 // v3_152: procedimientos que el equipo ya deja asentados en la evolución pero
@@ -22192,11 +22241,13 @@ function prestacionesEspEnMes(sala, mesStr, tipoEsp){
   ).length;
 }
 
+// v3_238: la prestación es SOLO general + específica. Los procedimientos (PVE,
+// extubación, decanulación, MRC, blue test) y las fichas neurológicas se siguen
+// midiendo y mostrando como indicadores propios, pero no suman prestación: son
+// parte del trabajo del día que ya está contemplado en la general.
 function prestacionesTotalesEnMes(sala, mesStr){
   return prestacionesGeneralesEnMes(sala, mesStr)
-       + prestacionesEspTotalEnMes(sala, mesStr)
-       + procedimientosTotalEnMes(sala, mesStr)
-       + fichasNeuroEnMes(sala, mesStr);
+       + prestacionesEspTotalEnMes(sala, mesStr);
 }
 
 function evolucionesEnMes(sala, mesStr){
@@ -22687,11 +22738,15 @@ function catalogoIndicadores(mesStr){
   return [
   { g:'Actividad del servicio', icono:'ti-clipboard-check', filas:[
     { l:'Evoluciones registradas',                 f:s=>evolucionesEnMes(s,mesStr) },
+    { l:'Paciente-día atendidos',                  f:s=>pacienteDiasEnMes(s,mesStr) },
+    { l:'— Con vía aérea artificial (×6)',         f:s=>pacienteDiasEnMes(s,mesStr,d=>d.vaa), sub:true },
+    { l:'— Sin vía aérea artificial (×2)',         f:s=>pacienteDiasEnMes(s,mesStr,d=>!d.vaa), sub:true },
     { l:'Prestaciones totales',                    f:s=>prestacionesTotalesEnMes(s,mesStr), destacar:true },
-    { l:'Prestaciones generales (VAA ×6, resto ×2)', f:s=>prestacionesGeneralesEnMes(s,mesStr), sub:true },
+    { l:'Prestaciones generales (por paciente-día)', f:s=>prestacionesGeneralesEnMes(s,mesStr), sub:true },
     { l:'Prestaciones específicas (tags)',         f:s=>prestacionesEspTotalEnMes(s,mesStr), sub:true },
-    { l:'Procedimientos',                          f:s=>procedimientosTotalEnMes(s,mesStr), sub:true },
-    { l:'Fichas neurológicas',                     f:s=>fichasNeuroEnMes(s,mesStr), sub:true },
+    // v3_238: se miden igual, pero NO suman prestación
+    { l:'Procedimientos (no suman prestación)',    f:s=>procedimientosTotalEnMes(s,mesStr) },
+    { l:'Fichas neurológicas (no suman prestación)', f:s=>fichasNeuroEnMes(s,mesStr) },
   ]},
 
   { g:'Movimiento de pacientes', icono:'ti-arrows-exchange', filas:[
@@ -22810,11 +22865,12 @@ function renderIndMensual(mesStr){
   const totalPrestGen = prestacionesGeneralesEnMes(indSectorSel, mesStr);
   const totalPrestEsp = prestacionesEspTotalEnMes(indSectorSel, mesStr);
   // v3_213: el total tiene que ser el MISMO número que la fila "Prestaciones
-  // totales del servicio" de la tabla de abajo. Antes el KPI sumaba solo
-  // generales + específicas y la tabla usaba prestacionesTotalesEnMes(), que
-  // además incluye procedimientos y fichas neurológicas: los dos números no
-  // cerraban y la suma parecía mal hecha.
+  // totales del servicio" de la tabla de abajo.
+  // v3_238: la prestación es solo general + específica, así que el KPI ahora
+  // cierra por definición. Los procedimientos siguen mostrándose aparte.
   const totalPrestProc = procedimientosTotalEnMes(indSectorSel, mesStr) + fichasNeuroEnMes(indSectorSel, mesStr);
+  const totalPacDia = pacienteDiasEnMes(indSectorSel, mesStr);
+  const totalPacDiaVAA = pacienteDiasEnMes(indSectorSel, mesStr, d=>d.vaa);
   const totalPrestTot = prestacionesTotalesEnMes(indSectorSel, mesStr);
   // v3_226: los KPI ignoraban el filtro de sector (usaban toda la institución
   // aunque abajo la tabla mostrara un solo sector) y contaban los días de ARM
@@ -22840,7 +22896,7 @@ function renderIndMensual(mesStr){
   body.innerHTML = `
   <!-- KPIs del mes -->
   <div class="kpi-row" style="margin-bottom:16px">
-    <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-clipboard-check"></i></div><div class="kpi-content"><div class="label">Prestaciones totales</div><div class="value">${totalPrestTot}</div><div class="sub">Gen ${totalPrestGen} + Esp ${totalPrestEsp} + Proc ${totalPrestProc}</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-clipboard-check"></i></div><div class="kpi-content"><div class="label">Prestaciones totales</div><div class="value">${totalPrestTot}</div><div class="sub">Gen ${totalPrestGen} + Esp ${totalPrestEsp} · ${totalPacDia} pac-día (${totalPacDiaVAA} con VAA)</div></div></div>
     <div class="kpi-card"><div class="kpi-icon amber"><i class="ti ti-lungs"></i></div><div class="kpi-content"><div class="label">Días de ARM</div><div class="value">${totalARM}</div><div class="sub">TET: ${totalTET} / TQT ARM: ${totalTQTarm}</div></div></div>
     <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-plug-x"></i></div><div class="kpi-content"><div class="label">TQT espontáneo</div><div class="value">${totalTQTesp}</div><div class="sub">Días sin ARM</div></div></div>
     <div class="kpi-card"><div class="kpi-icon purple"><i class="ti ti-activity"></i></div><div class="kpi-content"><div class="label">PVE realizadas</div><div class="value">${totalPVE}</div><div class="sub">Pruebas de vent. espontánea</div></div></div>
