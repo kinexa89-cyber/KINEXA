@@ -8,7 +8,7 @@
 //  cambiá el número de VERSION de abajo. Eso hace que el navegador
 //  detecte el cambio y actualice la app sola.
 // ══════════════════════════════════════════════════════════════
-const VERSION = 'kinexa-v3_238';
+const VERSION = 'kinexa-v3_239';
 
 // Instalación: activar la versión nueva sin esperar
 self.addEventListener('install', (event) => {
