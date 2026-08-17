@@ -6764,7 +6764,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_241';
+const APP_VERSION = 'v3_243';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -17648,7 +17648,8 @@ function evoCardHTML(e, i){
   const posicionTxt = e.posicionARM ? (e.posicionARM + (e.pronoCiclo ? ' ('+e.pronoCiclo+')' : '')) : '';
   const taTxt = (e.tas!==''&&e.tas!=null && e.tad!==''&&e.tad!=null) ? `${e.tas}/${e.tad}` : '';
   const dolorTxt = e.dolorAuto ? (e.dolorAuto + (e.dolorEscala ? ' — '+e.dolorEscala : '')) : '';
-  const tctTxt = (e.tctScore!=null && e.tctScore!=='') ? (e.tctScore + ' / 12') : '';
+  // v3_243: el TCT son cuatro ítems de 0/12/25, así que el máximo es 100, no 12.
+  const tctTxt = (e.tctScore!=null && e.tctScore!=='') ? (e.tctScore + ' / 100') : '';
 
   // ══ Secciones en el MISMO ORDEN que el formulario ══
   // 1) Signos vitales (monitor)
@@ -22387,6 +22388,155 @@ function evolucionesEnMes(sala, mesStr){
   }).length;
 }
 
+// ── v3_242: el destete por TQT no se medía en ningún lado ──────────────
+// El árbol de la PVE tiene dos ramas: la del paciente intubado (campo `pve`,
+// que termina o no en extubación) y la del traqueostomizado, que se desconecta
+// a tubo en T o collar (campo `pveTQTColocado`). El indicador miraba solo la
+// primera. En agosto: 16 PVE por TET registradas y 28 por TQT, de las cuales
+// las 28 no aparecían en ninguna pantalla ni en el Excel.
+const _pveTET = e => e.pve === 'Si';
+const _pveTQT = e => e.pveTQTColocado === 'Si';
+const _pveFiltro = (sala, mesStr, cond) =>
+  contarDiasUnicos(e => enPeriodo(e.date, mesStr) && evoEnSala(e, sala) && cond(e));
+
+function pveTETenMes(sala, mesStr){   return _pveFiltro(sala, mesStr, _pveTET); }
+function pveTQTenMes(sala, mesStr){   return _pveFiltro(sala, mesStr, _pveTQT); }
+function pveTotalEnMes(sala, mesStr){ return _pveFiltro(sala, mesStr, e => _pveTET(e) || _pveTQT(e)); }
+
+// Cuánto tiempo toleró desconectado el paciente traqueostomizado
+const PVE_TQT_DURACION = [
+  ['<3h','Menos de 3 h'], ['3-6h','De 3 a 6 h'], ['6-12h','De 6 a 12 h'],
+  ['noche1','1ª noche'], ['noche2','2ª noche'], ['noche3','3ª noche'],
+  ['noche4','4ª noche'], ['noche5','5ª noche'],
+];
+function pveTQTDuracionEnMes(sala, mesStr, dur){
+  return _pveFiltro(sala, mesStr, e => _pveTQT(e) && e.pveTQTDuracion === dur);
+}
+// Hubo que reconectarlo a ARM antes de completar el objetivo de la noche
+function pveTQTReconexionEnMes(sala, mesStr){
+  return _pveFiltro(sala, mesStr, e => e.pveTQTNocheReconexion === 'Si');
+}
+const PVE_TQT_MOTIVOS = ['Taquipnea','Uso de músculos accesorios','Disnea','Shock',
+  'Hipoxemia','Hipertensión','Taquicardia','Electiva'];
+function pveTQTMotivoEnMes(sala, mesStr, motivo){
+  return _pveFiltro(sala, mesStr, e =>
+    Array.isArray(e.pveTQTMotivo) && e.pveTQTMotivo.includes(motivo));
+}
+
+// ══════════════════════════════════════════════════════════════════
+//  v3_243 — INDICADORES QUE FALTABAN
+//  Todo esto el equipo ya lo venía cargando en la evolución, pero no
+//  aparecía en ninguna pantalla ni en el Excel: se registraba y se perdía.
+// ══════════════════════════════════════════════════════════════════
+
+// ── Proceso de decanulación ──────────────────────────────────────
+const _tieneDec = e => !!(e.decTolDesinf || e.decTolOclusion || e.decTolValvula ||
+  e.decDecanulado || e.decTolerancia || e.decPlanAccion ||
+  (Array.isArray(e.decBlueTest) && e.decBlueTest.length));
+
+function decEnMes(sala, mesStr, cond){
+  return _pveFiltro(sala, mesStr, cond);
+}
+// Pacientes distintos con el proceso en marcha (no días: personas)
+function pacientesEnDecanulacion(sala, mesStr){
+  const s = new Set();
+  evoluciones.forEach(e => {
+    if(e.tipo || !e.date || !enPeriodo(e.date, mesStr)) return;
+    if(!evoEnSala(e, sala) || !_tieneDec(e)) return;
+    s.add(e.patientId);
+  });
+  return s.size;
+}
+const DEC_BLUE_TEST = ['Negativo inmediato','Negativo tardío','Positivo inmediato','Positivo tardío'];
+const DEC_MOTIVO_DESINF = ['Tos irritativa','Abundantes secreciones'];
+const DEC_TOLERANCIA = [
+  ['<3h','Menos de 3 h'], ['3-6h','De 3 a 6 h'], ['6-12h','De 6 a 12 h'],
+  ['noche1','1ª noche'], ['noche2','2ª noche'], ['noche3','3ª noche'],
+  ['noche4','4ª noche'], ['noche5','5ª noche'],
+];
+const DEC_PLAN = [['descenso','Descenso de diámetro de cánula'], ['fbc','Fibrobroncoscopía']];
+function decBlueTestEnMes(sala, mesStr, val){
+  return decEnMes(sala, mesStr, e => Array.isArray(e.decBlueTest) && e.decBlueTest.includes(val));
+}
+function decMotivoNoDecanulEnMes(sala, mesStr, val){
+  return decEnMes(sala, mesStr, e => Array.isArray(e.decMotivoNoDecanulacion) && e.decMotivoNoDecanulacion.includes(val));
+}
+
+// ── AKM: nivel de movilización alcanzado ─────────────────────────
+// El campo guarda el texto completo del nivel; se identifica por el prefijo.
+const AKM_NIVELES = [1,2,3,4,5];
+const akmNivelDe = e => {
+  const m = String(e.akm1 || '').match(/^Nivel\s+(\d)/);
+  return m ? Number(m[1]) : null;
+};
+function akmEnMes(sala, mesStr, nivel){
+  return _pveFiltro(sala, mesStr, e => nivel ? akmNivelDe(e) === nivel : akmNivelDe(e) !== null);
+}
+
+// ── FAC: categoría de deambulación ───────────────────────────────
+const FAC_NIVELES = [
+  ['0','No deambula'], ['1','Asistencia de 2 personas'], ['2','Asistencia continua de 1'],
+  ['3','Supervisión, sin contacto'], ['4','Independiente en plano'], ['5','Independiente en cualquier superficie'],
+];
+function facEnMes(sala, mesStr, val){
+  return _pveFiltro(sala, mesStr, e => {
+    const v = String(e.neuroFAC ?? '');
+    if(v === '') return false;
+    return val === undefined ? true : v === val;
+  });
+}
+// Pacientes distintos que llegaron a marcha independiente (FAC ≥ 4)
+function pacientesFACindep(sala, mesStr){
+  const s = new Set();
+  evoluciones.forEach(e => {
+    if(e.tipo || !e.date || !enPeriodo(e.date, mesStr) || !evoEnSala(e, sala)) return;
+    const v = parseInt(e.neuroFAC);
+    if(!isNaN(v) && v >= 4) s.add(e.patientId);
+  });
+  return s.size;
+}
+
+// ── TCT: control de tronco (0 a 100, cuatro ítems de 0/12/25) ────
+const _tctVal = e => {
+  const v = e.tctScore;
+  return (v === null || v === undefined || v === '') ? null : Number(v);
+};
+function tctEnMes(sala, mesStr, filtro){
+  return _pveFiltro(sala, mesStr, e => {
+    const v = _tctVal(e);
+    return v !== null && !isNaN(v) && (!filtro || filtro(v));
+  });
+}
+function tctPromedioEnMes(sala, mesStr){
+  const vals = [];
+  evoluciones.forEach(e => {
+    if(e.tipo || !e.date || !enPeriodo(e.date, mesStr) || !evoEnSala(e, sala)) return;
+    const v = _tctVal(e);
+    if(v !== null && !isNaN(v)) vals.push(v);
+  });
+  return vals.length ? Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10 : 0;
+}
+
+// ── MRC: fuerza muscular ─────────────────────────────────────────
+// Conviven dos formas de cargarlo: la grilla músculo por músculo (mrcTotal) y
+// un campo de texto libre (mrc). Hoy el equipo usa el segundo, así que se
+// muestran los dos por separado en vez de dar cero.
+function mrcGrillaEnMes(sala, mesStr){
+  return _pveFiltro(sala, mesStr, e => e.mrcTotal !== null && e.mrcTotal !== undefined && e.mrcTotal !== '');
+}
+function mrcTextoEnMes(sala, mesStr){
+  return _pveFiltro(sala, mesStr, e => !!e.mrc);
+}
+// Debilidad adquirida en UCI: MRC-Sum < 48 sobre 60
+function mrcDebilidadEnMes(sala, mesStr){
+  return _pveFiltro(sala, mesStr, e => {
+    const v = Number(e.mrcTotal);
+    if(!isNaN(v) && e.mrcTotal !== '' && e.mrcTotal !== null && e.mrcTotal !== undefined) return v < 48;
+    const m = String(e.mrc || '').match(/^(\d+)\s*\/\s*60/);
+    return m ? Number(m[1]) < 48 : false;
+  });
+}
+
 function pveEnMes(sala, mesStr){
   // Días únicos por paciente con PVE registrada
   return contarDiasUnicos(e=>{
@@ -22833,7 +22983,7 @@ function evalEstructuradasEnMes(mesStr, sala){
   const con = fn => evos.filter(fn).length;
   const enSala = e => evoEnSala(e, sala);   // v3_214: sector histórico
   return {
-    'PVE (prueba de ventilación espontánea)': contarDiasUnicos(e=>enPeriodo(e.date, mesStr)&&enSala(e)&&e.pve&&e.pve!=='No'&&e.pve!==''),
+    'PVE (prueba de ventilación espontánea)': pveTotalEnMes(sala, mesStr),   // v3_242: TET + TQT
     'Evaluación de músculos respiratorios (Pimax/Pemax/CV)': con(e=>e.musResp || e.musPImax || e.musPEmax || e.musCV || tecList(e).some(t=>(t||'').includes('músculos respiratorios'))),
     'Evaluación de fuerza muscular (MRC)': con(e=>e.mrcCompleto==='Si' || e.mrcTotal || e.mrc),
     // v3_226: las dos usan la definición única. La de deglución antes solo miraba
@@ -22918,8 +23068,18 @@ function catalogoIndicadores(mesStr){
 
   { g:'Destete y vía aérea', icono:'ti-plug-x', filas:[
     { l:'Días de TQT sin ARM (espontáneo)', f:s=>diasInterfazEnMes(mesStr,s,'TQT_ESP') },
-    { l:'PVE realizadas',                f:s=>pveEnMes(s,mesStr), destacar:true },
-    { l:'— PVE exitosas',                f:s=>contarDiasUnicos(e=>enPeriodo(e.date,mesStr)&&evoEnSala(e,s)&&e.pveResult==='Exitosa'), sub:true },
+    { l:'PVE realizadas (TET + TQT)',    f:s=>pveTotalEnMes(s,mesStr), destacar:true },
+    { l:'— PVE por TET (paciente intubado)', f:s=>pveTETenMes(s,mesStr), sub:true },
+    { l:'   · Exitosas',                 f:s=>contarDiasUnicos(e=>enPeriodo(e.date,mesStr)&&evoEnSala(e,s)&&e.pveResult==='Exitosa'), sub:true },
+    { l:'   · Fallidas',                 f:s=>contarDiasUnicos(e=>enPeriodo(e.date,mesStr)&&evoEnSala(e,s)&&String(e.pveResult||'').startsWith('Fallida')), sub:true },
+    { l:'— PVE por TQT (tubo en T / collar)', f:s=>pveTQTenMes(s,mesStr), sub:true },
+    ...PVE_TQT_DURACION.map(([k,lbl]) => (
+      { l:'   · '+lbl, f:s=>pveTQTDuracionEnMes(s,mesStr,k), sub:true }
+    )),
+    { l:'   · Reconexión a ARM antes del objetivo', f:s=>pveTQTReconexionEnMes(s,mesStr), sub:true },
+    ...PVE_TQT_MOTIVOS.map(m => (
+      { l:'      → '+m, f:s=>pveTQTMotivoEnMes(s,mesStr,m), sub:true }
+    )),
     { l:'Extubaciones (todas)',          f:s=>extubDetalle(mesStr,s,'todas'), destacar:true },
     { l:'— Planificadas',                f:s=>extubDetalle(mesStr,s,'planificada'), sub:true },
     { l:'— Planificadas con PVE exitosa',f:s=>extubDetalle(mesStr,s,'exitosa'), sub:true },
@@ -22935,6 +23095,59 @@ function catalogoIndicadores(mesStr){
       } },
     { l:'Controles de presión de cuff (días)', f:s=>controlCuffDiasEnMes(mesStr,s) },
     { l:'Decanulaciones exitosas',       f:s=>decanulaciones('',s,mesStr) },
+  ]},
+
+  { g:'Proceso de decanulación', icono:'ti-plug-connected-x', filas:[
+    { l:'Pacientes con el proceso iniciado', f:s=>pacientesEnDecanulacion(s,mesStr), destacar:true, tot:'propio' },
+    { l:'Pruebas de desinflado de balón',  f:s=>decEnMes(s,mesStr,e=>!!e.decTolDesinf) },
+    { l:'— Tolera',                        f:s=>decEnMes(s,mesStr,e=>e.decTolDesinf==='Si'), sub:true },
+    { l:'— No tolera',                     f:s=>decEnMes(s,mesStr,e=>e.decTolDesinf==='No'), sub:true },
+    ...DEC_MOTIVO_DESINF.map(m => (
+      { l:'   · '+m, f:s=>decEnMes(s,mesStr,e=>e.decMotivoDesinf===m), sub:true }
+    )),
+    { l:'Blue test realizados',            f:s=>decEnMes(s,mesStr,e=>Array.isArray(e.decBlueTest)&&e.decBlueTest.length>0) },
+    ...DEC_BLUE_TEST.map(v => (
+      { l:'— '+v, f:s=>decBlueTestEnMes(s,mesStr,v), sub:true }
+    )),
+    { l:'Pruebas de oclusión de cánula',   f:s=>decEnMes(s,mesStr,e=>!!e.decTolOclusion) },
+    { l:'— Tolera',                        f:s=>decEnMes(s,mesStr,e=>e.decTolOclusion==='Si'), sub:true },
+    { l:'Pruebas de válvula de fonación',  f:s=>decEnMes(s,mesStr,e=>!!e.decTolValvula) },
+    { l:'— Tolera',                        f:s=>decEnMes(s,mesStr,e=>e.decTolValvula==='Si'), sub:true },
+    { l:'Tolerancia alcanzada con cánula ocluida', f:s=>decEnMes(s,mesStr,e=>!!e.decTolerancia) },
+    ...DEC_TOLERANCIA.map(([k,lbl]) => (
+      { l:'— '+lbl, f:s=>decEnMes(s,mesStr,e=>e.decTolerancia===k), sub:true }
+    )),
+    { l:'Objetivo de noche cumplido',      f:s=>decEnMes(s,mesStr,e=>e.decNocheObjetivo==='Si') },
+    ...DEC_PLAN.map(([k,lbl]) => (
+      { l:'Plan: '+lbl, f:s=>decEnMes(s,mesStr,e=>e.decPlanAccion===k) }
+    )),
+    { l:'Decanulaciones',                  f:s=>decEnMes(s,mesStr,e=>e.decDecanulado==='Si'), destacar:true },
+    { l:'— Se difiere la decanulación',    f:s=>decEnMes(s,mesStr,e=>e.decDecanulado==='No'), sub:true },
+    ...PVE_TQT_MOTIVOS.map(m => (
+      { l:'   · '+m, f:s=>decMotivoNoDecanulEnMes(s,mesStr,m), sub:true }
+    )),
+  ]},
+
+  { g:'Movilización y función', icono:'ti-walk', filas:[
+    { l:'Evaluaciones de AKM',             f:s=>akmEnMes(s,mesStr), destacar:true },
+    ...AKM_NIVELES.map(n => (
+      { l:'— Nivel '+n, f:s=>akmEnMes(s,mesStr,n), sub:true }
+    )),
+    { l:'Evaluaciones de FAC (deambulación)', f:s=>facEnMes(s,mesStr), destacar:true },
+    ...FAC_NIVELES.map(([v,lbl]) => (
+      { l:`— ${v} · ${lbl}`, f:s=>facEnMes(s,mesStr,v), sub:true }
+    )),
+    { l:'Pacientes que alcanzaron marcha independiente (FAC ≥ 4)', f:s=>pacientesFACindep(s,mesStr), tot:'propio' },
+    { l:'Evaluaciones de TCT (control de tronco)', f:s=>tctEnMes(s,mesStr), destacar:true },
+    { l:'— Sin control de tronco (0)',     f:s=>tctEnMes(s,mesStr,v=>v===0), sub:true },
+    { l:'— Control parcial (1 a 99)',      f:s=>tctEnMes(s,mesStr,v=>v>0&&v<100), sub:true },
+    { l:'— Control completo (100)',        f:s=>tctEnMes(s,mesStr,v=>v===100), sub:true },
+    { l:'— TCT promedio',                  f:s=>tctPromedioEnMes(s,mesStr), sub:true, tot:'propio' },
+    { l:'Evaluaciones de fuerza (MRC)',    f:s=>mrcGrillaEnMes(s,mesStr)+mrcTextoEnMes(s,mesStr), destacar:true },
+    { l:'— Con la grilla músculo por músculo', f:s=>mrcGrillaEnMes(s,mesStr), sub:true },
+    { l:'— Con el campo de texto',         f:s=>mrcTextoEnMes(s,mesStr), sub:true },
+    { l:'— Con debilidad (MRC-Sum < 48/60)', f:s=>mrcDebilidadEnMes(s,mesStr), sub:true },
+    { l:'Fichas neurológicas completas',   f:s=>fichasNeuroEnMes(s,mesStr) },
   ]},
 
   { g:'Soporte no invasivo y oxigenoterapia', icono:'ti-mask', filas:[
@@ -23009,7 +23222,11 @@ function renderIndMensual(mesStr){
   const totalTQTarm = diasTQTARMreg(mesStr, indSectorSel);
   const totalTQTesp = diasInterfazEnMes(mesStr, indSectorSel, 'TQT_ESP');
   const totalCuff = controlCuffDiasEnMes(mesStr, indSectorSel);
-  const totalPVE = pveEnMes(indSectorSel, mesStr);
+  // v3_242: el KPI contaba solo la rama TET y dejaba afuera todo el destete
+  // por traqueostomía, que es más de la mitad de las pruebas.
+  const totalPVE = pveTotalEnMes(indSectorSel, mesStr);
+  const totalPVETET = pveTETenMes(indSectorSel, mesStr);
+  const totalPVETQT = pveTQTenMes(indSectorSel, mesStr);
 
   // v3_226: las filas ahora salen de catalogoIndicadores()
 
@@ -23028,7 +23245,7 @@ function renderIndMensual(mesStr){
     <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-clipboard-check"></i></div><div class="kpi-content"><div class="label">Prestaciones totales</div><div class="value">${totalPrestTot}</div><div class="sub">Gen ${totalPrestGen} + Esp ${totalPrestEsp} · ${totalPacDia} pac-día (${totalPacDiaVAA} con VAA)</div></div></div>
     <div class="kpi-card"><div class="kpi-icon amber"><i class="ti ti-lungs"></i></div><div class="kpi-content"><div class="label">Días de ARM</div><div class="value">${totalARM}</div><div class="sub">TET: ${totalTET} / TQT ARM: ${totalTQTarm}</div></div></div>
     <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-plug-x"></i></div><div class="kpi-content"><div class="label">TQT espontáneo</div><div class="value">${totalTQTesp}</div><div class="sub">Días sin ARM</div></div></div>
-    <div class="kpi-card"><div class="kpi-icon purple"><i class="ti ti-activity"></i></div><div class="kpi-content"><div class="label">PVE realizadas</div><div class="value">${totalPVE}</div><div class="sub">Pruebas de vent. espontánea</div></div></div>
+    <div class="kpi-card"><div class="kpi-icon purple"><i class="ti ti-activity"></i></div><div class="kpi-content"><div class="label">PVE realizadas</div><div class="value">${totalPVE}</div><div class="sub">TET: ${totalPVETET} / TQT: ${totalPVETQT}</div></div></div>
     <div class="kpi-card"><div class="kpi-icon blue"><i class="ti ti-gauge"></i></div><div class="kpi-content"><div class="label">Controles de cuff</div><div class="value">${totalCuff}</div><div class="sub">Registros con presión</div></div></div>
     <div class="kpi-card"><div class="kpi-icon teal"><i class="ti ti-droplet-filled"></i></div><div class="kpi-content"><div class="label">Humidificación activa</div><div class="value">${pctTxt(_humidSalas[indSectorSel].activa, _humidSalas[indSectorSel].total)}</div><div class="sub">${_humidSalas[indSectorSel].activa} de ${_humidSalas[indSectorSel].total} días con VAA</div></div></div>
   </div>
