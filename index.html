@@ -6764,7 +6764,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_238';
+const APP_VERSION = 'v3_239';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -6792,6 +6792,61 @@ async function rpc(fn, args){
   const r = await fetch(KX_URL+'/rest/v1/rpc/'+fn, { method:'POST', headers:KX_HEADERS, body:JSON.stringify(args||{}) });
   if(!r.ok){ throw new Error((await r.text())||('HTTP '+r.status)); }
   const t = await r.text(); return t ? JSON.parse(t) : null;
+}
+
+// ── v3_239: el servidor nunca devuelve más de 1000 filas ────────────────
+// PostgREST corta toda respuesta en 1000 registros, sin error y sin aviso. Con
+// la base por debajo de ese número no se notaba; al cruzarlo, cada consulta
+// empezó a traer 1000 filas cualesquiera y a dejar afuera el resto. La app
+// creía tener todo: los indicadores daban de menos y la historia clínica de un
+// paciente podía aparecer incompleta.
+//
+// Ahora se pide de a 1000 con desplazamiento creciente hasta que el servidor
+// devuelva un lote incompleto. Tres protecciones:
+//   1. Se pide ordenado por id. LIMIT/OFFSET sin ORDEN puede repetir o saltear
+//      filas entre páginas. Si la base no acepta el orden, se sigue sin él.
+//   2. Se acumula en un Map por id, así una fila repetida no se duplica.
+//   3. Si una página no aporta ningún id nuevo, se corta: significa que el
+//      servidor está ignorando el desplazamiento y seguir sería en vano.
+const KX_PAGINA = 1000;
+async function _rpcPagina(fn, args, offset, orden){
+  const qs = new URLSearchParams({ limit:String(KX_PAGINA), offset:String(offset) });
+  if(orden) qs.set('order', orden);
+  const r = await fetch(KX_URL+'/rest/v1/rpc/'+fn+'?'+qs.toString(),
+    { method:'POST', headers:KX_HEADERS, body:JSON.stringify(args||{}) });
+  if(!r.ok){ throw new Error((await r.text())||('HTTP '+r.status)); }
+  const t = await r.text(); return t ? JSON.parse(t) : null;
+}
+async function rpcTodo(fn, args){
+  const acum = new Map();
+  let orden = 'id.asc', offset = 0, sinId = [];
+  for(let vuelta = 0; vuelta < 60; vuelta++){        // techo: 60.000 registros
+    let lote;
+    try {
+      lote = await _rpcPagina(fn, args, offset, orden);
+    } catch(err){
+      if(orden){ orden = null; lote = await _rpcPagina(fn, args, offset, null); }
+      else throw err;
+    }
+    const arr = Array.isArray(lote) ? lote : (lote ? [lote] : []);
+    const antes = acum.size;
+    arr.forEach(r => {
+      if(!r) return;
+      if(r.id == null) sinId.push(r);                // no debería pasar; no se pierde
+      else acum.set(String(r.id), r);
+    });
+    if(arr.length < KX_PAGINA) break;                // último lote
+    if(acum.size === antes){                         // el servidor ignora el offset
+      console.warn('[Kinexa] la paginación no avanza en', fn, '— se corta en', acum.size);
+      break;
+    }
+    offset += KX_PAGINA;
+  }
+  if(offset > 0 || !orden){
+    console.log(`[Kinexa] ${fn}: ${acum.size} registros en ${offset/KX_PAGINA + 1} página(s)` +
+      (orden ? ' — ordenado por id ✓' : ' — SIN ORDEN (la base no lo aceptó): la recuperación puede ser parcial ⚠️'));
+  }
+  return [...acum.values()].concat(sinId);
 }
 // ── v3_161: sesión persistente ──────────────────────────────────
 // Antes la sesión vivía SOLO en sessionStorage, que el navegador borra al cerrar
@@ -7720,10 +7775,12 @@ async function pedirEvoluciones(){
     return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
   })();
   try {
-    const r = await rpc('kinexa_registros_desde', { p_token:TOKEN, p_tipo:'evolucion', p_desde:desde });
+    const r = await rpcTodo('kinexa_registros_desde', { p_token:TOKEN, p_tipo:'evolucion', p_desde:desde });
+    console.log('[Kinexa] evoluciones bajadas desde', desde + ':', r.length);
     return { datos: r, parcial: true, desde };
   } catch(e){
-    const r = await rpc('kinexa_registros', { p_token:TOKEN, p_tipo:'evolucion' });
+    const r = await rpcTodo('kinexa_registros', { p_token:TOKEN, p_tipo:'evolucion' });
+    console.log('[Kinexa] evoluciones bajadas (sin filtro de fecha):', r.length);
     return { datos: r, parcial: false, desde:null };
   }
 }
@@ -7740,7 +7797,10 @@ async function loadFromSupabase(){
   if(_outbox.length){ try { await procesarOutbox(); } catch(e){} }
   try {
     // 1) Pacientes primero: es lo liviano y lo que se necesita para empezar
-    const pacs = await rpc('kinexa_registros', { p_token:TOKEN, p_tipo:'paciente' });
+    // v3_239: paginado. Hoy son menos de 1000, pero el techo del servidor es el
+    // mismo y el día que se cruce empezarían a desaparecer pacientes en silencio.
+    const pacs = await rpcTodo('kinexa_registros', { p_token:TOKEN, p_tipo:'paciente' });
+    console.log('[Kinexa] pacientes bajados:', pacs.length);
     patients = normalizarPacientes(pacs);                       // v3_158
     reinyectarOutbox();   // v3_180: lo que sigue sin subir no se pierde de vista
     savePacientes();
@@ -23682,6 +23742,14 @@ function descargarBackupCompleto(){
   // Guardia de seguridad: aunque el botón está oculto, verificamos el usuario.
   if(!esJefatura()){
     showToast('Acción no autorizada','error');
+    return;
+  }
+  // v3_239: el backup se arma con lo que tiene el navegador en memoria. Si la
+  // carga desde la nube no terminó bien, saldría un archivo incompleto con
+  // nombre de "backup completo" — y restaurarlo no lo arregla, porque la
+  // restauración es por fusión y lo que falta simplemente no está.
+  if(!DATOS_COMPLETOS){
+    showToast('No se puede: los datos de este dispositivo están incompletos. Recargá la app y esperá a que sincronice.', 'error');
     return;
   }
   try {
