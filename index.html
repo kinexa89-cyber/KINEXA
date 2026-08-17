@@ -6764,7 +6764,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_239';
+const APP_VERSION = 'v3_240';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -6809,6 +6809,21 @@ async function rpc(fn, args){
 //   3. Si una página no aporta ningún id nuevo, se corta: significa que el
 //      servidor está ignorando el desplazamiento y seguir sería en vano.
 const KX_PAGINA = 1000;
+// v3_240: pedir ordenado es lo correcto, pero esta base devuelve los registros
+// como JSON crudo y PostgREST no tiene por dónde ordenarlos: responde 400. Ese
+// 400 lo escribe el navegador en la consola y no se puede tapar desde el código,
+// así que en vez de taparlo se evita el pedido: la app se acuerda de que esta
+// función no acepta orden y no lo vuelve a intentar. Se reintenta una vez por
+// día, por si el día de mañana la función de Supabase se corrige.
+function _ordenRechazado(fn){
+  const m = LS.get('kx_sin_orden') || {};
+  return m[fn] === today();
+}
+function _marcarOrdenRechazado(fn){
+  const m = LS.get('kx_sin_orden') || {};
+  m[fn] = today();
+  LS.set('kx_sin_orden', m);
+}
 async function _rpcPagina(fn, args, offset, orden){
   const qs = new URLSearchParams({ limit:String(KX_PAGINA), offset:String(offset) });
   if(orden) qs.set('order', orden);
@@ -6819,13 +6834,13 @@ async function _rpcPagina(fn, args, offset, orden){
 }
 async function rpcTodo(fn, args){
   const acum = new Map();
-  let orden = 'id.asc', offset = 0, sinId = [];
+  let orden = _ordenRechazado(fn) ? null : 'id.asc', offset = 0, sinId = [];
   for(let vuelta = 0; vuelta < 60; vuelta++){        // techo: 60.000 registros
     let lote;
     try {
       lote = await _rpcPagina(fn, args, offset, orden);
     } catch(err){
-      if(orden){ orden = null; lote = await _rpcPagina(fn, args, offset, null); }
+      if(orden){ _marcarOrdenRechazado(fn); orden = null; lote = await _rpcPagina(fn, args, offset, null); }
       else throw err;
     }
     const arr = Array.isArray(lote) ? lote : (lote ? [lote] : []);
@@ -17959,6 +17974,17 @@ function estadoBadge(e){
 function renderAll(){
   renderDashboard();
   renderTabla();
+  // v3_240: si la pantalla de indicadores está abierta, también se redibuja.
+  // Antes no: la carga es en dos tiempos (primero pacientes, después las
+  // evoluciones), así que quien estaba parado en Indicadores mientras la app
+  // arrancaba se quedaba con la foto del primer momento —con el cartel de
+  // "datos incompletos" y números de menos— hasta cambiar de pestaña y volver.
+  try {
+    if(document.getElementById('section-indicadores')?.classList.contains('active')
+       && typeof renderIndicadores === 'function'){
+      renderIndicadores();
+    }
+  } catch(e){ console.warn('No se pudo refrescar indicadores:', e); }
 }
 
 // ══ v3_140: FRECUENCIA DE ATENCIÓN KINÉSICA ══════════════
