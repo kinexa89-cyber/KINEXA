@@ -6811,7 +6811,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_245';
+const APP_VERSION = 'v3_246';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -15931,7 +15931,6 @@ function setInterfazEsp(tipo){
   document.getElementById('eSubVANO2').style.display = tipo === 'VAN_O2' ? 'block' : 'none';
   document.getElementById('eSubVNI').style.display  = (tipo === 'VNI' || tipo === 'VNI_CNAF') ? 'block' : 'none';
   document.getElementById('eSubCNAF').style.display = (tipo === 'CNAF' || tipo === 'VNI_CNAF') ? 'block' : 'none';
-  actualizarScoresNoInvasivos();   // v3_245
   calcROX();
   document.getElementById('tqtBlock').style.display = esTQT ? 'block' : 'none';
   actualizarSeccionDecanulacion(esTQT);
@@ -15952,6 +15951,10 @@ function setInterfazEsp(tipo){
   actualizarCuidadosVAA();
   actualizarBloquesRespiratorios();   // v3_171
   actualizarBotonModSoporte();        // v3_216
+  // v3_246: acá y no antes. Los campos ocultos eInterfazEsp / eInterfazPrincipal
+  // se escriben más arriba en esta misma función; si se consultan antes, se lee
+  // el soporte ANTERIOR y los scores quedan siempre un paso atrasados.
+  actualizarScoresNoInvasivos();
 }
 
 // Cuidados generales VAA: visible si ARM (TET/TQT) o TQT espontáneo (con o sin O2)
