@@ -6764,7 +6764,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_240';
+const APP_VERSION = 'v3_241';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -6832,10 +6832,43 @@ async function _rpcPagina(fn, args, offset, orden){
   if(!r.ok){ throw new Error((await r.text())||('HTTP '+r.status)); }
   const t = await r.text(); return t ? JSON.parse(t) : null;
 }
-async function rpcTodo(fn, args){
-  const acum = new Map();
-  let orden = _ordenRechazado(fn) ? null : 'id.asc', offset = 0, sinId = [];
+// v3_241: camino bueno. Las funciones *_pag de Supabase reciben el tamaño y el
+// desplazamiento como argumentos propios y ordenan por el id del registro, que
+// nunca cambia. El orden viejo era por `actualizado`, que sí cambia: si alguien
+// guardaba una evolución justo entre la página 1 y la 2, ese registro saltaba
+// al principio y corría a los demás un lugar, salteando una fila sin aviso.
+// Además no hace falta el parámetro `order` de PostgREST, que era el que
+// devolvía 400 y ensuciaba la consola.
+async function _traerPaginado(fn, args){
+  const acum = new Map(), sinId = [];
+  let offset = 0, paginas = 0;
   for(let vuelta = 0; vuelta < 60; vuelta++){        // techo: 60.000 registros
+    const lote = await rpc(fn, { ...(args||{}), p_limit: KX_PAGINA, p_offset: offset });
+    const arr = Array.isArray(lote) ? lote : (lote ? [lote] : []);
+    paginas++;
+    const antes = acum.size;
+    arr.forEach(r => {
+      if(!r) return;
+      if(r.id == null) sinId.push(r);
+      else acum.set(String(r.id), r);
+    });
+    if(arr.length < KX_PAGINA) break;
+    if(acum.size === antes){
+      console.warn('[Kinexa] la paginación no avanza en', fn, '— se corta en', acum.size);
+      break;
+    }
+    offset += KX_PAGINA;
+  }
+  return { datos: [...acum.values()].concat(sinId), paginas };
+}
+
+// Camino de respaldo, para una institución cuya base todavía no tenga las
+// funciones nuevas. Es lo que hacía v3_240: paginar con los parámetros de
+// PostgREST. Funciona, pero el orden depende de `actualizado`.
+async function _traerLegacy(fn, args){
+  const acum = new Map(), sinId = [];
+  let orden = _ordenRechazado(fn) ? null : 'id.asc', offset = 0;
+  for(let vuelta = 0; vuelta < 60; vuelta++){
     let lote;
     try {
       lote = await _rpcPagina(fn, args, offset, orden);
@@ -6845,23 +6878,30 @@ async function rpcTodo(fn, args){
     }
     const arr = Array.isArray(lote) ? lote : (lote ? [lote] : []);
     const antes = acum.size;
-    arr.forEach(r => {
-      if(!r) return;
-      if(r.id == null) sinId.push(r);                // no debería pasar; no se pierde
-      else acum.set(String(r.id), r);
-    });
-    if(arr.length < KX_PAGINA) break;                // último lote
-    if(acum.size === antes){                         // el servidor ignora el offset
+    arr.forEach(r => { if(!r) return; if(r.id == null) sinId.push(r); else acum.set(String(r.id), r); });
+    if(arr.length < KX_PAGINA) break;
+    if(acum.size === antes){
       console.warn('[Kinexa] la paginación no avanza en', fn, '— se corta en', acum.size);
       break;
     }
     offset += KX_PAGINA;
   }
-  if(offset > 0 || !orden){
-    console.log(`[Kinexa] ${fn}: ${acum.size} registros en ${offset/KX_PAGINA + 1} página(s)` +
-      (orden ? ' — ordenado por id ✓' : ' — SIN ORDEN (la base no lo aceptó): la recuperación puede ser parcial ⚠️'));
-  }
   return [...acum.values()].concat(sinId);
+}
+
+// Trae TODOS los registros. Intenta primero la función paginada; si la base de
+// esa institución todavía no la tiene, cae al método anterior sin romper nada.
+async function rpcTodo(fnPag, fnViejo, args){
+  try {
+    const { datos, paginas } = await _traerPaginado(fnPag, args);
+    console.log(`[Kinexa] ${fnPag}: ${datos.length} registros en ${paginas} página(s) — orden estable por id ✓`);
+    return datos;
+  } catch(err){
+    console.warn(`[Kinexa] ${fnPag} no disponible (${String(err?.message||err).slice(0,70)}) — se usa ${fnViejo}`);
+    const datos = await _traerLegacy(fnViejo, args);
+    console.log(`[Kinexa] ${fnViejo}: ${datos.length} registros (método anterior) ⚠️`);
+    return datos;
+  }
 }
 // ── v3_161: sesión persistente ──────────────────────────────────
 // Antes la sesión vivía SOLO en sessionStorage, que el navegador borra al cerrar
@@ -7790,11 +7830,13 @@ async function pedirEvoluciones(){
     return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`;
   })();
   try {
-    const r = await rpcTodo('kinexa_registros_desde', { p_token:TOKEN, p_tipo:'evolucion', p_desde:desde });
+    const r = await rpcTodo('kinexa_registros_desde_pag', 'kinexa_registros_desde',
+      { p_token:TOKEN, p_tipo:'evolucion', p_desde:desde });
     console.log('[Kinexa] evoluciones bajadas desde', desde + ':', r.length);
     return { datos: r, parcial: true, desde };
   } catch(e){
-    const r = await rpcTodo('kinexa_registros', { p_token:TOKEN, p_tipo:'evolucion' });
+    const r = await rpcTodo('kinexa_registros_pag', 'kinexa_registros',
+      { p_token:TOKEN, p_tipo:'evolucion' });
     console.log('[Kinexa] evoluciones bajadas (sin filtro de fecha):', r.length);
     return { datos: r, parcial: false, desde:null };
   }
@@ -7814,7 +7856,8 @@ async function loadFromSupabase(){
     // 1) Pacientes primero: es lo liviano y lo que se necesita para empezar
     // v3_239: paginado. Hoy son menos de 1000, pero el techo del servidor es el
     // mismo y el día que se cruce empezarían a desaparecer pacientes en silencio.
-    const pacs = await rpcTodo('kinexa_registros', { p_token:TOKEN, p_tipo:'paciente' });
+    const pacs = await rpcTodo('kinexa_registros_pag', 'kinexa_registros',
+      { p_token:TOKEN, p_tipo:'paciente' });
     console.log('[Kinexa] pacientes bajados:', pacs.length);
     patients = normalizarPacientes(pacs);                       // v3_158
     reinyectarOutbox();   // v3_180: lo que sigue sin subir no se pierde de vista
