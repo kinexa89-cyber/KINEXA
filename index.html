@@ -6820,7 +6820,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_248';
+const APP_VERSION = 'v3_249';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -14869,13 +14869,20 @@ function mostrarNuevoMRC(){
 
 // ── Precarga del estado ventilatorio desde la última evolución ──
 function precargarVentilacionUltimaEvo(patientId){
+  // v3_249: mismo criterio de orden cronológico que el resto del cálculo
+  // ventilatorio (la concatenación cruda ponía "9:35" después de "14:20").
   const evos = evoluciones
     .filter(e => e.patientId === patientId && !e.tipo && (e.interfaz || e.interfazEsp))
-    .sort((a,b) => String(b.date + (b.hora||'')).localeCompare(String(a.date + (a.hora||''))));
+    .sort((a,b) => _claveCrono(b).localeCompare(_claveCrono(a)));
   const ult = evos[0];
   if(!ult) return false;
 
-  const esp = ult.interfazEsp || '';
+  let esp = ult.interfazEsp || '';
+  // v3_249: si ayer se lo dejó desconectado con plan de noche, hoy arranca en
+  // TQT espontáneo, no en ARM. Antes se heredaba ARM TQT y el kine tenía que
+  // corregirlo a mano todos los días del destete — y si se olvidaba, la
+  // evolución quedaba cargada como ARM y cortaba la racha de noches.
+  if(!esp && ult.interfaz === 'TQT' && esEvoTQTDejadoEspontaneo(ult)) esp = 'TQT_AA';
   const enARMult = !esp && (ult.interfaz === 'TET' || ult.interfaz === 'TQT');
 
   if(enARMult){
@@ -15539,20 +15546,36 @@ function _diaSiguiente(fecha){
 // detalle para poder aclarárselo al usuario en el cartel.
 let _veSalidaInferida = null;
 
-function fechaSalidaARM(patientId){
+// v3_249: hasta cuántos días de hueco de documentación se acepta estimar la
+// fecha de desconexión. Más allá de eso la estimación es una adivinanza que
+// infla el conteo por encima de las 7 noches y hace desaparecer el contador.
+const HUECO_VE_MAX_DIAS = 3;
+
+// v3_249: `fechaRef` = la fecha desde la que se pregunta (la de la evolución,
+// no la de hoy). Antes la función miraba SIEMPRE todas las evoluciones del
+// paciente, así que al abrir o editar una evolución vieja el conteo salía con
+// datos posteriores: si el paciente había vuelto a ARM hoy, la evolución del
+// martes pasado devolvía null y al guardarla se le borraba la noche que tenía.
+// `excluirEvoId` saca del cálculo la evolución que se está editando, cuya
+// versión guardada todavía es la vieja.
+function fechaSalidaARM(patientId, fechaRef, excluirEvoId){
   _veSalidaInferida = null;
   const p = patients.find(x => x.id === patientId);
   const evos = evoluciones
     .filter(e => e.patientId === patientId && !e.tipo)
+    .filter(e => !fechaRef || String(e.date) <= String(fechaRef))
+    .filter(e => !excluirEvoId || e.id !== excluirEvoId)
     .sort((a,b) => _claveCrono(a).localeCompare(_claveCrono(b)));
 
   // v3_227: una evolución en la que se reintubó (o en la que se intubó durante
   // la sesión) deja al paciente EN ARM, aunque los campos de interfaz muestren
   // el soporte con el que arrancó. Sin esto, un paciente reintubado seguía
   // contando días de ventilación espontánea.
+  // v3_249: el TQT que quedó desconectado con plan de noche termina la sesión
+  // SIN ARM aunque la interfaz de la evolución diga TQT (así arrancó la sesión).
   const enARM = e => evoTerminaEnARM(e) ||
-    (!e.interfazEsp && (e.interfaz === 'TET' || e.interfaz === 'TQT'));
-  const espontanea = e => !!e.interfazEsp && !evoTerminaEnARM(e);
+    (!e.interfazEsp && !esEvoTQTDejadoEspontaneo(e) && (e.interfaz === 'TET' || e.interfaz === 'TQT'));
+  const espontanea = e => (!!e.interfazEsp || esEvoTQTDejadoEspontaneo(e)) && !evoTerminaEnARM(e);
 
   // ¿Estuvo alguna vez en ARM?
   const huboARM = !!(p && p.inicioARM) || evos.some(enARM);
@@ -15598,22 +15621,50 @@ function fechaSalidaARM(patientId){
   // Como el 10/08 terminó en ARM, el primer día que pudo estar íntegramente
   // sin ventilador es el 11/08. Se toma ese, que es la fecha más temprana
   // compatible con lo documentado, y se marca como inferida para avisarlo.
+  //
+  // v3_249: la estimación vale para un hueco corto. Con huecos largos (un
+  // paciente que pasó a sala y estuvo días sin registro ventilatorio) suponer
+  // que se desconectó el día siguiente al último ARM empujaba el conteo más
+  // allá de la 7.ª noche y el contador desaparecía sin avisar. En ese caso se
+  // conserva la primera evolución espontánea —subestima, pero no inventa— y se
+  // avisa para que se cargue el Fin de ARM a mano.
   if(cortante && enARM(cortante)){
     const sig = _diaSiguiente(cortante.date);
+    const hueco = daysBetween(cortante.date, inicioRacha);
     if(sig && sig < inicioRacha){
-      _veSalidaInferida = { ultimaARM: cortante.date, primeraEsp: inicioRacha };
-      inicioRacha = sig;
+      if(hueco !== null && hueco <= HUECO_VE_MAX_DIAS){
+        _veSalidaInferida = { ultimaARM: cortante.date, primeraEsp: inicioRacha, modo:'estimada' };
+        inicioRacha = sig;
+      } else {
+        _veSalidaInferida = { ultimaARM: cortante.date, primeraEsp: inicioRacha, modo:'hueco' };
+      }
     }
   }
 
   // ── Datos que pueden precisar el momento exacto de la salida ──
   // Solo valen si son ANTERIORES o iguales al inicio de la racha: si dicen una
   // fecha posterior, contradicen a las evoluciones y no se usan.
+  //
+  // v3_249: además tienen que caer DENTRO del episodio actual, o sea no ser
+  // anteriores a la última evolución que muestra al paciente en ARM. Sin ese
+  // piso, una extubación fallida de hace tres semanas (muy común: se extuba,
+  // fracasa, se reintuba, se traqueostomiza y recién ahí se destetá) ganaba
+  // como "fecha de salida de ARM" y el paciente aparecía con 12 o 20 noches
+  // espontáneas, o directamente sin contador por pasarse de las 7. Lo mismo con
+  // un `finARM` viejo que quedó en la ficha.
+  const pisoEpisodio = cortante ? String(cortante.date) : '';
   const candidatos = [];
-  const conExtub = evos.filter(e => esEvoConExtubacion(e));
+  const conExtub = evos.filter(e => esEvoConExtubacion(e) && !esEvoConReintubacion(e));
   if(conExtub.length) candidatos.push(conExtub[conExtub.length-1].date);
+  // v3_249: la evolución que declara "en plan de pasar la 1.ª noche" marca el
+  // día 0 de forma explícita: es el dato más confiable que hay.
+  const conNoche1 = evos.filter(e => String(e.pveTQTDuracion||'') === 'noche1'
+                                  && e.pveTQTNocheReconexion !== 'Si');
+  if(conNoche1.length) candidatos.push(conNoche1[conNoche1.length-1].date);
   if(p && p.finARM) candidatos.push(p.finARM);
-  const validos = candidatos.filter(f => f && String(f) <= String(inicioRacha));
+  const validos = candidatos.filter(f => f
+    && String(f) <= String(inicioRacha)
+    && String(f) >= pisoEpisodio);
   if(validos.length) return validos.sort().pop();   // el más cercano a la racha
 
   return inicioRacha;
@@ -15634,17 +15685,20 @@ function fechaSalidaARM(patientId){
 const NOCHES_VE_MAX = 7;
 const ORDINAL_NOCHE = ['', '1.ª', '2.ª', '3.ª', '4.ª', '5.ª', '6.ª', '7.ª'];
 
-function nochesVentilacionEspontanea(patientId, fechaRef){
-  const f = fechaSalidaARM(patientId);
+// v3_249: la fecha de referencia ahora también limita QUÉ evoluciones se miran,
+// no solo contra cuándo se restan los días.
+function nochesVentilacionEspontanea(patientId, fechaRef, excluirEvoId){
+  const ref = fechaRef || today();
+  const f = fechaSalidaARM(patientId, ref, excluirEvoId);
   if(!f) return null;
-  const n = daysBetween(f, fechaRef || today());
+  const n = daysBetween(f, ref);
   // 0 = salió de ARM ese mismo día, todavía no pasó ninguna noche.
   return (n === null || n < 0) ? null : n;
 }
 
 // Compatibilidad con lo que llamaba a la función vieja
-function diasVentilacionEspontanea(patientId, fechaRef){
-  return nochesVentilacionEspontanea(patientId, fechaRef);
+function diasVentilacionEspontanea(patientId, fechaRef, excluirEvoId){
+  return nochesVentilacionEspontanea(patientId, fechaRef, excluirEvoId);
 }
 
 // v3_229: la respuesta a "¿pasó la noche sin ARM?" del formulario abierto.
@@ -15679,8 +15733,8 @@ function actualizarHintVE(patientId, mostrar){
   // La referencia es la fecha DE LA EVOLUCIÓN, no la de hoy: al editar una
   // evolución vieja el conteo tiene que ser el que correspondía ese día.
   const ref = document.getElementById('eDate')?.value || today();
-  const f   = fechaSalidaARM(patientId);
-  const nCalc = nochesVentilacionEspontanea(patientId, ref);
+  const nCalc = nochesVentilacionEspontanea(patientId, ref, editingEvoId);   // v3_249
+  const f   = fechaSalidaARM(patientId, ref, editingEvoId);
   const inferida = _veSalidaInferida;   // v3_230
   if(nCalc === null || !f){ ocultar(); return; }
 
@@ -15712,7 +15766,13 @@ function actualizarHintVE(patientId, mostrar){
         + `(sin ARM desde el ${fmtDate(f)})`
         + (resp === 'Si' ? `, confirmada.` : ` — falta confirmar la noche.`);
     // v3_230: si la fecha se dedujo de un hueco de registro, se avisa
-    if(inferida){
+    if(inferida && inferida.modo === 'hueco'){
+      // v3_249: hueco demasiado grande como para estimar nada
+      txt += `<br><span style="opacity:.85">Faltan evoluciones entre el `
+           + `${fmtDate(inferida.ultimaARM)} (última en ARM) y el ${fmtDate(inferida.primeraEsp)} `
+           + `(primera espontánea), así que el conteo puede quedar corto. `
+           + `Cargá el día real en <strong>Fin de ARM</strong> en la ficha del paciente.</span>`;
+    } else if(inferida){
       txt += `<br><span style="opacity:.85">Fecha estimada: la última evolución que lo muestra en ARM `
            + `es del ${fmtDate(inferida.ultimaARM)} y la primera espontánea del `
            + `${fmtDate(inferida.primeraEsp)}. Si sabés el día exacto, cargalo en `
@@ -18359,22 +18419,68 @@ function motivoReintubacion(e){
       || (e.pveNoReIOT === 'Si' ? e.pveNoReIOTMotivo : '') || '';
 }
 
+// ════════════════════════════════════════════════════════
+//  v3_249 — EL DÍA EN QUE SE DESCONECTA AL TQT DEL RESPIRADOR
+// ════════════════════════════════════════════════════════
+// El día 0 del destete por traqueostomía casi nunca se evoluciona como
+// "espontáneo": el paciente arrancó la sesión EN ARM y se lo dejó ventilando
+// solo al final, así que el kine carga interfaz TQT (en ARM) + árbol PVE TQT/T
+// con "en plan de pasar la 1.ª noche". La interfaz describe cómo empezó la
+// sesión, no cómo terminó.
+//
+// Hasta v3_248 esa evolución contaba como día de ARM: la racha espontánea
+// arrancaba recién en la evolución del día siguiente y TODO el conteo de noches
+// quedaba 24 hs atrasado (la 1.ª noche se mostraba como "todavía ninguna").
+// Peor: el mismo paciente daba un número distinto según lo hubiera cargado un
+// kine como "en ARM + plan de noche" y otro directamente como "TQT espontáneo".
+//
+// Ahora, si la evolución declara un plan de noche y no se anotó reconexión,
+// termina SIN ARM, se cargue como se cargue.
+function esEvoTQTDejadoEspontaneo(e){
+  if(!e) return false;
+  if(!/^noche[1-5]$/.test(String(e.pveTQTDuracion || ''))) return false;
+  if(e.pveTQTColocado === 'No') return false;
+  return e.pveTQTNocheReconexion !== 'Si';   // 'Si' = hubo que reconectarlo
+}
+
 // ¿La evolución deja al paciente en ARM al terminar?
-// Contempla los tres caminos: seguía en ARM, se intubó durante la sesión
-// (v3_224) o se extubó pero hubo que reintubar.
+// Contempla los cuatro caminos: seguía en ARM, se intubó durante la sesión
+// (v3_224), se extubó pero hubo que reintubar (v3_227), o es un TQT que quedó
+// desconectado con plan de noche (v3_249).
 function evoTerminaEnARM(e){
   if(!e) return false;
   if(e.soporteFinal?.tipo === 'ARM') return true;      // se intubó en la sesión
   if(esEvoConReintubacion(e)) return true;             // se extubó y se reintubó
   const esp = e.interfazEsp || '';
   if(esp) return false;                                 // quedó en soporte no invasivo
+  if(esEvoTQTDejadoEspontaneo(e)) return false;         // v3_249: quedó sin ARM esta noche
   if(e.interfaz === 'TET' || e.interfaz === 'TQT') return !esEvoConExtubacion(e);
   return false;
 }
 function ultimaEvoVentilatoria(patientId){
+  // v3_249: se ordena con _claveCrono (misma clave que el resto del cálculo
+  // ventilatorio). La concatenación cruda fecha+hora ponía "9:35" DESPUÉS de
+  // "14:20" del mismo día, así que en un paciente con dos evoluciones diarias
+  // la "última" podía ser la de la mañana.
   return evoluciones
     .filter(e => e.patientId === patientId && !e.tipo && (e.interfaz || e.interfazEsp))
-    .sort((a,b) => String(b.date + (b.hora||'')).localeCompare(String(a.date + (a.hora||''))))[0] || null;
+    .sort((a,b) => _claveCrono(b).localeCompare(_claveCrono(a)))[0] || null;
+}
+
+// v3_249: ¿este paciente tuvo alguna vez vía aérea artificial?
+// Sin este filtro, el contador verde de "Extubado" aparecía en cualquier
+// paciente con una evolución sin ARM — incluido el que ingresó respirando aire
+// ambiente y nunca fue intubado ni traqueostomizado.
+function huboVAAInvasiva(patientId){
+  const p = patients.find(x => x.id === patientId);
+  if(p && (p.inicioARM || p.finARM)) return true;
+  if(p && ((p.tqt && p.tqt !== 'No' && p.tqt !== '') || p.tqtMin === 'Sí')) return true;
+  return evoluciones.some(e => e.patientId === patientId && !e.tipo && (
+       (!e.interfazEsp && (e.interfaz === 'TET' || e.interfaz === 'TQT'))
+    || ['TQT_O2','TQT_AA'].includes(e.interfazEsp || '')
+    || esEvoConExtubacion(e)
+    || e.soporteFinal?.tipo === 'ARM'
+  ));
 }
 function estadoVentPaciente(p){
   const ult = ultimaEvoVentilatoria(p.id);
@@ -18395,6 +18501,18 @@ function estadoVentPaciente(p){
       return via === 'ARM_TQT'
         ? { cod:'ARM_TQT', label:'ARM TQT', cls:'badge-purple', icon:'ti-lungs', title:'Intubado durante la última sesión' }
         : { cod:'ARM_TET', label:'ARM TET', cls:'badge-red',    icon:'ti-lungs', title:'Intubado durante la última sesión' };
+    }
+
+    // v3_249: el TQT que quedó desconectado con plan de noche terminó la sesión
+    // SIN ARM, aunque la interfaz de la evolución diga TQT (así arrancó). Antes
+    // el pase mostraba ARM TQT toda la tarde y toda la noche de la desconexión:
+    // el turno entrante leía "en ARM" en un paciente que estaba ventilando solo
+    // justamente en la noche que hay que vigilar.
+    if(!esp && ult.interfaz === 'TQT' && esEvoTQTDejadoEspontaneo(ult)){
+      const nPlan = (String(ult.pveTQTDuracion||'').match(/noche([1-5])/)||[])[1] || '';
+      return { cod:'TQT_VE', label:'TQT VE', cls:'badge-amber', icon:'ti-circle-dot',
+        title: 'Desconectado del ARM en la última evolución'
+             + (nPlan ? ` — en plan de pasar la ${nPlan}.ª noche` : '') };
     }
 
     if(!esp && (ult.interfaz === 'TET' || ult.interfaz === 'TQT')){
@@ -19812,15 +19930,28 @@ function openEvolucion(patientId){
   // extubación en esa misma evolución, el estado extubado deja de valer y
   // vuelve a contarse el día de ARM.
   const ultVentEvo = ultimaEvoVentilatoria(patientId);
-  const enARMEvoActual = !!(ultVentEvo && !ultVentEvo.interfazEsp
-    && (ultVentEvo.interfaz === 'TET' || ultVentEvo.interfaz === 'TQT')
-    && !esEvoConExtubacion(ultVentEvo));
+  // v3_249: se pasa a usar evoTerminaEnARM, que ya contempla los cuatro
+  // caminos (siguió en ARM, se intubó en la sesión, se reintubó, o es un TQT
+  // que quedó desconectado con plan de noche). Antes el día de la desconexión
+  // del TQT seguía sumando "Día ARM" aunque el paciente ya estaba sin ARM.
+  const enARMEvoActual = !!ultVentEvo && evoTerminaEnARM(ultVentEvo);
   // v3_171: antes hacía falta que alguien registrara formalmente la extubación
   // para dejar de contar días de ARM. Si el kine simplemente evolucionaba con
   // "no está en ARM · aire ambiente", el contador seguía sumando ARM día N.
   // Ahora manda la última evolución ventilatoria: si dice que el paciente no
   // está en ARM invasiva, el conteo se corta, se haya registrado o no.
-  const yaExtubado = !enARMEvoActual && !!ultVentEvo;
+  // v3_249: faltaba exigir que el paciente HAYA tenido vía aérea artificial.
+  // Como la condición era solo "la última evolución no lo muestra en ARM", el
+  // tilde verde de "Extubado" aparecía en cualquier paciente con una evolución
+  // ventilatoria sin ARM: el que ingresó en aire ambiente, el de cánula nasal,
+  // el de VNI. Ninguno de ellos fue extubado nunca.
+  const yaExtubado = !enARMEvoActual && !!ultVentEvo && huboVAAInvasiva(patientId);
+  // v3_249: al TQT desconectado no se lo "extuba". El rótulo se ajusta a la
+  // vía aérea que tiene el paciente.
+  const esTQTPac = !!((p.tqt && p.tqt !== 'No' && p.tqt !== '') || p.tqtMin === 'Sí'
+    || ['TQT_O2','TQT_AA'].includes(ultVentEvo?.interfazEsp || '')
+    || (ultVentEvo && !ultVentEvo.interfazEsp && ultVentEvo.interfaz === 'TQT'));
+  const rotuloSinARM = esTQTPac ? 'Sin ARM' : 'Extubado';
   if(p.inicioARM && !yaExtubado){
     diasARM = daysBetween(p.inicioARM, todayStr);
     diasARM = diasARM !== null ? diasARM + 1 : 0;
@@ -19840,7 +19971,7 @@ function openEvolucion(patientId){
     diasHosp !== null ? `<div class="day-counter"><div class="dc-val">${diasHosp+1}</div><div class="dc-label">Día hosp.</div></div>` : '',
     diasSector !== null ? `<div class="day-counter" style="background:var(--teal-50);border-color:var(--teal-100)"><div class="dc-val" style="color:var(--teal-700)">${diasSector+1}</div><div class="dc-label" style="color:var(--teal-500)">Día ${SALA_LABEL[p.sala]||p.sala}</div></div>` : '',
     p.inicioARM && !yaExtubado && diasARM ? `<div class="day-counter" style="background:var(--red-50);border-color:var(--red-100)"><div class="dc-val" style="color:var(--red-600)">${diasARM}</div><div class="dc-label" style="color:var(--red-400)">Día ARM</div></div>` : '',
-    yaExtubado ? `<div class="day-counter" style="background:var(--green-50);border-color:#d1fae5"><div class="dc-val" style="color:var(--green-800)">✓</div><div class="dc-label" style="color:var(--green-400)">Extubado</div></div>` : '',
+    yaExtubado ? `<div class="day-counter" style="background:var(--green-50);border-color:#d1fae5"><div class="dc-val" style="color:var(--green-800)">✓</div><div class="dc-label" style="color:var(--green-400)">${rotuloSinARM}</div></div>` : '',
   ].filter(Boolean).join('');
 
   // ── Pre-seleccionar estado ventilatorio ──
@@ -21646,7 +21777,10 @@ async function guardarEvolucion(){
     diasVE: (() => {
       if(!['TQT_O2','TQT_AA'].includes(G('eInterfazEsp'))) return '';
       if(G('eVENocheSinARM') === 'No') return 0;
-      const n = nochesVentilacionEspontanea(currentEvoPacId, date);
+      // v3_249: acotado a la fecha de la evolución y sin contarse a sí misma.
+      // Antes, editar una evolución vieja de un paciente que ya había vuelto a
+      // ARM le borraba la noche que tenía guardada.
+      const n = nochesVentilacionEspontanea(currentEvoPacId, date, editingEvoId);
       return (n === null || n > NOCHES_VE_MAX) ? '' : n;
     })(),
     // v3_229: confirmación de la noche. Vacío = no se preguntó o no se contestó.
