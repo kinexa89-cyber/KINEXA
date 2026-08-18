@@ -1842,8 +1842,11 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 
         <!-- Respiratorio -->
         <div id="fGrupoResp" style="display:none">
-          <!-- v3_252: qué patología respiratoria motiva la asistencia -->
-          <div class="form-row">
+          <!-- v3_252: qué patología respiratoria motiva la asistencia.
+               v3_253: la lista es de adultos (EPOC, fibrosis pulmonar), así que
+               la fila se oculta en las salas pediátricas: ahí lo respiratorio
+               sale de los antecedentes pediátricos, que tienen su propio bloque. -->
+          <div class="form-row" id="fRespPatologiaRow">
             <div class="form-group">
               <label>Patología respiratoria</label>
               <select id="fRespPatologia" onchange="onRespPatologiaChange(this.value)">
@@ -7222,7 +7225,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_252';
+const APP_VERSION = 'v3_253';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -15765,6 +15768,12 @@ function aplicarModoFichaPorSala(sala){
   mostrar('antGrid', !ped);
   // v3_250: APACHE II, SAPS II y Charlson están validados en adultos
   mostrar('fScoresSeveridadBlock', !ped);
+  // v3_253: la lista de patología respiratoria es de adultos
+  mostrar('fRespPatologiaRow', !ped);
+  if(ped){
+    ['fRespPatologia','fRespPatologiaOtro'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    mostrar('fRespPatologiaOtroWrap', false);
+  }
   // v3_222: el campo ya no se muestra en ningún caso (lo reemplaza el CFS)
   // En pediatría la edad sale de la fecha de nacimiento
   const wrapEdad = document.getElementById('fEdad')?.closest('.form-group');
@@ -20554,8 +20563,8 @@ async function guardarPaciente(){
     grupoRespARM: G('fRespARM')||null,
     grupoRespO2Dep: G('fRespO2Dep')||null,
     // v3_252: patología respiratoria del grupo respiratorio
-    grupoRespPatologia: G('fTipoKine')==='respiratorio' ? (G('fRespPatologia')||null) : null,
-    grupoRespPatologiaOtro: (G('fTipoKine')==='respiratorio' && G('fRespPatologia')==='Otro')
+    grupoRespPatologia: (!esPed && G('fTipoKine')==='respiratorio') ? (G('fRespPatologia')||null) : null,
+    grupoRespPatologiaOtro: (!esPed && G('fTipoKine')==='respiratorio' && G('fRespPatologia')==='Otro')
       ? (G('fRespPatologiaOtro')||null) : null,
     grupoNeuroFoco:G('fNeuroFoco')||null,
     grupoFocoTipo:G('fNeuroFocoTipo')||null, grupoFocoLado:G('fNeuroFocoLado')||null,
