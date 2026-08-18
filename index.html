@@ -647,6 +647,23 @@ tr:hover td{ background:var(--blue-50); }
   text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); }
 .ant-chip input{ width:15px;height:15px;cursor:pointer;flex-shrink:0;accent-color:var(--blue-600); }
 .ant-chip.is-checked{ border-color:var(--blue-200);background:var(--blue-50);color:var(--blue-800); }
+/* ─── v3_250: scores de severidad al ingreso ─── */
+.score-resumen{ display:flex;align-items:center;gap:12px;background:var(--blue-50);
+  border:1.5px solid var(--blue-200);border-radius:10px;padding:10px 13px;margin-bottom:8px; }
+.score-resumen .sr-val{ font-size:24px;font-weight:800;color:var(--blue-800);line-height:1;min-width:46px;text-align:center; }
+.score-resumen .sr-nom{ font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--blue-600); }
+.score-resumen .sr-det{ font-size:11.5px;color:var(--text-muted);line-height:1.4;margin-top:2px; }
+.score-resumen .sr-x{ margin-left:auto;background:none;border:none;color:var(--text-light);font-size:20px;
+  cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0; }
+.score-resumen .sr-x:hover{ color:var(--red-600); }
+.score-box{ border-radius:10px;padding:13px 16px;margin-top:12px;display:flex;align-items:center;gap:14px; }
+.score-box .sb-val{ font-size:32px;font-weight:900;line-height:1;min-width:58px;text-align:center; }
+.score-box .sb-sub{ font-size:10px;color:var(--text-muted);text-align:center;margin-top:3px; }
+.score-falta{ font-size:11.5px;color:var(--amber-600);line-height:1.45;margin-top:8px; }
+.score-nota{ font-size:11px;color:var(--text-light);line-height:1.45;margin-top:8px; }
+.score-sub{ font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);
+  margin:16px 0 8px;border-bottom:1px solid var(--border);padding-bottom:4px; }
+
 
 
 .egreso-option{ display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--radius);
@@ -1767,6 +1784,24 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-group"><label>Fecha ingreso hospital</label><input type="date" id="fFIHosp"></div>
         <div class="form-group"><label>Fecha de ingreso al sector</label><input type="date" id="fFIUTI"></div>
       </div>
+      <!-- ══ v3_250: ¿cómo llegó el paciente al hospital? ══ -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Procedencia del ingreso</label>
+          <select id="fOrigenIngreso" onchange="onOrigenIngresoChange(this.value)">
+            <option value="">-</option>
+            <option value="Demanda espontánea / guardia">Demanda espontánea / guardia</option>
+            <option value="Derivado de otra institución">Derivado de otra institución</option>
+          </select>
+        </div>
+        <div class="form-group" id="fInstDerivanteWrap" style="display:none">
+          <label>Institución derivante</label>
+          <input type="text" id="fInstDerivante" list="listaInstDerivantes" autocomplete="off"
+                 placeholder="Hospital, clínica o sanatorio de origen">
+          <datalist id="listaInstDerivantes"></datalist>
+          <div class="form-hint">Se sugieren las instituciones que ya se cargaron antes</div>
+        </div>
+      </div>
       <div class="form-group"><label>Diagnóstico principal</label><input type="text" id="fDiag"></div>
       <!-- v3_140: frecuencia de atención kinésica -->
       <div class="form-group">
@@ -2378,6 +2413,29 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       </div>
       <div id="fFragilidadDesc" style="display:none;font-size:12px;line-height:1.5;border-radius:8px;padding:9px 12px;margin-top:2px"></div>
       <div id="fFragilidadAviso" style="display:none;font-size:11.5px;color:var(--amber-600);margin-top:6px;line-height:1.45"></div>
+    </div>
+
+    <!-- ══ v3_250: SCORES DE SEVERIDAD AL INGRESO (opcionales) ══
+         No todas las instituciones los registran, así que la ficha se guarda
+         igual si quedan vacíos. Son scores de adultos: el bloque se oculta en
+         las salas pediátricas (ver aplicarModoFichaPorSala). -->
+    <div class="form-section" id="fScoresSeveridadBlock">
+      <div class="form-section-title"><i class="ti ti-calculator"></i> Scores de severidad al ingreso</div>
+      <div class="form-hint" style="margin-bottom:10px;line-height:1.5">
+        Opcionales. Para las instituciones que miden gravedad al ingreso. Se cargan con los
+        <strong>peores valores de las primeras 24 h</strong> en la unidad.
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:11px">
+        <button type="button" class="btn btn-sm btn-ghost" onclick="abrirAPACHE()"><i class="ti ti-activity-heartbeat"></i> APACHE II</button>
+        <button type="button" class="btn btn-sm btn-ghost" onclick="abrirSAPS()"><i class="ti ti-heartbeat"></i> SAPS II</button>
+        <button type="button" class="btn btn-sm btn-ghost" onclick="abrirCharlson()"><i class="ti ti-clipboard-heart"></i> Charlson</button>
+      </div>
+      <div id="fApacheResumen" class="score-resumen" style="display:none"></div>
+      <div id="fSapsResumen" class="score-resumen" style="display:none"></div>
+      <div id="fCharlsonResumen" class="score-resumen" style="display:none"></div>
+      <input type="hidden" id="fApacheData">
+      <input type="hidden" id="fSapsData">
+      <input type="hidden" id="fCharlsonData">
     </div>
 
     <!-- v3_128: ARM al ingreso — aplica a TODOS los grupos de patología -->
@@ -5387,6 +5445,291 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
   </div>
 </div>
 
+<!-- ════ v3_250 — APACHE II ════ -->
+<div class="modal-overlay" id="modalApache">
+  <div class="modal" style="max-width:700px;max-height:92vh;overflow-y:auto">
+    <div class="modal-header">
+      <div>
+        <h3>APACHE II</h3>
+        <div class="modal-subtitle">Peores valores de las primeras 24 h en la unidad</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalApache')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="score-sub">Signos vitales</div>
+      <div class="form-row three">
+        <div class="form-group"><label>Temperatura (°C)</label>
+          <input type="number" step="0.1" inputmode="decimal" id="apTemp" oninput="calcAPACHE()" placeholder="central"></div>
+        <div class="form-group"><label>FC (lpm)</label>
+          <input type="number" inputmode="numeric" id="apFC" oninput="calcAPACHE()"></div>
+        <div class="form-group"><label>FR (rpm)</label>
+          <input type="number" inputmode="numeric" id="apFR" oninput="calcAPACHE()"></div>
+      </div>
+      <div class="form-row three">
+        <div class="form-group"><label>TAS (mmHg)</label>
+          <input type="number" inputmode="numeric" id="apTAS" oninput="calcTAMApache()"></div>
+        <div class="form-group"><label>TAD (mmHg)</label>
+          <input type="number" inputmode="numeric" id="apTAD" oninput="calcTAMApache()"></div>
+        <div class="form-group"><label>TAM (mmHg)</label>
+          <input type="number" inputmode="numeric" id="apTAM" oninput="calcAPACHE()">
+          <div class="form-hint">Se calcula sola con TAS y TAD</div></div>
+      </div>
+
+      <div class="score-sub">Oxigenación y estado ácido-base</div>
+      <div class="form-row three">
+        <div class="form-group"><label>FiO₂ (%)</label>
+          <input type="number" inputmode="numeric" id="apFiO2" oninput="calcAPACHE()" placeholder="21 a 100"></div>
+        <div class="form-group"><label>PaO₂ (mmHg)</label>
+          <input type="number" inputmode="numeric" id="apPaO2" oninput="calcAPACHE()"></div>
+        <div class="form-group"><label>PaCO₂ (mmHg)</label>
+          <input type="number" inputmode="numeric" id="apPaCO2" oninput="calcAPACHE()">
+          <div class="form-hint">Solo hace falta con FiO₂ ≥ 50 %</div></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>pH arterial</label>
+          <input type="number" step="0.01" inputmode="decimal" id="apPH" oninput="calcAPACHE()"></div>
+        <div class="form-group"><label>Gradiente A-a (mmHg)</label>
+          <input type="text" id="apAaDO2" readonly placeholder="—" style="background:var(--gray-50);color:var(--text-muted)">
+          <div class="form-hint">Se calcula solo y se puntúa cuando la FiO₂ es ≥ 50 %</div></div>
+      </div>
+
+      <div class="score-sub">Laboratorio</div>
+      <div class="form-row three">
+        <div class="form-group"><label>Na⁺ (mEq/L)</label>
+          <input type="number" inputmode="numeric" id="apNa" oninput="calcAPACHE()"></div>
+        <div class="form-group"><label>K⁺ (mEq/L)</label>
+          <input type="number" step="0.1" inputmode="decimal" id="apK" oninput="calcAPACHE()"></div>
+        <div class="form-group"><label>Creatinina (mg/dL)</label>
+          <input type="number" step="0.01" inputmode="decimal" id="apCreat" oninput="calcAPACHE()"></div>
+      </div>
+      <label class="ant-chip" style="margin-bottom:11px">
+        <input type="checkbox" id="apIRA" onchange="calcAPACHE()">Insuficiencia renal aguda (duplica los puntos de creatinina)
+      </label>
+      <div class="form-row three">
+        <div class="form-group"><label>Hematocrito (%)</label>
+          <input type="number" step="0.1" inputmode="decimal" id="apHto" oninput="calcAPACHE()"></div>
+        <div class="form-group"><label>Leucocitos (×10³/mm³)</label>
+          <input type="number" step="0.1" inputmode="decimal" id="apGB" oninput="calcAPACHE()" placeholder="ej: 12.4"></div>
+        <div class="form-group"><label>Glasgow (3 a 15)</label>
+          <input type="number" inputmode="numeric" id="apGCS" min="3" max="15" oninput="calcAPACHE()"></div>
+      </div>
+
+      <div class="score-sub">Edad y salud crónica</div>
+      <div class="form-row">
+        <div class="form-group"><label>Edad (años)</label>
+          <input type="number" inputmode="numeric" id="apEdad" oninput="calcAPACHE()">
+          <div class="form-hint">Se toma de la ficha; se puede corregir</div></div>
+        <div class="form-group"><label>Salud crónica previa</label>
+          <select id="apCronico" onchange="calcAPACHE()">
+            <option value="0">Sin insuficiencia orgánica severa ni inmunocompromiso</option>
+            <option value="5">Sí — paciente clínico o postoperatorio de urgencia (5)</option>
+            <option value="2">Sí — postoperatorio programado (2)</option>
+          </select>
+          <div class="form-hint">Cirrosis, ICC clase IV, EPOC severa, diálisis crónica o inmunocompromiso, ya documentados <em>antes</em> de esta internación</div>
+        </div>
+      </div>
+
+      <div id="apResultBox" class="score-box" style="display:none">
+        <div>
+          <div class="sb-val" id="apTotalDisp">—</div>
+          <div class="sb-sub">/ 71</div>
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:14px" id="apCategoria">—</div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;line-height:1.45" id="apDetalle">—</div>
+        </div>
+      </div>
+      <div id="apFaltan" class="score-falta"></div>
+      <div class="score-nota">
+        La mortalidad estimada sale de la cohorte original de Knaus (1985). Sirve como referencia de gravedad
+        del grupo, no como pronóstico de este paciente.
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modalApache')">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarAPACHE()"><i class="ti ti-device-floppy"></i> Guardar APACHE II</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ════ v3_250 — SAPS II ════ -->
+<div class="modal-overlay" id="modalSaps">
+  <div class="modal" style="max-width:700px;max-height:92vh;overflow-y:auto">
+    <div class="modal-header">
+      <div>
+        <h3>SAPS II</h3>
+        <div class="modal-subtitle">Peores valores de las primeras 24 h en la unidad</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalSaps')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="score-sub">Signos vitales</div>
+      <div class="form-row three">
+        <div class="form-group"><label>Edad (años)</label>
+          <input type="number" inputmode="numeric" id="spEdad" oninput="calcSAPS()"></div>
+        <div class="form-group"><label>FC (lpm)</label>
+          <input type="number" inputmode="numeric" id="spFC" oninput="calcSAPS()"></div>
+        <div class="form-group"><label>TAS (mmHg)</label>
+          <input type="number" inputmode="numeric" id="spTAS" oninput="calcSAPS()"></div>
+      </div>
+      <div class="form-row three">
+        <div class="form-group"><label>Temperatura (°C)</label>
+          <input type="number" step="0.1" inputmode="decimal" id="spTemp" oninput="calcSAPS()"></div>
+        <div class="form-group"><label>Diuresis 24 h (L)</label>
+          <input type="number" step="0.01" inputmode="decimal" id="spDiuresis" oninput="calcSAPS()" placeholder="ej: 1.2"></div>
+        <div class="form-group"><label>Glasgow (3 a 15)</label>
+          <input type="number" inputmode="numeric" id="spGCS" min="3" max="15" oninput="calcSAPS()"></div>
+      </div>
+
+      <div class="score-sub">Oxigenación</div>
+      <div class="form-row">
+        <div class="form-group"><label>¿En ARM o CPAP?</label>
+          <select id="spVM" onchange="onSapsVMChange()">
+            <option value="">-</option>
+            <option value="No">No</option>
+            <option value="Si">Sí</option>
+          </select>
+          <div class="form-hint">La PaFi solo puntúa en pacientes ventilados o con CPAP</div>
+        </div>
+      </div>
+      <div class="form-row three" id="spPafiWrap" style="display:none">
+        <div class="form-group"><label>PaO₂ (mmHg)</label>
+          <input type="number" inputmode="numeric" id="spPaO2" oninput="calcSAPS()"></div>
+        <div class="form-group"><label>FiO₂ (%)</label>
+          <input type="number" inputmode="numeric" id="spFiO2" oninput="calcSAPS()" placeholder="21 a 100"></div>
+        <div class="form-group"><label>PaFi</label>
+          <input type="text" id="spPafi" readonly placeholder="—" style="background:var(--gray-50);color:var(--text-muted)"></div>
+      </div>
+
+      <div class="score-sub">Laboratorio</div>
+      <div class="form-row three">
+        <div class="form-group"><label id="spUreaLabel">Urea (mg/dL)</label>
+          <input type="number" step="0.1" inputmode="decimal" id="spUrea" oninput="calcSAPS()"></div>
+        <div class="form-group"><label>Unidad</label>
+          <select id="spUreaUnidad" onchange="calcSAPS()">
+            <option value="urea">Urea (mg/dL)</option>
+            <option value="bun">BUN (mg/dL)</option>
+          </select>
+          <div class="form-hint">Los laboratorios de acá informan urea; el score original usa BUN</div>
+        </div>
+        <div class="form-group"><label>Leucocitos (×10³/mm³)</label>
+          <input type="number" step="0.1" inputmode="decimal" id="spGB" oninput="calcSAPS()"></div>
+      </div>
+      <div class="form-row four">
+        <div class="form-group"><label>Na⁺ (mEq/L)</label>
+          <input type="number" inputmode="numeric" id="spNa" oninput="calcSAPS()"></div>
+        <div class="form-group"><label>K⁺ (mEq/L)</label>
+          <input type="number" step="0.1" inputmode="decimal" id="spK" oninput="calcSAPS()"></div>
+        <div class="form-group"><label>HCO₃⁻ (mEq/L)</label>
+          <input type="number" step="0.1" inputmode="decimal" id="spHCO3" oninput="calcSAPS()"></div>
+        <div class="form-group"><label>Bilirrubina (mg/dL)</label>
+          <input type="number" step="0.1" inputmode="decimal" id="spBili" oninput="calcSAPS()"></div>
+      </div>
+
+      <div class="score-sub">Enfermedad crónica y tipo de ingreso</div>
+      <div class="form-row">
+        <div class="form-group"><label>Enfermedad crónica</label>
+          <select id="spCronica" onchange="calcSAPS()">
+            <option value="0">Ninguna de las tres</option>
+            <option value="9">Cáncer con metástasis (9)</option>
+            <option value="10">Enfermedad hematológica maligna (10)</option>
+            <option value="17">SIDA (17)</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Tipo de ingreso</label>
+          <select id="spIngreso" onchange="calcSAPS()">
+            <option value="">-</option>
+            <option value="0">Quirúrgico programado (0)</option>
+            <option value="6">Clínico / médico (6)</option>
+            <option value="8">Quirúrgico no programado (8)</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="spResultBox" class="score-box" style="display:none">
+        <div>
+          <div class="sb-val" id="spTotalDisp">—</div>
+          <div class="sb-sub">/ 163</div>
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:14px" id="spCategoria">—</div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;line-height:1.45" id="spDetalle">—</div>
+        </div>
+      </div>
+      <div id="spFaltan" class="score-falta"></div>
+      <div class="score-nota">
+        La mortalidad sale de la ecuación original de Le Gall (1993). Es una referencia de gravedad del grupo,
+        no un pronóstico individual.
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modalSaps')">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarSAPS()"><i class="ti ti-device-floppy"></i> Guardar SAPS II</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ════ v3_250 — ÍNDICE DE COMORBILIDAD DE CHARLSON ════ -->
+<div class="modal-overlay" id="modalCharlson">
+  <div class="modal" style="max-width:700px;max-height:92vh;overflow-y:auto">
+    <div class="modal-header">
+      <div>
+        <h3>Índice de comorbilidad de Charlson</h3>
+        <div class="modal-subtitle">Comorbilidades previas a esta internación</div>
+      </div>
+      <button class="modal-close" onclick="closeModal('modalCharlson')">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <div class="form-hint" style="line-height:1.5;margin-bottom:4px">
+        Se marcan las enfermedades que el paciente <strong>ya tenía antes de internarse</strong>, no lo que le
+        pasó en esta internación. Algunas se excluyen entre sí y se destildan solas.
+      </div>
+      <div id="chPrecarga" class="score-falta" style="display:none"></div>
+
+      <div id="chContenedor"></div>
+
+      <div class="score-sub">Edad</div>
+      <div class="form-row">
+        <div class="form-group"><label>Edad (años)</label>
+          <input type="number" inputmode="numeric" id="chEdad" oninput="calcCharlson()">
+          <div class="form-hint">Se toma de la ficha; se puede corregir</div></div>
+        <div class="form-group"><label>Puntos por edad</label>
+          <input type="text" id="chEdadPts" readonly placeholder="—" style="background:var(--gray-50);color:var(--text-muted)">
+          <div class="form-hint">1 punto por cada década a partir de los 50 años</div></div>
+      </div>
+
+      <div id="chResultBox" class="score-box" style="display:none">
+        <div>
+          <div class="sb-val" id="chTotalDisp">—</div>
+          <div class="sb-sub" id="chTotalSub">puntos</div>
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:14px" id="chCategoria">—</div>
+          <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;line-height:1.45" id="chDetalle">—</div>
+        </div>
+      </div>
+      <div class="score-nota">
+        La supervivencia estimada a 10 años viene del modelo original de Charlson (1987), hecho en población
+        general. En un paciente crítico es orientativa: describe la carga de comorbilidad, no el pronóstico
+        de esta internación.
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('modalCharlson')">Cancelar</button>
+        <button class="btn btn-primary" onclick="guardarCharlson()"><i class="ti ti-device-floppy"></i> Guardar Charlson</button>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <!-- ════ MODAL FICHA NEUROLÓGICA ════ -->
 <div class="modal-overlay" id="modalNeuro">
   <div class="modal" style="width:800px">
@@ -6820,7 +7163,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_249';
+const APP_VERSION = 'v3_250';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -12266,6 +12609,8 @@ async function generarResumenIA(){
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
     antTxt ? `Antecedentes: ${antTxt}` : '',
     p.fragilidad ? `Fragilidad clínica previa: ${fmtFragilidad(p.fragilidad)}` : '',   // v3_219
+    p.origenIngreso ? `Procedencia del ingreso: ${p.origenIngreso}${p.instDerivante ? ' (' + p.instDerivante + ')' : ''}` : '',   // v3_250
+    scoresIngresoTexto(p) ? `Scores de severidad al ingreso: ${scoresIngresoTexto(p)}` : '',   // v3_250
     obGrado ? `Estado nutricional: ${obGrado} (IMC ${imcDePaciente(p)})` : '',
     p.otrosAnt ? `Otros antecedentes: ${p.otrosAnt}` : '',
     p.causaVM ? `Causa de VM: ${p.causaVM}` : '',
@@ -12404,6 +12749,8 @@ async function generarInformeAlta(patientId){
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
     antTxt2 ? `Antecedentes: ${antTxt2}` : '',
     p.fragilidad ? `Fragilidad clínica previa: ${fmtFragilidad(p.fragilidad)}` : '',   // v3_219
+    p.origenIngreso ? `Procedencia del ingreso: ${p.origenIngreso}${p.instDerivante ? ' (' + p.instDerivante + ')' : ''}` : '',   // v3_250
+    scoresIngresoTexto(p) ? `Scores de severidad al ingreso: ${scoresIngresoTexto(p)}` : '',   // v3_250
     obGrado2 ? `Estado nutricional: ${obGrado2} (IMC ${imcDePaciente(p)})` : '',
     p.otrosAnt ? `Otros antecedentes: ${p.otrosAnt}` : '',
     p.causaVM ? `Causa de VM: ${p.causaVM}` : '',
@@ -13199,7 +13546,8 @@ function showSection(id){
 // Los modales de carga (paciente, evolución, neuro, deglución, egreso) ya no se
 // cierran al tocar el fondo: se perdía todo lo cargado de un dedazo. Además, si
 // hay datos escritos sin guardar, la X y el botón Cancelar piden confirmación.
-const MODALES_PROTEGIDOS = ['modalPaciente','modalEvo','modalEvoMin','modalNeuro','modalDeglusion','modalEgreso','modalERC'];
+const MODALES_PROTEGIDOS = ['modalPaciente','modalEvo','modalEvoMin','modalNeuro','modalDeglusion','modalEgreso','modalERC',
+  'modalApache','modalSaps','modalCharlson'];   // v3_250
 const modalSucio = {};
 
 function marcarModalLimpio(id){ modalSucio[id] = false; }
@@ -14425,6 +14773,653 @@ function guardarERC(){
   showToast('Evaluación ERC guardada','success');
 }
 
+// ════════════════════════════════════════════════════════
+//  v3_250 — PROCEDENCIA DEL INGRESO
+// ════════════════════════════════════════════════════════
+// Cómo llegó el paciente al hospital: por demanda espontánea (guardia) o
+// derivado de otra institución. En el segundo caso se pide el nombre del
+// efector derivante, con sugerencias de los que ya se cargaron antes.
+function onOrigenIngresoChange(v){
+  const wrap = document.getElementById('fInstDerivanteWrap');
+  const inp  = document.getElementById('fInstDerivante');
+  const esDeriv = (v === 'Derivado de otra institución');
+  if(wrap) wrap.style.display = esDeriv ? '' : 'none';
+  if(!esDeriv && inp) inp.value = '';
+  if(esDeriv) poblarInstitucionesDerivantes();
+}
+
+function poblarInstitucionesDerivantes(){
+  const dl = document.getElementById('listaInstDerivantes');
+  if(!dl) return;
+  const nombres = [...new Set((typeof patients !== 'undefined' ? patients : [])
+    .map(p => String(p?.instDerivante || '').trim()).filter(Boolean))]
+    .sort((a,b) => a.localeCompare(b,'es'));
+  dl.innerHTML = nombres.map(n => `<option value="${escapeHTML(n)}"></option>`).join('');
+}
+
+
+// ════════════════════════════════════════════════════════
+//  v3_250 — SCORES DE SEVERIDAD AL INGRESO
+//  APACHE II · SAPS II · Índice de Charlson
+// ════════════════════════════════════════════════════════
+// Son opcionales: las instituciones que no los usan dejan el bloque vacío y la
+// ficha se guarda igual. Cada score se guarda como objeto dentro del paciente
+// (scoreApache / scoreSaps / scoreCharlson) con el total, la categoría y los
+// valores con los que se calculó, para poder auditarlo después.
+const SCORES_CFG = {
+  apache:   { data:'fApacheData',   box:'fApacheResumen',   nom:'APACHE II',          max:71   },
+  saps:     { data:'fSapsData',     box:'fSapsResumen',     nom:'SAPS II',            max:163  },
+  charlson: { data:'fCharlsonData', box:'fCharlsonResumen', nom:'Índice de Charlson', max:null },
+};
+
+// Lee un campo numérico. Devuelve null si está vacío o no es un número.
+function _sNum(id){
+  const el = document.getElementById(id);
+  if(!el) return null;
+  const raw = String(el.value || '').trim().replace(',', '.');
+  if(raw === '') return null;
+  const n = parseFloat(raw);
+  return isFinite(n) ? n : null;
+}
+
+// La FiO₂ se puede cargar como 50 o como 0,50: se normaliza a porcentaje.
+function _sFiO2(id){
+  let v = _sNum(id);
+  if(v === null) return null;
+  if(v > 0 && v <= 1) v = v * 100;
+  return v;
+}
+
+function scoreGuardado(campo){
+  const cfg = SCORES_CFG[campo];
+  if(!cfg) return null;
+  const raw = document.getElementById(cfg.data)?.value || '';
+  if(!raw) return null;
+  try { return JSON.parse(raw); } catch(e){ return null; }
+}
+
+// Lee el campo oculto del formulario al momento de guardar el paciente.
+// Si está vacío o quedó un JSON roto, devuelve null en vez de romper el guardado.
+function _leerScoreOculto(id){
+  const raw = document.getElementById(id)?.value || '';
+  if(!raw) return null;
+  try { return JSON.parse(raw); } catch(e){ return null; }
+}
+
+function pintarResumenScore(campo){
+  const cfg = SCORES_CFG[campo];
+  if(!cfg) return;
+  const box = document.getElementById(cfg.box);
+  if(!box) return;
+  const d = scoreGuardado(campo);
+  if(!d){ box.style.display = 'none'; box.innerHTML = ''; return; }
+  box.style.display = 'flex';
+  box.innerHTML =
+    `<div class="sr-val">${escapeHTML(String(d.total))}</div>` +
+    `<div style="flex:1;min-width:0">` +
+      `<div class="sr-nom">${escapeHTML(cfg.nom)}${cfg.max ? ' · sobre ' + cfg.max : ''}</div>` +
+      `<div class="sr-det">${escapeHTML(d.cat || '')}${d.detalle ? ' — ' + escapeHTML(d.detalle) : ''}</div>` +
+      `<div class="sr-det" style="font-size:10.5px">Cargado el ${fmtDate(d.fecha)}${d.kine ? ' · ' + escapeHTML(d.kine) : ''}</div>` +
+    `</div>` +
+    `<button type="button" class="sr-x" title="Borrar" onclick="borrarScore('${campo}')">&times;</button>`;
+}
+
+function borrarScore(campo){
+  const cfg = SCORES_CFG[campo];
+  if(!cfg) return;
+  if(!confirm(`¿Borrar el ${cfg.nom} cargado?`)) return;
+  const h = document.getElementById(cfg.data);
+  if(h) h.value = '';
+  pintarResumenScore(campo);
+  marcarModalSucio('modalPaciente');
+}
+
+function limpiarScoresIngreso(){
+  Object.keys(SCORES_CFG).forEach(k => {
+    const h = document.getElementById(SCORES_CFG[k].data);
+    if(h) h.value = '';
+    pintarResumenScore(k);
+  });
+}
+
+function cargarScoresIngreso(p){
+  const set = (k, val) => {
+    const h = document.getElementById(SCORES_CFG[k].data);
+    if(h) h.value = val ? JSON.stringify(val) : '';
+    pintarResumenScore(k);
+  };
+  set('apache',   p?.scoreApache);
+  set('saps',     p?.scoreSaps);
+  set('charlson', p?.scoreCharlson);
+}
+
+// Texto corto para informes y resúmenes
+function scoresIngresoTexto(p){
+  const partes = [];
+  if(p?.scoreApache?.total   != null) partes.push(`APACHE II ${p.scoreApache.total}`);
+  if(p?.scoreSaps?.total     != null) partes.push(`SAPS II ${p.scoreSaps.total}`);
+  if(p?.scoreCharlson?.total != null) partes.push(`Charlson ${p.scoreCharlson.total}`);
+  return partes.join(' · ');
+}
+
+
+// ════════════════════════════════════════════════════════
+//  APACHE II
+// ════════════════════════════════════════════════════════
+const APACHE_CAMPOS = ['apTemp','apTAS','apTAD','apTAM','apFC','apFR','apFiO2','apPaO2','apPaCO2',
+  'apPH','apNa','apK','apCreat','apHto','apGB','apGCS','apEdad'];
+
+function abrirAPACHE(){
+  APACHE_CAMPOS.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  const ira = document.getElementById('apIRA');
+  if(ira){ ira.checked = false; ira.closest('.ant-chip')?.classList.remove('is-checked'); }
+  const cron = document.getElementById('apCronico'); if(cron) cron.value = '0';
+  const aa = document.getElementById('apAaDO2'); if(aa) aa.value = '';
+
+  const prev = scoreGuardado('apache');
+  if(prev && prev.campos){
+    Object.entries(prev.campos).forEach(([id, v]) => {
+      const el = document.getElementById(id);
+      if(el && v !== null && v !== undefined) el.value = v;
+    });
+    if(prev.ira && ira){ ira.checked = true; ira.closest('.ant-chip')?.classList.add('is-checked'); }
+    if(cron && prev.cronico !== null && prev.cronico !== undefined) cron.value = String(prev.cronico);
+  } else {
+    // La edad y el Glasgow ya están en la ficha: se precargan para no repetirlos
+    const ed = document.getElementById('fEdad')?.value;
+    if(ed) document.getElementById('apEdad').value = ed;
+    const g = document.getElementById('fGlasgowScore')?.value;
+    if(g) document.getElementById('apGCS').value = g;
+  }
+  calcAPACHE();
+  openModal('modalApache');
+}
+
+function calcTAMApache(){
+  const s = _sNum('apTAS'), d = _sNum('apTAD');
+  if(s !== null && d !== null){
+    const el = document.getElementById('apTAM');
+    if(el) el.value = Math.round((s + 2 * d) / 3);
+  }
+  calcAPACHE();
+}
+
+// Devuelve { total, aps, ptsEdad, ptsCron, faltan[], aado2, campos }
+function calcularAPACHE(){
+  const faltan = [];
+  const g = (id, label) => { const v = _sNum(id); if(v === null) faltan.push(label); return v; };
+
+  const temp  = g('apTemp','temperatura');
+  const tam   = g('apTAM','TAM');
+  const fc    = g('apFC','FC');
+  const fr    = g('apFR','FR');
+  const pao2  = g('apPaO2','PaO₂');
+  const ph    = g('apPH','pH');
+  const na    = g('apNa','Na⁺');
+  const k     = g('apK','K⁺');
+  const creat = g('apCreat','creatinina');
+  const hto   = g('apHto','hematocrito');
+  const gb    = g('apGB','leucocitos');
+  const gcs   = g('apGCS','Glasgow');
+  const edad  = g('apEdad','edad');
+  const fio2  = _sFiO2('apFiO2');
+  if(fio2 === null) faltan.push('FiO₂');
+  const paco2 = _sNum('apPaCO2');
+  const ira   = !!document.getElementById('apIRA')?.checked;
+  const cron  = parseInt(document.getElementById('apCronico')?.value || '0') || 0;
+
+  // Oxigenación: con FiO₂ ≥ 50 % se puntúa el gradiente alvéolo-arterial;
+  // por debajo de 50 % se puntúa directamente la PaO₂.
+  let aado2 = null, ptsOxi = null;
+  if(fio2 !== null && fio2 >= 50){
+    if(paco2 === null){
+      faltan.push('PaCO₂ (hace falta con FiO₂ ≥ 50 %)');
+    } else if(pao2 !== null){
+      aado2 = (fio2 / 100) * 713 - (paco2 / 0.8) - pao2;
+      ptsOxi = aado2 >= 500 ? 4 : aado2 >= 350 ? 3 : aado2 >= 200 ? 2 : 0;
+    }
+  } else if(fio2 !== null && pao2 !== null){
+    ptsOxi = pao2 > 70 ? 0 : pao2 >= 61 ? 1 : pao2 >= 55 ? 3 : 4;
+  }
+
+  let aps = 0;
+  const sumar = v => { if(v !== null) aps += v; };
+  sumar(temp  === null ? null : (temp >= 41 ? 4 : temp >= 39 ? 3 : temp >= 38.5 ? 1 : temp >= 36 ? 0 : temp >= 34 ? 1 : temp >= 32 ? 2 : temp >= 30 ? 3 : 4));
+  sumar(tam   === null ? null : (tam >= 160 ? 4 : tam >= 130 ? 3 : tam >= 110 ? 2 : tam >= 70 ? 0 : tam >= 50 ? 2 : 4));
+  sumar(fc    === null ? null : (fc >= 180 ? 4 : fc >= 140 ? 3 : fc >= 110 ? 2 : fc >= 70 ? 0 : fc >= 55 ? 2 : fc >= 40 ? 3 : 4));
+  sumar(fr    === null ? null : (fr >= 50 ? 4 : fr >= 35 ? 3 : fr >= 25 ? 1 : fr >= 12 ? 0 : fr >= 10 ? 1 : fr >= 6 ? 2 : 4));
+  sumar(ptsOxi);
+  sumar(ph    === null ? null : (ph >= 7.7 ? 4 : ph >= 7.6 ? 3 : ph >= 7.5 ? 1 : ph >= 7.33 ? 0 : ph >= 7.25 ? 2 : ph >= 7.15 ? 3 : 4));
+  sumar(na    === null ? null : (na >= 180 ? 4 : na >= 160 ? 3 : na >= 155 ? 2 : na >= 150 ? 1 : na >= 130 ? 0 : na >= 120 ? 2 : na >= 111 ? 3 : 4));
+  sumar(k     === null ? null : (k >= 7 ? 4 : k >= 6 ? 3 : k >= 5.5 ? 1 : k >= 3.5 ? 0 : k >= 3 ? 1 : k >= 2.5 ? 2 : 4));
+  sumar(creat === null ? null : ((creat >= 3.5 ? 4 : creat >= 2 ? 3 : creat >= 1.5 ? 2 : creat >= 0.6 ? 0 : 2) * (ira ? 2 : 1)));
+  sumar(hto   === null ? null : (hto >= 60 ? 4 : hto >= 50 ? 2 : hto >= 46 ? 1 : hto >= 30 ? 0 : hto >= 20 ? 2 : 4));
+  sumar(gb    === null ? null : (gb >= 40 ? 4 : gb >= 20 ? 2 : gb >= 15 ? 1 : gb >= 3 ? 0 : gb >= 1 ? 2 : 4));
+  sumar(gcs   === null ? null : (15 - Math.max(3, Math.min(15, gcs))));
+
+  const ptsEdad = edad === null ? 0 : (edad >= 75 ? 6 : edad >= 65 ? 5 : edad >= 55 ? 3 : edad >= 45 ? 2 : 0);
+  const total = aps + ptsEdad + cron;
+
+  const campos = {};
+  APACHE_CAMPOS.forEach(id => { const el = document.getElementById(id); campos[id] = el ? el.value : ''; });
+
+  return { total, aps, ptsEdad, ptsCron: cron, faltan, aado2, ira, cronico: cron, campos };
+}
+
+// Mortalidad hospitalaria de la cohorte original (Knaus 1985)
+function mortalidadApache(t){
+  if(t <= 4)  return { noqx: 4,  post: 1  };
+  if(t <= 9)  return { noqx: 8,  post: 3  };
+  if(t <= 14) return { noqx: 15, post: 6  };
+  if(t <= 19) return { noqx: 25, post: 11 };
+  if(t <= 24) return { noqx: 40, post: 29 };
+  if(t <= 29) return { noqx: 55, post: 37 };
+  if(t <= 34) return { noqx: 73, post: 71 };
+  return { noqx: 85, post: 88 };
+}
+
+function calcAPACHE(){
+  const r = calcularAPACHE();
+  const box = document.getElementById('apResultBox');
+  const aa  = document.getElementById('apAaDO2');
+  if(aa) aa.value = r.aado2 !== null ? Math.round(r.aado2) + ' mmHg' : '';
+
+  const avisoEl = document.getElementById('apFaltan');
+  if(avisoEl){
+    avisoEl.textContent = r.faltan.length
+      ? `Faltan ${r.faltan.length} dato${r.faltan.length === 1 ? '' : 's'} para poder guardarlo: ${r.faltan.join(', ')}.`
+      : '';
+  }
+  if(!box) return;
+  if(r.faltan.length){ box.style.display = 'none'; return; }
+
+  const m = mortalidadApache(r.total);
+  let cat, bg, color;
+  if(r.total <= 9)       { cat = 'Gravedad baja';      bg = 'var(--teal-50)';  color = 'var(--teal-600)'; }
+  else if(r.total <= 19) { cat = 'Gravedad moderada';  bg = 'var(--blue-50)';  color = 'var(--blue-800)'; }
+  else if(r.total <= 29) { cat = 'Gravedad alta';      bg = 'var(--amber-50)'; color = 'var(--amber-600)'; }
+  else                   { cat = 'Gravedad muy alta';  bg = 'var(--red-50)';   color = 'var(--red-600)'; }
+
+  box.style.display = 'flex';
+  box.style.background = bg;
+  const disp = document.getElementById('apTotalDisp');
+  disp.textContent = r.total;
+  disp.style.color = color;
+  const catEl = document.getElementById('apCategoria');
+  catEl.textContent = cat;
+  catEl.style.color = color;
+  document.getElementById('apDetalle').textContent =
+    `Fisiología aguda ${r.aps} + edad ${r.ptsEdad} + salud crónica ${r.ptsCron}. ` +
+    `Mortalidad hospitalaria estimada: ~${m.noqx} % en pacientes clínicos y ~${m.post} % en postoperatorios.`;
+}
+
+function guardarAPACHE(){
+  const r = calcularAPACHE();
+  if(r.faltan.length){
+    showToast(`Falta cargar: ${r.faltan.slice(0,3).join(', ')}${r.faltan.length > 3 ? '…' : ''}`, 'error');
+    return;
+  }
+  const m = mortalidadApache(r.total);
+  const cat = r.total <= 9 ? 'Gravedad baja' : r.total <= 19 ? 'Gravedad moderada'
+            : r.total <= 29 ? 'Gravedad alta' : 'Gravedad muy alta';
+  const data = {
+    total: r.total, aps: r.aps, ptsEdad: r.ptsEdad, ptsCronico: r.ptsCron,
+    cronico: r.cronico, ira: r.ira, aado2: r.aado2 !== null ? Math.round(r.aado2) : null,
+    cat, detalle: `mortalidad estimada ~${m.noqx} % (clínicos) / ~${m.post} % (postoperatorios)`,
+    mortalidadClinicos: m.noqx, mortalidadPostqx: m.post,
+    campos: r.campos, fecha: today(), kine: currentUser?.name || '',
+  };
+  const h = document.getElementById('fApacheData');
+  if(h) h.value = JSON.stringify(data);
+  pintarResumenScore('apache');
+  marcarModalSucio('modalPaciente');
+  closeModal('modalApache', true);
+  showToast(`APACHE II: ${r.total} puntos`, 'success');
+}
+
+
+// ════════════════════════════════════════════════════════
+//  SAPS II
+// ════════════════════════════════════════════════════════
+const SAPS_CAMPOS = ['spEdad','spFC','spTAS','spTemp','spDiuresis','spGCS','spVM','spPaO2','spFiO2',
+  'spUrea','spUreaUnidad','spGB','spNa','spK','spHCO3','spBili','spCronica','spIngreso'];
+
+function abrirSAPS(){
+  SAPS_CAMPOS.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  const un = document.getElementById('spUreaUnidad'); if(un) un.value = 'urea';
+  const cr = document.getElementById('spCronica');    if(cr) cr.value = '0';
+  const pf = document.getElementById('spPafi');       if(pf) pf.value = '';
+
+  const prev = scoreGuardado('saps');
+  if(prev && prev.campos){
+    Object.entries(prev.campos).forEach(([id, v]) => {
+      const el = document.getElementById(id);
+      if(el && v !== null && v !== undefined) el.value = v;
+    });
+  } else {
+    const ed = document.getElementById('fEdad')?.value;
+    if(ed) document.getElementById('spEdad').value = ed;
+    const g = document.getElementById('fGlasgowScore')?.value;
+    if(g) document.getElementById('spGCS').value = g;
+    // Si en la ficha ya se dijo que ingresa en ARM, se arrastra
+    const arm = document.getElementById('fRespARM')?.value;
+    if(arm === 'Si' || arm === 'No') document.getElementById('spVM').value = arm;
+  }
+  onSapsVMChange();
+  openModal('modalSaps');
+}
+
+function onSapsVMChange(){
+  const vm = document.getElementById('spVM')?.value || '';
+  const wrap = document.getElementById('spPafiWrap');
+  if(wrap) wrap.style.display = vm === 'Si' ? '' : 'none';
+  calcSAPS();
+}
+
+// Devuelve { total, faltan[], pafi, campos }
+function calcularSAPS(){
+  const faltan = [];
+  const g = (id, label) => { const v = _sNum(id); if(v === null) faltan.push(label); return v; };
+
+  const edad = g('spEdad','edad');
+  const fc   = g('spFC','FC');
+  const tas  = g('spTAS','TAS');
+  const temp = g('spTemp','temperatura');
+  const diur = g('spDiuresis','diuresis de 24 h');
+  const gcs  = g('spGCS','Glasgow');
+  const gb   = g('spGB','leucocitos');
+  const na   = g('spNa','Na⁺');
+  const k    = g('spK','K⁺');
+  const hco3 = g('spHCO3','HCO₃⁻');
+  const bili = g('spBili','bilirrubina');
+  const urea = g('spUrea','urea / BUN');
+  const unidad = document.getElementById('spUreaUnidad')?.value || 'urea';
+  // El score original se puntúa con BUN. Si cargaron urea, se convierte
+  // (urea mg/dL ÷ 2,14 = BUN mg/dL).
+  const bun = urea === null ? null : (unidad === 'urea' ? urea / 2.14 : urea);
+
+  const vm = document.getElementById('spVM')?.value || '';
+  if(vm === '') faltan.push('si está en ARM o CPAP');
+  let pafi = null, ptsOxi = 0;
+  if(vm === 'Si'){
+    const pao2 = _sNum('spPaO2');
+    const fio2 = _sFiO2('spFiO2');
+    if(pao2 === null) faltan.push('PaO₂');
+    if(fio2 === null) faltan.push('FiO₂');
+    if(pao2 !== null && fio2 !== null && fio2 > 0){
+      pafi = pao2 / (fio2 / 100);
+      ptsOxi = pafi < 100 ? 11 : pafi < 200 ? 9 : 6;
+    }
+  }
+
+  const cronica = parseInt(document.getElementById('spCronica')?.value || '0') || 0;
+  const ingresoRaw = document.getElementById('spIngreso')?.value || '';
+  if(ingresoRaw === '') faltan.push('tipo de ingreso');
+  const ingreso = parseInt(ingresoRaw || '0') || 0;
+
+  let total = 0;
+  const sumar = v => { if(v !== null) total += v; };
+  sumar(edad === null ? null : (edad >= 80 ? 18 : edad >= 75 ? 16 : edad >= 70 ? 15 : edad >= 60 ? 12 : edad >= 40 ? 7 : 0));
+  sumar(fc   === null ? null : (fc >= 160 ? 7 : fc >= 120 ? 4 : fc >= 70 ? 0 : fc >= 40 ? 2 : 11));
+  sumar(tas  === null ? null : (tas >= 200 ? 2 : tas >= 100 ? 0 : tas >= 70 ? 5 : 13));
+  sumar(temp === null ? null : (temp >= 39 ? 3 : 0));
+  sumar(ptsOxi);
+  sumar(diur === null ? null : (diur < 0.5 ? 11 : diur < 1 ? 4 : 0));
+  sumar(bun  === null ? null : (bun >= 84 ? 10 : bun >= 28 ? 6 : 0));
+  sumar(gb   === null ? null : (gb >= 20 ? 3 : gb >= 1 ? 0 : 12));
+  sumar(k    === null ? null : (k >= 5 ? 3 : k >= 3 ? 0 : 3));
+  sumar(na   === null ? null : (na >= 145 ? 1 : na >= 125 ? 0 : 5));
+  sumar(hco3 === null ? null : (hco3 >= 20 ? 0 : hco3 >= 15 ? 3 : 6));
+  sumar(bili === null ? null : (bili >= 6 ? 9 : bili >= 4 ? 4 : 0));
+  sumar(gcs  === null ? null : (gcs >= 14 ? 0 : gcs >= 11 ? 5 : gcs >= 9 ? 7 : gcs >= 6 ? 13 : 26));
+  total += cronica + ingreso;
+
+  const campos = {};
+  SAPS_CAMPOS.forEach(id => { const el = document.getElementById(id); campos[id] = el ? el.value : ''; });
+
+  return { total, faltan, pafi, bun, cronica, ingreso, campos };
+}
+
+// Ecuación original de Le Gall (1993)
+function mortalidadSaps(t){
+  const logit = -7.7631 + 0.0737 * t + 0.9971 * Math.log(t + 1);
+  return 100 / (1 + Math.exp(-logit));
+}
+
+function calcSAPS(){
+  const r = calcularSAPS();
+  const pf = document.getElementById('spPafi');
+  if(pf) pf.value = r.pafi !== null ? Math.round(r.pafi) : '';
+
+  const avisoEl = document.getElementById('spFaltan');
+  if(avisoEl){
+    avisoEl.textContent = r.faltan.length
+      ? `Faltan ${r.faltan.length} dato${r.faltan.length === 1 ? '' : 's'} para poder guardarlo: ${r.faltan.join(', ')}.`
+      : '';
+  }
+  const box = document.getElementById('spResultBox');
+  if(!box) return;
+  if(r.faltan.length){ box.style.display = 'none'; return; }
+
+  const mort = mortalidadSaps(r.total);
+  let cat, bg, color;
+  if(r.total <= 29)      { cat = 'Gravedad baja';      bg = 'var(--teal-50)';  color = 'var(--teal-600)'; }
+  else if(r.total <= 44) { cat = 'Gravedad moderada';  bg = 'var(--blue-50)';  color = 'var(--blue-800)'; }
+  else if(r.total <= 59) { cat = 'Gravedad alta';      bg = 'var(--amber-50)'; color = 'var(--amber-600)'; }
+  else                   { cat = 'Gravedad muy alta';  bg = 'var(--red-50)';   color = 'var(--red-600)'; }
+
+  box.style.display = 'flex';
+  box.style.background = bg;
+  const disp = document.getElementById('spTotalDisp');
+  disp.textContent = r.total;
+  disp.style.color = color;
+  const catEl = document.getElementById('spCategoria');
+  catEl.textContent = cat;
+  catEl.style.color = color;
+  document.getElementById('spDetalle').textContent =
+    `Mortalidad hospitalaria estimada: ~${mort.toFixed(1)} %.` +
+    (r.pafi !== null ? ` PaFi ${Math.round(r.pafi)}.` : '');
+}
+
+function guardarSAPS(){
+  const r = calcularSAPS();
+  if(r.faltan.length){
+    showToast(`Falta cargar: ${r.faltan.slice(0,3).join(', ')}${r.faltan.length > 3 ? '…' : ''}`, 'error');
+    return;
+  }
+  const mort = mortalidadSaps(r.total);
+  const cat = r.total <= 29 ? 'Gravedad baja' : r.total <= 44 ? 'Gravedad moderada'
+            : r.total <= 59 ? 'Gravedad alta' : 'Gravedad muy alta';
+  const data = {
+    total: r.total, cat, mortalidad: +mort.toFixed(1),
+    detalle: `mortalidad estimada ~${mort.toFixed(1)} %`,
+    pafi: r.pafi !== null ? Math.round(r.pafi) : null,
+    campos: r.campos, fecha: today(), kine: currentUser?.name || '',
+  };
+  const h = document.getElementById('fSapsData');
+  if(h) h.value = JSON.stringify(data);
+  pintarResumenScore('saps');
+  marcarModalSucio('modalPaciente');
+  closeModal('modalSaps', true);
+  showToast(`SAPS II: ${r.total} puntos`, 'success');
+}
+
+
+// ════════════════════════════════════════════════════════
+//  ÍNDICE DE COMORBILIDAD DE CHARLSON
+// ════════════════════════════════════════════════════════
+const CHARLSON_ITEMS = [
+  { key:'iam',        pts:1, label:'Infarto de miocardio' },
+  { key:'icc',        pts:1, label:'Insuficiencia cardíaca' },
+  { key:'evp',        pts:1, label:'Enfermedad vascular periférica' },
+  { key:'acv',        pts:1, label:'ACV o AIT' },
+  { key:'demencia',   pts:1, label:'Demencia' },
+  { key:'epoc',       pts:1, label:'Enfermedad pulmonar crónica' },
+  { key:'conectivo',  pts:1, label:'Enfermedad del tejido conectivo' },
+  { key:'ulcera',     pts:1, label:'Úlcera péptica' },
+  { key:'hepatoleve', pts:1, label:'Hepatopatía leve' },
+  { key:'dbt',        pts:1, label:'Diabetes sin daño de órgano' },
+  { key:'hemiplejia', pts:2, label:'Hemiplejía o paraplejía' },
+  { key:'renal',      pts:2, label:'Enfermedad renal moderada o severa' },
+  { key:'dbtdano',    pts:2, label:'Diabetes con daño de órgano' },
+  { key:'tumor',      pts:2, label:'Tumor sólido (últimos 5 años)' },
+  { key:'leucemia',   pts:2, label:'Leucemia' },
+  { key:'linfoma',    pts:2, label:'Linfoma' },
+  { key:'hepatomod',  pts:3, label:'Hepatopatía moderada o severa' },
+  { key:'metastasis', pts:6, label:'Tumor sólido con metástasis' },
+  { key:'sida',       pts:6, label:'SIDA' },
+];
+
+// Ítems que se pisan entre sí: al marcar uno se destilda el otro
+const CHARLSON_EXCLUYE = {
+  dbt:'dbtdano', dbtdano:'dbt',
+  hepatoleve:'hepatomod', hepatomod:'hepatoleve',
+  tumor:'metastasis', metastasis:'tumor',
+};
+
+// Antecedentes de la ficha que se corresponden con un ítem de Charlson
+const CHARLSON_DESDE_ANTECEDENTES = {
+  icc:'icc', irc:'renal', epoc:'epoc', acv:'acv', dbt:'dbt', oncologico:'tumor',
+};
+
+function _charlsonChk(key){ return document.getElementById('ch_' + key); }
+
+function armarGrillaCharlson(){
+  const cont = document.getElementById('chContenedor');
+  if(!cont || cont.dataset.listo === '1') return;
+  const grupos = [
+    { pts:1, titulo:'1 punto cada una' },
+    { pts:2, titulo:'2 puntos cada una' },
+    { pts:3, titulo:'3 puntos' },
+    { pts:6, titulo:'6 puntos cada una' },
+  ];
+  cont.innerHTML = grupos.map(gr =>
+    `<div class="score-sub">${gr.titulo}</div>` +
+    `<div class="ant-grid">` +
+      CHARLSON_ITEMS.filter(i => i.pts === gr.pts).map(i =>
+        `<label class="ant-chip"><input type="checkbox" id="ch_${i.key}" onchange="onCharlsonItem('${i.key}')">${escapeHTML(i.label)}</label>`
+      ).join('') +
+    `</div>`
+  ).join('');
+  cont.dataset.listo = '1';
+}
+
+function onCharlsonItem(key){
+  const opuesto = CHARLSON_EXCLUYE[key];
+  const chk = _charlsonChk(key);
+  if(opuesto && chk?.checked){
+    const otro = _charlsonChk(opuesto);
+    if(otro?.checked){
+      otro.checked = false;
+      otro.closest('.ant-chip')?.classList.remove('is-checked');
+    }
+  }
+  calcCharlson();
+}
+
+function abrirCharlson(){
+  armarGrillaCharlson();
+  CHARLSON_ITEMS.forEach(i => {
+    const el = _charlsonChk(i.key);
+    if(el){ el.checked = false; el.closest('.ant-chip')?.classList.remove('is-checked'); }
+  });
+  const aviso = document.getElementById('chPrecarga');
+  if(aviso){ aviso.style.display = 'none'; aviso.textContent = ''; }
+
+  const prev = scoreGuardado('charlson');
+  if(prev && Array.isArray(prev.items)){
+    prev.items.forEach(k => {
+      const el = _charlsonChk(k);
+      if(el){ el.checked = true; el.closest('.ant-chip')?.classList.add('is-checked'); }
+    });
+    const ed = document.getElementById('chEdad');
+    if(ed) ed.value = prev.edad != null ? prev.edad : '';
+  } else {
+    // Precarga desde los antecedentes que ya se tildaron en la ficha
+    const precargados = [];
+    Object.entries(CHARLSON_DESDE_ANTECEDENTES).forEach(([antKey, chKey]) => {
+      if(document.getElementById('fAnt_' + antKey)?.checked){
+        const el = _charlsonChk(chKey);
+        if(el && !el.checked){
+          el.checked = true;
+          el.closest('.ant-chip')?.classList.add('is-checked');
+          const it = CHARLSON_ITEMS.find(i => i.key === chKey);
+          if(it) precargados.push(it.label);
+        }
+      }
+    });
+    if(precargados.length && aviso){
+      aviso.style.display = 'block';
+      aviso.textContent = `Precargado desde los antecedentes de la ficha: ${precargados.join(', ')}. Revisalo y completá lo que falte.`;
+    }
+    const ed = document.getElementById('chEdad');
+    const edadFicha = document.getElementById('fEdad')?.value;
+    if(ed) ed.value = edadFicha || '';
+  }
+  calcCharlson();
+  openModal('modalCharlson');
+}
+
+function calcularCharlson(){
+  const items = CHARLSON_ITEMS.filter(i => _charlsonChk(i.key)?.checked);
+  const ptsCom = items.reduce((s, i) => s + i.pts, 0);
+  const edad = _sNum('chEdad');
+  const ptsEdad = edad === null ? 0 : (edad >= 80 ? 4 : edad >= 70 ? 3 : edad >= 60 ? 2 : edad >= 50 ? 1 : 0);
+  const total = ptsCom + ptsEdad;
+  // Supervivencia estimada a 10 años del modelo original de Charlson
+  const superv = Math.pow(0.983, Math.exp(total * 0.9)) * 100;
+  const cat = total === 0 ? 'Sin comorbilidad'
+            : total <= 2 ? 'Comorbilidad baja'
+            : total <= 4 ? 'Comorbilidad moderada'
+            : 'Comorbilidad alta';
+  return { total, ptsCom, ptsEdad, edad, superv, cat, items: items.map(i => i.key),
+           labels: items.map(i => i.label) };
+}
+
+function calcCharlson(){
+  const r = calcularCharlson();
+  const ptsEl = document.getElementById('chEdadPts');
+  if(ptsEl) ptsEl.value = r.edad === null ? '' : `${r.ptsEdad} ${r.ptsEdad === 1 ? 'punto' : 'puntos'}`;
+
+  const box = document.getElementById('chResultBox');
+  if(!box) return;
+  let bg, color;
+  if(r.total === 0)      { bg = 'var(--teal-50)';  color = 'var(--teal-600)'; }
+  else if(r.total <= 2)  { bg = 'var(--blue-50)';  color = 'var(--blue-800)'; }
+  else if(r.total <= 4)  { bg = 'var(--amber-50)'; color = 'var(--amber-600)'; }
+  else                   { bg = 'var(--red-50)';   color = 'var(--red-600)'; }
+
+  box.style.display = 'flex';
+  box.style.background = bg;
+  const disp = document.getElementById('chTotalDisp');
+  disp.textContent = r.total;
+  disp.style.color = color;
+  document.getElementById('chTotalSub').textContent = r.total === 1 ? 'punto' : 'puntos';
+  const catEl = document.getElementById('chCategoria');
+  catEl.textContent = r.cat;
+  catEl.style.color = color;
+  document.getElementById('chDetalle').textContent =
+    `Comorbilidades ${r.ptsCom} + edad ${r.ptsEdad}. Supervivencia estimada a 10 años: ~${r.superv.toFixed(0)} %.`;
+}
+
+function guardarCharlson(){
+  const r = calcularCharlson();
+  if(r.edad === null && !confirm('No cargaste la edad, así que el índice va sin el ajuste por edad.\n\n¿Guardar igual?')) return;
+  const data = {
+    total: r.total, ptsComorbilidades: r.ptsCom, ptsEdad: r.ptsEdad, edad: r.edad,
+    cat: r.cat, detalle: `supervivencia estimada a 10 años ~${r.superv.toFixed(0)} %`,
+    supervivencia10: +r.superv.toFixed(1),
+    items: r.items, labels: r.labels,
+    fecha: today(), kine: currentUser?.name || '',
+  };
+  const h = document.getElementById('fCharlsonData');
+  if(h) h.value = JSON.stringify(data);
+  pintarResumenScore('charlson');
+  marcarModalSucio('modalPaciente');
+  closeModal('modalCharlson', true);
+  showToast(`Charlson: ${r.total} ${r.total === 1 ? 'punto' : 'puntos'}`, 'success');
+}
+
 // ── Tablas LMS para percentilos pediátricos (v3_131) ──
 // Peso y talla: OMS 0-2 años + datos argentinos 2-19 (Lejarraga, del Pino, Fano,
 // Caino y Cole — Arch Arg Ped 2009; los mismos de las curvas del Garrahan).
@@ -14612,6 +15607,8 @@ function aplicarModoFichaPorSala(sala){
   mostrar('fPercentilosWrap', ped);
   mostrar('antGridPed', ped);
   mostrar('antGrid', !ped);
+  // v3_250: APACHE II, SAPS II y Charlson están validados en adultos
+  mostrar('fScoresSeveridadBlock', !ped);
   // v3_222: el campo ya no se muestra en ningún caso (lo reemplaza el CFS)
   // En pediatría la edad sale de la fecha de nacimiento
   const wrapEdad = document.getElementById('fEdad')?.closest('.form-group');
@@ -19042,6 +20039,11 @@ function openNuevoPaciente(){
   resetGrupoFields();
   cerrarGuiaCFS();        // v3_221: la guía arranca cerrada en cada ficha
   onFragilidadChange();   // v3_219: limpia la descripción del nivel
+  // v3_250: procedencia del ingreso y scores de severidad arrancan vacíos
+  { const o = document.getElementById('fOrigenIngreso'); if(o) o.value = ''; }
+  onOrigenIngresoChange('');
+  poblarInstitucionesDerivantes();
+  limpiarScoresIngreso();
   document.getElementById('fEstFx').value = '';
   document.getElementById('fTQTMin').value = '';
   document.getElementById('fTQTMinTipo').value = '';
@@ -19094,6 +20096,12 @@ function openEditPaciente(id){
   M('fFragilidad', p.fragilidad); M('fFragilidadFuente', p.fragilidadFuente);   // v3_219
   cerrarGuiaCFS();   // v3_221
   onFragilidadChange();
+  // v3_250: procedencia del ingreso y scores de severidad
+  M('fOrigenIngreso', p.origenIngreso);
+  onOrigenIngresoChange(p.origenIngreso || '');
+  poblarInstitucionesDerivantes();
+  M('fInstDerivante', p.instDerivante);
+  cargarScoresIngreso(p);
   // v3_184: primero se arma el menú que corresponde a la sala; si no, al cargar
   // un paciente pediátrico el grupo no existiría todavía entre las opciones y
   // se perdería en silencio.
@@ -19412,6 +20420,13 @@ async function guardarPaciente(){
     // v3_219: fragilidad clínica al ingreso
     fragilidad: G('fFragilidad') ? parseInt(G('fFragilidad')) : null,
     fragilidadFuente: G('fFragilidadFuente') || null,
+    // v3_250: cómo llegó el paciente al hospital
+    origenIngreso: G('fOrigenIngreso') || null,
+    instDerivante: G('fOrigenIngreso') === 'Derivado de otra institución' ? (G('fInstDerivante') || null) : null,
+    // v3_250: scores de severidad al ingreso (opcionales)
+    scoreApache:   _leerScoreOculto('fApacheData'),
+    scoreSaps:     _leerScoreOculto('fSapsData'),
+    scoreCharlson: _leerScoreOculto('fCharlsonData'),
     antecedentes, otrosAnt:G('fOtrosAnt'),
     causaVM:G('fCausaVM'), causaVMOtro:G('fCausaVMOtro'), fIOT:G('fFIOT'), inicioARM:G('fInicioARM'), vmni:G('fVMNI'),
     prono:parseInt(G('fProno'))||0, tqt:G('fTQT'), finARM:G('fFinARM'), reintubado:G('fReintubado'),
@@ -22201,6 +23216,31 @@ function renderIndDemografia(mesStr){
     indFila2('Evaluados', d.conFragilidad, pctTxt(d.conFragilidad, T)),
     ['Nivel','Pacientes','% sobre evaluados']) : ''}
 
+  ${(d.procedencia.conDato || d.derivantes.length) ? indTabla('Procedencia del ingreso','ti-ambulance',
+    indFila2('Demanda espontánea / guardia', d.procedencia.espontanea, pctTxt(d.procedencia.espontanea, d.procedencia.conDato)) +
+    indFila2('Derivado de otra institución', d.procedencia.derivado, pctTxt(d.procedencia.derivado, d.procedencia.conDato)) +
+    indFila2('<em style="color:var(--text-muted)">Con procedencia registrada</em>', d.procedencia.conDato, pctTxt(d.procedencia.conDato, T)) +
+    (d.derivantes.length
+      ? `<tr><td colspan="3" style="padding:10px 12px 4px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">Instituciones derivantes</td></tr>` +
+        d.derivantes.map(([inst,n]) => indFila2(escapeHTML(inst), n, pctTxt(n, d.procedencia.derivado))).join('')
+      : ''),
+    ['Procedencia','Pacientes','%']) : ''}
+
+  ${(d.scoresIngreso.apache.n || d.scoresIngreso.saps.n || d.scoresIngreso.charlson.n) ? indTabla('Scores de severidad al ingreso','ti-calculator',
+    (d.scoresIngreso.apache.n ? indFila2('APACHE II — promedio', d.scoresIngreso.apache.prom,
+        `mediana ${d.scoresIngreso.apache.mediana} · rango ${d.scoresIngreso.apache.min}-${d.scoresIngreso.apache.max} · n=${d.scoresIngreso.apache.n}`) : '') +
+    (d.scoresIngreso.apacheMort.n ? indFila2('<em style="color:var(--text-muted)">Mortalidad estimada por APACHE II (clínicos)</em>',
+        d.scoresIngreso.apacheMort.prom + '%', 'promedio del grupo') : '') +
+    (d.scoresIngreso.saps.n ? indFila2('SAPS II — promedio', d.scoresIngreso.saps.prom,
+        `mediana ${d.scoresIngreso.saps.mediana} · rango ${d.scoresIngreso.saps.min}-${d.scoresIngreso.saps.max} · n=${d.scoresIngreso.saps.n}`) : '') +
+    (d.scoresIngreso.sapsMort.n ? indFila2('<em style="color:var(--text-muted)">Mortalidad estimada por SAPS II</em>',
+        d.scoresIngreso.sapsMort.prom + '%', 'promedio del grupo') : '') +
+    (d.scoresIngreso.charlson.n ? indFila2('Charlson — promedio', d.scoresIngreso.charlson.prom,
+        `mediana ${d.scoresIngreso.charlson.mediana} · rango ${d.scoresIngreso.charlson.min}-${d.scoresIngreso.charlson.max} · n=${d.scoresIngreso.charlson.n}`) : '') +
+    (d.scoresIngreso.charlson.n ? indFila2('Charlson 5 o más (comorbilidad alta)', d.scoresIngreso.charlsonAlta,
+        pctTxt(d.scoresIngreso.charlsonAlta, d.scoresIngreso.charlson.n)) : ''),
+    ['Score','Valor','Detalle']) : ''}
+
   ${indTabla('Estado nutricional (IMC) — adultos','ti-scale',
     indFila2('IMC promedio', d.imcStats.prom??'—','') +
     Object.entries(d.catIMC).map(([k,v])=>indFila2(k, v, pctTxt(v, d.imcStats.n))).join('') +
@@ -23168,6 +24208,41 @@ function calcDemografia(mesStr, sala){
   // denominador de la mortalidad la diluye artificialmente. El denominador
   // correcto son los egresos reales del servicio: altas + óbitos.
   const egresosReales = altas + obitos;
+  // ── v3_250: procedencia del ingreso e instituciones derivantes ──
+  // Los pacientes sin el dato cargado no entran en el denominador de los
+  // porcentajes: si no, una ficha vieja sin procedencia bajaría el % de
+  // derivados sin que eso signifique nada clínico.
+  const procedencia = { espontanea:0, derivado:0, sinDato:0 };
+  const derivantesMap = {};
+  ps.forEach(p => {
+    const o = String(p.origenIngreso || '').trim();
+    if(o === 'Derivado de otra institución'){
+      procedencia.derivado++;
+      const inst = String(p.instDerivante || '').trim() || '(sin especificar)';
+      derivantesMap[inst] = (derivantesMap[inst] || 0) + 1;
+    } else if(o){
+      procedencia.espontanea++;
+    } else {
+      procedencia.sinDato++;
+    }
+  });
+  procedencia.conDato = procedencia.espontanea + procedencia.derivado;
+  const derivantes = Object.entries(derivantesMap).sort((a,b) => b[1] - a[1]);
+
+  // ── v3_250: scores de severidad al ingreso ──
+  // Son opcionales, así que las estadísticas se calculan solo sobre los
+  // pacientes que efectivamente los tienen cargados (n de cada score).
+  const _valScore = (campo, prop) => ps.map(p => p && p[campo] ? p[campo][prop] : null)
+                                       .filter(v => v !== null && v !== undefined && v !== '');
+  const scoresIngreso = {
+    apache:       statsNum(_valScore('scoreApache','total')),
+    saps:         statsNum(_valScore('scoreSaps','total')),
+    charlson:     statsNum(_valScore('scoreCharlson','total')),
+    apacheMort:   statsNum(_valScore('scoreApache','mortalidadClinicos')),
+    sapsMort:     statsNum(_valScore('scoreSaps','mortalidad')),
+    charlsonAlta: ps.filter(p => p && p.scoreCharlson && p.scoreCharlson.total >= 5).length,
+  };
+
   const estancias = ps.filter(p=>p.fIHosp).map(p=>(daysBetween(p.fIHosp, p.fEUTI||today())||0)+1);
   return { total, porSector, sexo, edadStats, franjas, imcStats, catIMC, pedIMC, imcRevisar,
            adultos: psAdultos.length, pediatricos: psPed.length,
@@ -23187,6 +24262,7 @@ function calcDemografia(mesStr, sala){
              'CFS 7-8 — Severa':           fragilidadDelMes(mesStr, sala, n => n === 7 || n === 8),
              'CFS 9 — Enfermedad terminal':fragilidadDelMes(mesStr, sala, n => n === 9),
            },
+           procedencia, derivantes, scoresIngreso,             // v3_250
            reingresos: reingresosDelMes(mesStr, sala),          // v3_215
            reingresos30: reingresosDelMes(mesStr, sala, true) };
 }
@@ -23857,6 +24933,31 @@ async function exportarIndicadoresCompleto(mesStr){
     Object.entries(d.fragilidadCat).forEach(([k,v])=>rows.push([k, v, d.conFragilidad?Math.round(v/d.conFragilidad*1000)/10:0]));
     rows.push(['Con fragilidad establecida (CFS >= 5)', d.fragiles, d.conFragilidad?Math.round(d.fragiles/d.conFragilidad*1000)/10:0]);
     rows.push(['Evaluados', d.conFragilidad, pctN(d.conFragilidad)]);
+  }
+  if(d.procedencia.conDato || d.derivantes.length){
+    rows.push([]);
+    rows.push(['Procedencia del ingreso','Cantidad','%']);
+    const pctP = n => d.procedencia.conDato ? Math.round(n/d.procedencia.conDato*1000)/10 : 0;
+    rows.push(['Demanda espontanea / guardia', d.procedencia.espontanea, pctP(d.procedencia.espontanea)]);
+    rows.push(['Derivado de otra institucion', d.procedencia.derivado, pctP(d.procedencia.derivado)]);
+    rows.push(['Con procedencia registrada', d.procedencia.conDato, pctN(d.procedencia.conDato)]);
+    if(d.derivantes.length){
+      rows.push([]);
+      rows.push(['Institucion derivante','Cantidad','% de derivados']);
+      d.derivantes.forEach(([inst,n]) => rows.push([inst, n, d.procedencia.derivado ? Math.round(n/d.procedencia.derivado*1000)/10 : 0]));
+    }
+  }
+  if(d.scoresIngreso.apache.n || d.scoresIngreso.saps.n || d.scoresIngreso.charlson.n){
+    rows.push([]);
+    rows.push(['Scores de severidad al ingreso','Promedio','Mediana','Minimo','Maximo','n']);
+    const filaSc = (nom, st) => { if(st.n) rows.push([nom, st.prom, st.mediana, st.min, st.max, st.n]); };
+    filaSc('APACHE II', d.scoresIngreso.apache);
+    filaSc('SAPS II', d.scoresIngreso.saps);
+    filaSc('Charlson', d.scoresIngreso.charlson);
+    if(d.scoresIngreso.apacheMort.n) rows.push(['Mortalidad estimada por APACHE II (clinicos, %)', d.scoresIngreso.apacheMort.prom]);
+    if(d.scoresIngreso.sapsMort.n)   rows.push(['Mortalidad estimada por SAPS II (%)', d.scoresIngreso.sapsMort.prom]);
+    if(d.scoresIngreso.charlson.n)   rows.push(['Charlson 5 o mas (comorbilidad alta)', d.scoresIngreso.charlsonAlta,
+      d.scoresIngreso.charlson.n ? Math.round(d.scoresIngreso.charlsonAlta/d.scoresIngreso.charlson.n*1000)/10 : 0]);
   }
   if(d.pediatricos){
     rows.push([]);
