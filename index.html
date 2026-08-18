@@ -2097,6 +2097,87 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           </div>
         </div>
 
+        <!-- ══ v3_254: CIRUGÍA CARDIOVASCULAR ══ -->
+        <div id="fGrupoCxCV" style="display:none">
+          <div class="form-row">
+            <div class="form-group">
+              <label>Tipo de cirugía</label>
+              <select id="fCxTipo" onchange="onCxTipoChange(this.value)">
+                <option value="">Seleccioná la cirugía...</option>
+                <option value="CRM">CRM (cirugía de revascularización miocárdica)</option>
+                <option value="Reemplazo valvular">Reemplazo valvular</option>
+                <option value="Aneurisma de aorta">Aneurisma de aorta</option>
+                <option value="Cirugía de Carpentier">Cirugía de Carpentier (plástica mitral)</option>
+                <option value="Bentall">Bentall (Bentall-De Bono)</option>
+                <option value="Otra">Otra</option>
+              </select>
+            </div>
+            <div class="form-group" id="fCxTipoOtroWrap" style="display:none">
+              <label>¿Cuál?</label>
+              <input type="text" id="fCxTipoOtro" placeholder="Detallá la cirugía">
+            </div>
+          </div>
+
+          <!-- Tipo de válvula: solo en las cirugías que la implantan -->
+          <div class="form-row" id="fCxValvulaWrap" style="display:none">
+            <div class="form-group">
+              <label>Tipo de válvula</label>
+              <select id="fCxValvula">
+                <option value="">-</option>
+                <option value="Mecánica">Mecánica</option>
+                <option value="Biológica">Biológica</option>
+                <option value="Homoinjerto">Homoinjerto</option>
+                <option value="Sin especificar">Sin especificar</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>¿Se usó CEC (circulación extracorpórea)?</label>
+              <select id="fCxCEC" onchange="onCxCECChange(this.value)">
+                <option value="">-</option>
+                <option value="Si">Sí — con CEC</option>
+                <option value="No">No — sin CEC (off-pump)</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row" id="fCxCECBox" style="display:none">
+            <div class="form-group">
+              <label>Tiempo de CEC (minutos)</label>
+              <input type="number" id="fCxCECmin" inputmode="numeric" placeholder="ej: 90">
+            </div>
+            <div class="form-group">
+              <label>Tiempo de clampeo aórtico (minutos)</label>
+              <input type="number" id="fCxClampeoMin" inputmode="numeric" placeholder="ej: 60">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label>BCPIA (balón de contrapulsación intraaórtico)</label>
+              <select id="fCxBCPIA" onchange="onCxBCPIAChange(this.value)">
+                <option value="">-</option>
+                <option value="No">No</option>
+                <option value="Si">Sí</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-row" id="fCxBCPIABox" style="display:none">
+            <div class="form-group">
+              <label>Tiempo con BCPIA</label>
+              <input type="number" id="fCxBCPIAdur" inputmode="decimal" step="0.5" placeholder="ej: 48">
+            </div>
+            <div class="form-group">
+              <label>Unidad</label>
+              <select id="fCxBCPIAunidad">
+                <option value="horas">Horas</option>
+                <option value="dias">Días</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
         <!-- Quemado -->
         <div id="fGrupoQuemado" style="display:none">
           <div class="form-row">
@@ -2337,6 +2418,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <label class="ant-chip"><input type="checkbox" id="fAnt_dbt" value="dbt">DBT</label>
         <label class="ant-chip"><input type="checkbox" id="fAnt_tbq" value="tbq">TBQ/Ex TBQ</label>
         <label class="ant-chip"><input type="checkbox" id="fAnt_epoc" value="epoc">EPOC</label>
+        <label class="ant-chip"><input type="checkbox" id="fAnt_dislipemia" value="dislipemia">Dislipemia</label>
         <label class="ant-chip"><input type="checkbox" id="fAnt_iam" value="iam">IAM previo</label>
         <label class="ant-chip"><input type="checkbox" id="fAnt_icc" value="icc">Insuficiencia cardíaca</label>
         <label class="ant-chip"><input type="checkbox" id="fAnt_irc" value="irc">Insuficiencia renal</label>
@@ -2357,6 +2439,8 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <label class="ant-chip"><input type="checkbox" id="fAntP_neuromuscular" value="neuromuscular">Enfermedad neuromuscular</label>
         <label class="ant-chip"><input type="checkbox" id="fAntP_autoinmune" value="autoinmune">Enfermedad autoinmune</label>
         <label class="ant-chip"><input type="checkbox" id="fAntP_oncologico" value="oncologico">Oncológico</label>
+        <label class="ant-chip"><input type="checkbox" id="fAntP_irc" value="irc">Insuficiencia renal</label>
+        <label class="ant-chip"><input type="checkbox" id="fAntP_dislipemia" value="dislipemia">Dislipemia</label>
         <!-- v3_184: respiratorios -->
         <div class="ant-subtitulo">Respiratorios</div>
         <label class="ant-chip"><input type="checkbox" id="fAntP_asma" value="asma">Asma</label>
@@ -7225,7 +7309,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_253';
+const APP_VERSION = 'v3_254';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -12670,6 +12754,7 @@ async function generarResumenIA(){
     p.tipoKine ? `Grupo: ${tipoLabel}` : '',
     (p.tipoKine==='trauma' && p.grupoTraumaLesiones) ? `Lesiones: ${p.grupoTraumaLesiones}` : '',
     (p.tipoKine==='respiratorio' && patologiaRespTexto(p)) ? `Patología respiratoria: ${patologiaRespTexto(p)}` : '',   // v3_252
+    cirugiaCVTexto(p) ? `Cirugía cardiovascular: ${cirugiaCVTexto(p)}` : '',   // v3_254
     `Diagnóstico principal: ${p.diagnostico||'—'}`,
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
@@ -12812,6 +12897,7 @@ async function generarInformeAlta(patientId){
     p.tipoKine ? `Grupo: ${tipoLabel}` : '',
     (p.tipoKine==='trauma' && p.grupoTraumaLesiones) ? `Lesiones: ${p.grupoTraumaLesiones}` : '',
     (p.tipoKine==='respiratorio' && patologiaRespTexto(p)) ? `Patología respiratoria: ${patologiaRespTexto(p)}` : '',   // v3_252
+    cirugiaCVTexto(p) ? `Cirugía cardiovascular: ${cirugiaCVTexto(p)}` : '',   // v3_254
     `Diagnóstico principal: ${p.diagnostico||'—'}`,
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
@@ -13812,7 +13898,8 @@ const TIPO_KINE_TEXTO = {
   respiratorio:'Respiratorio', neurologico:'Neurológico',
   pre_qx:'Pre-quirúrgico', post_qx:'Post-quirúrgico',
   amputado:'Amputado', quemado:'Quemado', trauma:'Trauma',
-  cardiologico:'Cardiológico', oncologico:'Oncológico', crm:'POP CRM',
+  cardiologico:'Cardiológico', cx_cardiovascular:'Cirugía cardiovascular',   // v3_254
+  oncologico:'Oncológico', crm:'POP CRM',
   post_uti:'Post UTI', otro:'Otro',
   // v3_184: grupos propios de las salas pediátricas
   shock:'Shock', cardiovascular:'Cardiovascular', toxicologico:'Toxicológico',
@@ -13823,7 +13910,8 @@ const TIPO_KINE_ICONO = {
   respiratorio:'ti-lungs', neurologico:'ti-brain',
   pre_qx:'ti-scalpel', post_qx:'ti-scalpel',
   amputado:'ti-prosthesis', quemado:'ti-flame', trauma:'ti-bone',
-  cardiologico:'ti-heartbeat', oncologico:'ti-ribbon-health', crm:'ti-heartbeat',
+  cardiologico:'ti-heartbeat', cx_cardiovascular:'ti-heart-rate-monitor',   // v3_254
+  oncologico:'ti-ribbon-health', crm:'ti-heartbeat',
   post_uti:'ti-building-hospital', otro:'ti-clipboard',
   // v3_184
   shock:'ti-activity-heartbeat', cardiovascular:'ti-heartbeat', toxicologico:'ti-flask',
@@ -13839,7 +13927,8 @@ const GRUPOS_ADULTO = [
   ['respiratorio','Respiratorio'], ['neurologico','Neurológico'],
   ['pre_qx','Pre-quirúrgico'], ['post_qx','Post-quirúrgico'],
   ['amputado','Amputado'], ['quemado','Quemado'], ['trauma','Trauma'],
-  ['cardiologico','Cardiológico'], ['oncologico','Oncológico'], ['otro','Otro'],
+  ['cardiologico','Cardiológico'], ['cx_cardiovascular','Cirugía cardiovascular'],   // v3_254
+  ['oncologico','Oncológico'], ['otro','Otro'],
 ];
 const GRUPOS_PED = [
   ['shock','Shock'],
@@ -13929,6 +14018,7 @@ const ANTECEDENTES_LIST = [
   {key:'dbt', label:'DBT'},
   {key:'tbq', label:'TBQ/Ex TBQ'},
   {key:'epoc', label:'EPOC'},
+  {key:'dislipemia', label:'Dislipemia'},   // v3_254
   {key:'iam', label:'IAM previo'},   // v3_251
   {key:'icc', label:'Insuficiencia cardíaca'},
   {key:'irc', label:'Insuficiencia renal'},
@@ -14090,12 +14180,13 @@ function onGrupoChange(grupo){
   const bloques = {
     respiratorio:'fGrupoResp', neurologico:'fGrupoNeuro',
     quemado:'fGrupoQuemado', amputado:'fGrupoAmputado', trauma:'fGrupoTrauma',
-    post_uti:'fGrupoPostUTI', pre_qx:'fGrupoQx', post_qx:'fGrupoQx', crm:'fGrupoCRM'
+    post_uti:'fGrupoPostUTI', pre_qx:'fGrupoQx', post_qx:'fGrupoQx', crm:'fGrupoCRM',
+    cx_cardiovascular:'fGrupoCxCV'   // v3_254
   };
   const wrapper = document.getElementById('fGrupoEspecifico');
   const hayBloque = !!bloques[grupo];
   wrapper.style.display = hayBloque ? 'block' : 'none';
-  ['fGrupoResp','fGrupoNeuro','fGrupoQuemado','fGrupoAmputado','fGrupoTrauma','fGrupoPostUTI','fGrupoQx','fGrupoCRM'].forEach(id => {
+  ['fGrupoResp','fGrupoNeuro','fGrupoQuemado','fGrupoAmputado','fGrupoTrauma','fGrupoPostUTI','fGrupoQx','fGrupoCRM','fGrupoCxCV'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.style.display = 'none';
   });
@@ -14574,6 +14665,83 @@ function onCRMcecChange(val){
   if(val!=='Si'){ const el=document.getElementById('fCRMtiempo'); if(el) el.value=''; }
 }
 
+
+// ════════════════════════════════════════════════════════
+//  v3_254 — CIRUGÍA CARDIOVASCULAR
+// ════════════════════════════════════════════════════════
+// El tipo de válvula solo se pregunta en las cirugías que la implantan.
+const CX_CV_CON_VALVULA = ['Reemplazo valvular', 'Bentall'];
+
+function onCxTipoChange(val){
+  const ver = (id, cond) => { const el = document.getElementById(id); if(el) el.style.display = cond ? '' : 'none'; };
+  ver('fCxTipoOtroWrap', val === 'Otra');
+  ver('fCxValvulaWrap', CX_CV_CON_VALVULA.includes(val));
+  if(val !== 'Otra'){ const el = document.getElementById('fCxTipoOtro'); if(el) el.value = ''; }
+  if(!CX_CV_CON_VALVULA.includes(val)){ const el = document.getElementById('fCxValvula'); if(el) el.value = ''; }
+}
+
+function onCxCECChange(val){
+  const box = document.getElementById('fCxCECBox');
+  if(box) box.style.display = val === 'Si' ? '' : 'none';
+  if(val !== 'Si'){
+    ['fCxCECmin','fCxClampeoMin'].forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+  }
+}
+
+function onCxBCPIAChange(val){
+  const box = document.getElementById('fCxBCPIABox');
+  if(box) box.style.display = val === 'Si' ? '' : 'none';
+  if(val !== 'Si'){
+    const el = document.getElementById('fCxBCPIAdur'); if(el) el.value = '';
+  }
+}
+
+// Duración del BCPIA normalizada a horas, para poder promediar fichas
+// cargadas en días con fichas cargadas en horas.
+function bcpiaHoras(p){
+  if(p?.grupoCxBCPIA !== 'Si') return null;
+  const v = parseFloat(String(p?.grupoCxBCPIAdur ?? '').replace(',', '.'));
+  if(!isFinite(v)) return null;
+  return p.grupoCxBCPIAunidad === 'dias' ? v * 24 : v;
+}
+
+// Texto de la cirugía para informes y resúmenes
+function cirugiaCVTexto(p){
+  if(!p || p.tipoKine !== 'cx_cardiovascular') return '';
+  const partes = [];
+  const tipo = String(p.grupoCxTipo || '').trim();
+  if(!tipo) return '';
+  if(tipo === 'Otra'){
+    const otra = String(p.grupoCxTipoOtro || '').trim();
+    partes.push(otra ? 'Otra: ' + otra : 'Otra (sin especificar)');
+  } else {
+    partes.push(tipo);
+  }
+  if(p.grupoCxValvula) partes.push('válvula ' + String(p.grupoCxValvula).toLowerCase());
+  if(p.grupoCxCEC === 'Si'){
+    let cec = 'con CEC';
+    if(p.grupoCxCECmin) cec += ` ${p.grupoCxCECmin} min`;
+    if(p.grupoCxClampeoMin) cec += `, clampeo ${p.grupoCxClampeoMin} min`;
+    partes.push(cec);
+  } else if(p.grupoCxCEC === 'No'){
+    partes.push('sin CEC');
+  }
+  if(p.grupoCxBCPIA === 'Si'){
+    const dur = String(p.grupoCxBCPIAdur || '').trim();
+    partes.push('BCPIA' + (dur ? ` ${dur} ${p.grupoCxBCPIAunidad === 'dias' ? 'días' : 'h'}` : ''));
+  }
+  return partes.join(' · ');
+}
+
+// Nombre de la cirugía para agrupar en indicadores
+function cirugiaCVTipoTexto(p){
+  const tipo = String(p?.grupoCxTipo || '').trim();
+  if(!tipo) return '';
+  if(tipo !== 'Otra') return tipo;
+  const otra = String(p?.grupoCxTipoOtro || '').trim();
+  return otra ? 'Otra: ' + otra : 'Otra (sin especificar)';
+}
+
 // ── v3_252: patología respiratoria ──────────────────────
 function onRespPatologiaChange(val){
   const wrap = document.getElementById('fRespPatologiaOtroWrap');
@@ -14649,6 +14817,12 @@ function resetGrupoFields(){
   document.getElementById('fERCBox').style.display='none';
   document.getElementById('fERCResumen').style.display='none';
   document.getElementById('fERCData').value='';
+  // v3_254: campos de cirugía cardiovascular
+  ['fCxTipo','fCxTipoOtro','fCxValvula','fCxCEC','fCxCECmin','fCxClampeoMin','fCxBCPIA','fCxBCPIAdur']
+    .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  { const u=document.getElementById('fCxBCPIAunidad'); if(u) u.value='horas'; }
+  ['fCxTipoOtroWrap','fCxValvulaWrap','fCxCECBox','fCxBCPIABox']
+    .forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
   // Campos CRM
   ['fCRMcec','fCRMtiempo'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
   const crmT=document.getElementById('fCRMtiempoBox'); if(crmT) crmT.style.display='none';
@@ -14679,7 +14853,7 @@ function resetGrupoFields(){
   { const el=document.getElementById('fTraumaLesiones'); if(el) el.value=''; }
   // Ocultar wrapper
   const w=document.getElementById('fGrupoEspecifico'); if(w) w.style.display='none';
-  ['fGrupoResp','fGrupoNeuro','fGrupoQuemado','fGrupoAmputado','fGrupoTrauma','fGrupoPostUTI','fGrupoQx','fGrupoCRM'].forEach(id=>{
+  ['fGrupoResp','fGrupoNeuro','fGrupoQuemado','fGrupoAmputado','fGrupoTrauma','fGrupoPostUTI','fGrupoQx','fGrupoCRM','fGrupoCxCV'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.style.display='none';
   });
 }
@@ -15738,6 +15912,8 @@ const ANTECEDENTES_PED_LIST = [
   {key:'neuromuscular',  label:'Enfermedad neuromuscular'},
   {key:'autoinmune',     label:'Enfermedad autoinmune'},
   {key:'oncologico',     label:'Oncológico'},
+  {key:'irc',            label:'Insuficiencia renal'},   // v3_254
+  {key:'dislipemia',     label:'Dislipemia'},            // v3_254
   // v3_184: antecedentes respiratorios pediátricos
   {key:'asma',           label:'Asma'},
   {key:'bor',            label:'BOR'},
@@ -20333,6 +20509,20 @@ function openEditPaciente(id){
       if(chk){ chk.checked=areas.includes(chk.value); chk.closest('.ant-chip')?.classList.toggle('is-checked',chk.checked); }
     });
   }
+  if(p.tipoKine==='cx_cardiovascular'){
+    M('fCxTipo', p.grupoCxTipo||'');
+    fijarSelectConFallback('fCxTipo', p.grupoCxTipo||'');
+    onCxTipoChange(p.grupoCxTipo||'');
+    M('fCxTipoOtro', p.grupoCxTipoOtro||'');
+    M('fCxValvula', p.grupoCxValvula||'');
+    M('fCxCEC', p.grupoCxCEC||'');
+    onCxCECChange(p.grupoCxCEC||'');
+    M('fCxCECmin', p.grupoCxCECmin||''); M('fCxClampeoMin', p.grupoCxClampeoMin||'');
+    M('fCxBCPIA', p.grupoCxBCPIA||'');
+    onCxBCPIAChange(p.grupoCxBCPIA||'');
+    M('fCxBCPIAdur', p.grupoCxBCPIAdur||'');
+    M('fCxBCPIAunidad', p.grupoCxBCPIAunidad||'horas');
+  }
   if(p.tipoKine==='crm'){
     M('fCRMcec',p.grupoCRMcec||''); onCRMcecChange(p.grupoCRMcec||''); M('fCRMtiempo',p.grupoCRMtiempo||'');
   }
@@ -20586,6 +20776,27 @@ async function guardarPaciente(){
     observaciones:G('fObservaciones')||null, objetivos:G('fObjetivos')||null,
     grupoAmpNivel:G('fAmpNivel')||null, grupoAmpLado:G('fAmpLado')||null, grupoAmpMotivo:G('fAmpMotivo')||null, grupoAmpCausa:G('fAmpCausa')||null,
     grupoCRMcec:G('fCRMcec')||null, grupoCRMtiempo:G('fCRMtiempo')||null,
+    // v3_254: cirugía cardiovascular
+    ...(function(){
+      if(G('fTipoKine') !== 'cx_cardiovascular') return {
+        grupoCxTipo:null, grupoCxTipoOtro:null, grupoCxValvula:null, grupoCxCEC:null,
+        grupoCxCECmin:null, grupoCxClampeoMin:null, grupoCxBCPIA:null,
+        grupoCxBCPIAdur:null, grupoCxBCPIAunidad:null };
+      const tipo = G('fCxTipo') || null;
+      const conCEC = G('fCxCEC') === 'Si';
+      const conBCPIA = G('fCxBCPIA') === 'Si';
+      return {
+        grupoCxTipo: tipo,
+        grupoCxTipoOtro: tipo === 'Otra' ? (G('fCxTipoOtro') || null) : null,
+        grupoCxValvula: CX_CV_CON_VALVULA.includes(tipo) ? (G('fCxValvula') || null) : null,
+        grupoCxCEC: G('fCxCEC') || null,
+        grupoCxCECmin: conCEC ? (parseInt(G('fCxCECmin')) || null) : null,
+        grupoCxClampeoMin: conCEC ? (parseInt(G('fCxClampeoMin')) || null) : null,
+        grupoCxBCPIA: G('fCxBCPIA') || null,
+        grupoCxBCPIAdur: conBCPIA ? (parseFloat(G('fCxBCPIAdur')) || null) : null,
+        grupoCxBCPIAunidad: conBCPIA ? (G('fCxBCPIAunidad') || 'horas') : null,
+      };
+    })(),
     grupoQxServicio:G('fQxServicio')||null, grupoQxOtro:G('fQxOtroTexto')||null,
     grupoQxRegion:G('fQxTraumaRegion')||null, grupoQxCarga:G('fQxCarga')||null,
     grupoMRC: MRC_CAMPOS.reduce((obj,id)=>{ obj[id]=document.getElementById(id)?.value||null; return obj; },{}),
@@ -23439,6 +23650,24 @@ function renderIndDemografia(mesStr){
     indFila2('Evaluados', d.conFragilidad, pctTxt(d.conFragilidad, T)),
     ['Nivel','Pacientes','% sobre evaluados']) : ''}
 
+  ${d.cxCV.total ? indTabla('Cirugía cardiovascular','ti-heart-rate-monitor',
+    (d.cirugiasCV.length
+      ? d.cirugiasCV.map(([cx,n]) => indFila2(escapeHTML(cx), n, pctTxt(n, d.cxCV.conTipo))).join('')
+      : indFila2('<em style="color:var(--text-muted)">Ninguna cirugía cargada todavía</em>','—','')) +
+    `<tr><td colspan="3" style="padding:10px 12px 4px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">Circulación extracorpórea</td></tr>` +
+    indFila2('Con CEC', d.cxCV.conCEC, pctTxt(d.cxCV.conCEC, d.cxCV.total)) +
+    indFila2('Sin CEC (off-pump)', d.cxCV.sinCEC, pctTxt(d.cxCV.sinCEC, d.cxCV.total)) +
+    (d.cxCV.cecMin.n ? indFila2('Tiempo de CEC — promedio', d.cxCV.cecMin.prom + ' min',
+      `mediana ${d.cxCV.cecMin.mediana} · rango ${d.cxCV.cecMin.min}-${d.cxCV.cecMin.max} · n=${d.cxCV.cecMin.n}`) : '') +
+    (d.cxCV.clampeoMin.n ? indFila2('Tiempo de clampeo — promedio', d.cxCV.clampeoMin.prom + ' min',
+      `mediana ${d.cxCV.clampeoMin.mediana} · rango ${d.cxCV.clampeoMin.min}-${d.cxCV.clampeoMin.max} · n=${d.cxCV.clampeoMin.n}`) : '') +
+    `<tr><td colspan="3" style="padding:10px 12px 4px;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted)">BCPIA</td></tr>` +
+    indFila2('Con balón de contrapulsación', d.cxCV.conBCPIA, pctTxt(d.cxCV.conBCPIA, d.cxCV.total)) +
+    (d.cxCV.bcpiaHoras.n ? indFila2('Tiempo con BCPIA — promedio', d.cxCV.bcpiaHoras.prom + ' h',
+      `mediana ${d.cxCV.bcpiaHoras.mediana} h · n=${d.cxCV.bcpiaHoras.n}`) : '') +
+    indFila2('<strong>Pacientes de cirugía cardiovascular</strong>', d.cxCV.total, pctTxt(d.cxCV.total, T)),
+    ['Cirugía','Pacientes','%']) : ''}
+
   ${d.respTotal ? indTabla('Patologías del grupo respiratorio','ti-lungs',
     (d.patologiasResp.length
       ? d.patologiasResp.map(([pat,n]) => indFila2(escapeHTML(pat), n, pctTxt(n, d.respConPatologia))).join('')
@@ -24444,6 +24673,25 @@ function calcDemografia(mesStr, sala){
   // denominador de la mortalidad la diluye artificialmente. El denominador
   // correcto son los egresos reales del servicio: altas + óbitos.
   const egresosReales = altas + obitos;
+  // ── v3_254: cirugía cardiovascular ──
+  const psCx = ps.filter(p => p.tipoKine === 'cx_cardiovascular');
+  const cxTipoMap = {};
+  psCx.forEach(p => {
+    const t = cirugiaCVTipoTexto(p);
+    if(t) cxTipoMap[t] = (cxTipoMap[t] || 0) + 1;
+  });
+  const cirugiasCV = Object.entries(cxTipoMap).sort((a,b) => b[1] - a[1]);
+  const cxCV = {
+    total: psCx.length,
+    conTipo: psCx.filter(p => cirugiaCVTipoTexto(p)).length,
+    conCEC: psCx.filter(p => p.grupoCxCEC === 'Si').length,
+    sinCEC: psCx.filter(p => p.grupoCxCEC === 'No').length,
+    cecMin: statsNum(psCx.map(p => p.grupoCxCECmin)),
+    clampeoMin: statsNum(psCx.map(p => p.grupoCxClampeoMin)),
+    conBCPIA: psCx.filter(p => p.grupoCxBCPIA === 'Si').length,
+    bcpiaHoras: statsNum(psCx.map(bcpiaHoras)),
+  };
+
   // ── v3_252: patologías del grupo respiratorio ──
   // El denominador es el grupo respiratorio, no el total del servicio.
   const psResp = ps.filter(p => p.tipoKine === 'respiratorio');
@@ -24522,6 +24770,7 @@ function calcDemografia(mesStr, sala){
              'CFS 7-8 — Severa':           fragilidadDelMes(mesStr, sala, n => n === 7 || n === 8),
              'CFS 9 — Enfermedad terminal':fragilidadDelMes(mesStr, sala, n => n === 9),
            },
+           cirugiasCV, cxCV,                                  // v3_254
            patologiasResp, respTotal, respConPatologia,       // v3_252
            adecuacionCat, conAdecuacion,                      // v3_251
            procedencia, derivantes, scoresIngreso,             // v3_250
@@ -25195,6 +25444,19 @@ async function exportarIndicadoresCompleto(mesStr){
     Object.entries(d.fragilidadCat).forEach(([k,v])=>rows.push([k, v, d.conFragilidad?Math.round(v/d.conFragilidad*1000)/10:0]));
     rows.push(['Con fragilidad establecida (CFS >= 5)', d.fragiles, d.conFragilidad?Math.round(d.fragiles/d.conFragilidad*1000)/10:0]);
     rows.push(['Evaluados', d.conFragilidad, pctN(d.conFragilidad)]);
+  }
+  if(d.cxCV.total){
+    rows.push([]);
+    rows.push(['Cirugia cardiovascular','Cantidad','%']);
+    d.cirugiasCV.forEach(([cx,n]) => rows.push([cx, n, d.cxCV.conTipo ? Math.round(n/d.cxCV.conTipo*1000)/10 : 0]));
+    const pctCx = n => d.cxCV.total ? Math.round(n/d.cxCV.total*1000)/10 : 0;
+    rows.push(['Con CEC', d.cxCV.conCEC, pctCx(d.cxCV.conCEC)]);
+    rows.push(['Sin CEC (off-pump)', d.cxCV.sinCEC, pctCx(d.cxCV.sinCEC)]);
+    if(d.cxCV.cecMin.n)     rows.push(['Tiempo de CEC promedio (min)', d.cxCV.cecMin.prom, 'mediana ' + d.cxCV.cecMin.mediana + ' - n=' + d.cxCV.cecMin.n]);
+    if(d.cxCV.clampeoMin.n) rows.push(['Tiempo de clampeo promedio (min)', d.cxCV.clampeoMin.prom, 'mediana ' + d.cxCV.clampeoMin.mediana + ' - n=' + d.cxCV.clampeoMin.n]);
+    rows.push(['Con BCPIA', d.cxCV.conBCPIA, pctCx(d.cxCV.conBCPIA)]);
+    if(d.cxCV.bcpiaHoras.n) rows.push(['Tiempo con BCPIA promedio (h)', d.cxCV.bcpiaHoras.prom, 'n=' + d.cxCV.bcpiaHoras.n]);
+    rows.push(['Pacientes de cirugia cardiovascular', d.cxCV.total, pctN(d.cxCV.total)]);
   }
   if(d.respTotal){
     rows.push([]);
