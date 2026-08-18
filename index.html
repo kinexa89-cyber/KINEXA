@@ -1842,6 +1842,26 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
 
         <!-- Respiratorio -->
         <div id="fGrupoResp" style="display:none">
+          <!-- v3_252: qué patología respiratoria motiva la asistencia -->
+          <div class="form-row">
+            <div class="form-group">
+              <label>Patología respiratoria</label>
+              <select id="fRespPatologia" onchange="onRespPatologiaChange(this.value)">
+                <option value="">Seleccioná la patología...</option>
+                <option value="NAC">NAC (neumonía adquirida en la comunidad)</option>
+                <option value="EPOC">EPOC</option>
+                <option value="Asma">Asma</option>
+                <option value="EAP">EAP (edema agudo de pulmón)</option>
+                <option value="Fibrosis pulmonar">Fibrosis pulmonar</option>
+                <option value="Fibrosis quística">Fibrosis quística</option>
+                <option value="Otro">Otro</option>
+              </select>
+            </div>
+            <div class="form-group" id="fRespPatologiaOtroWrap" style="display:none">
+              <label>¿Cuál?</label>
+              <input type="text" id="fRespPatologiaOtro" placeholder="Detallá la patología respiratoria">
+            </div>
+          </div>
           <div class="form-row">
             <div class="form-group">
               <label>¿Es oxigenodependiente?</label>
@@ -2314,6 +2334,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <label class="ant-chip"><input type="checkbox" id="fAnt_dbt" value="dbt">DBT</label>
         <label class="ant-chip"><input type="checkbox" id="fAnt_tbq" value="tbq">TBQ/Ex TBQ</label>
         <label class="ant-chip"><input type="checkbox" id="fAnt_epoc" value="epoc">EPOC</label>
+        <label class="ant-chip"><input type="checkbox" id="fAnt_iam" value="iam">IAM previo</label>
         <label class="ant-chip"><input type="checkbox" id="fAnt_icc" value="icc">Insuficiencia cardíaca</label>
         <label class="ant-chip"><input type="checkbox" id="fAnt_irc" value="irc">Insuficiencia renal</label>
         <label class="ant-chip"><input type="checkbox" id="fAnt_fa" value="fa">FA crónica</label>
@@ -2413,6 +2434,35 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       </div>
       <div id="fFragilidadDesc" style="display:none;font-size:12px;line-height:1.5;border-radius:8px;padding:9px 12px;margin-top:2px"></div>
       <div id="fFragilidadAviso" style="display:none;font-size:11.5px;color:var(--amber-600);margin-top:6px;line-height:1.45"></div>
+    </div>
+
+    <!-- ══ v3_251: ADECUACIÓN DEL ESFUERZO TERAPÉUTICO ══
+         La decide el equipo tratante en el pase de sala, no el profesional que
+         está de guardia. La app solo la registra y la deja visible. -->
+    <div class="form-section" id="fAdecuacionBlock">
+      <div class="form-section-title"><i class="ti ti-shield-heart"></i> Adecuación del esfuerzo terapéutico</div>
+      <div class="form-hint" style="margin-bottom:9px;line-height:1.5">
+        Todo paciente ingresa como <strong>Grupo I (soporte total)</strong>. El grado se puede cambiar en cualquier
+        momento de la internación, pero solo como resultado de la decisión del <strong>equipo tratante</strong>
+        tomada en el pase de sala, no del criterio de quien esté de guardia.
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Grado de adecuación</label>
+          <select id="fAdecuacion" onchange="onAdecuacionChange('f')"></select>
+        </div>
+        <div class="form-group">
+          <label>¿Dónde se decidió?</label>
+          <select id="fAdecuacionFuente">
+            <option value="">-</option>
+            <option>Pase de sala</option>
+            <option>Ateneo o comité de bioética</option>
+            <option>Directiva anticipada del paciente</option>
+            <option>Indicación médica en la historia clínica</option>
+          </select>
+        </div>
+      </div>
+      <div id="fAdecuacionDesc" style="display:none;font-size:12px;line-height:1.5;border-radius:8px;padding:10px 13px;margin-top:2px"></div>
     </div>
 
     <!-- ══ v3_250: SCORES DE SEVERIDAD AL INGRESO (opcionales) ══
@@ -2544,6 +2594,15 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="form-group"><label>Kinesiólogo</label><input class="f-auto" type="text" id="eKine" readonly></div>
       </div>
       <input type="hidden" id="eTurno">
+      <!-- ══ v3_251: adecuación del esfuerzo terapéutico ══ -->
+      <div class="form-row">
+        <div class="form-group">
+          <label>Adecuación del esfuerzo terapéutico</label>
+          <select id="eAdecuacion" onchange="onAdecuacionChange('e')"></select>
+          <div class="form-hint" id="eAdecuacionHint"></div>
+        </div>
+      </div>
+      <div id="eAdecuacionDesc" style="display:none;font-size:12px;line-height:1.5;border-radius:8px;padding:10px 13px;margin-bottom:11px"></div>
       <!-- Banner de traslado reciente -->
       <div id="evoBannerAlerta" style="display:none;align-items:flex-start;gap:10px;background:var(--red-50);border:2px solid var(--red-400);border-radius:10px;padding:10px 14px;margin-bottom:10px"></div>
       <div id="evoBannerTraslado" style="display:none"></div>
@@ -7163,7 +7222,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_250';
+const APP_VERSION = 'v3_252';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -11488,6 +11547,9 @@ async function construirPDFPase(datos){
     parrafo(`Internación: día ${dHosp || '—'} · En el sector: día ${dSector || '—'}`, 8.5, 'normal', NEGRO, 3);
     dato('Antecedentes', antecedentesTexto(p) || 'sin antecedentes cargados');
     if(p.fragilidad) dato('Fragilidad clínica previa', fmtFragilidad(p.fragilidad));   // v3_219
+    // v3_251: el Grupo I es el estado por defecto, así que solo se imprime
+    // cuando hay una adecuación efectivamente decidida por el equipo.
+    if(adecuacionDe(p) !== 'I') parrafo(`Adecuación terapéutica: ${fmtAdecuacion(adecuacionDe(p))}`, 8.5, 'bold', [180, 100, 20], 3);
     dato('Ventilación', vent.detalle);
     if(p.alertaImportante) parrafo(`⚠ ${p.alertaImportante}`
       + (p.alertaFecha ? ` (cargado el ${fmtDate(String(p.alertaFecha).slice(0,10))})` : ''),
@@ -12604,11 +12666,13 @@ async function generarResumenIA(){
     `Sala: ${SALA_LABEL[p.sala]||p.sala}, cama ${p.cama||'—'}`,
     p.tipoKine ? `Grupo: ${tipoLabel}` : '',
     (p.tipoKine==='trauma' && p.grupoTraumaLesiones) ? `Lesiones: ${p.grupoTraumaLesiones}` : '',
+    (p.tipoKine==='respiratorio' && patologiaRespTexto(p)) ? `Patología respiratoria: ${patologiaRespTexto(p)}` : '',   // v3_252
     `Diagnóstico principal: ${p.diagnostico||'—'}`,
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
     antTxt ? `Antecedentes: ${antTxt}` : '',
     p.fragilidad ? `Fragilidad clínica previa: ${fmtFragilidad(p.fragilidad)}` : '',   // v3_219
+    `Adecuación del esfuerzo terapéutico: ${fmtAdecuacion(adecuacionDe(p))}`,   // v3_251
     p.origenIngreso ? `Procedencia del ingreso: ${p.origenIngreso}${p.instDerivante ? ' (' + p.instDerivante + ')' : ''}` : '',   // v3_250
     scoresIngresoTexto(p) ? `Scores de severidad al ingreso: ${scoresIngresoTexto(p)}` : '',   // v3_250
     obGrado ? `Estado nutricional: ${obGrado} (IMC ${imcDePaciente(p)})` : '',
@@ -12744,11 +12808,13 @@ async function generarInformeAlta(patientId){
     `Sala: ${SALA_LABEL[p.sala]||p.sala}, cama ${p.cama||'—'}`,
     p.tipoKine ? `Grupo: ${tipoLabel}` : '',
     (p.tipoKine==='trauma' && p.grupoTraumaLesiones) ? `Lesiones: ${p.grupoTraumaLesiones}` : '',
+    (p.tipoKine==='respiratorio' && patologiaRespTexto(p)) ? `Patología respiratoria: ${patologiaRespTexto(p)}` : '',   // v3_252
     `Diagnóstico principal: ${p.diagnostico||'—'}`,
     `Fecha ingreso hospital: ${fmtDate(p.fIHosp)||'—'}`,
     `Fecha ingreso al sector: ${fmtDate(p.fIUTI)||'—'}`,
     antTxt2 ? `Antecedentes: ${antTxt2}` : '',
     p.fragilidad ? `Fragilidad clínica previa: ${fmtFragilidad(p.fragilidad)}` : '',   // v3_219
+    `Adecuación del esfuerzo terapéutico: ${fmtAdecuacion(adecuacionDe(p))}`,   // v3_251
     p.origenIngreso ? `Procedencia del ingreso: ${p.origenIngreso}${p.instDerivante ? ' (' + p.instDerivante + ')' : ''}` : '',   // v3_250
     scoresIngresoTexto(p) ? `Scores de severidad al ingreso: ${scoresIngresoTexto(p)}` : '',   // v3_250
     obGrado2 ? `Estado nutricional: ${obGrado2} (IMC ${imcDePaciente(p)})` : '',
@@ -13860,6 +13926,7 @@ const ANTECEDENTES_LIST = [
   {key:'dbt', label:'DBT'},
   {key:'tbq', label:'TBQ/Ex TBQ'},
   {key:'epoc', label:'EPOC'},
+  {key:'iam', label:'IAM previo'},   // v3_251
   {key:'icc', label:'Insuficiencia cardíaca'},
   {key:'irc', label:'Insuficiencia renal'},
   {key:'fa', label:'FA crónica'},
@@ -14504,6 +14571,24 @@ function onCRMcecChange(val){
   if(val!=='Si'){ const el=document.getElementById('fCRMtiempo'); if(el) el.value=''; }
 }
 
+// ── v3_252: patología respiratoria ──────────────────────
+function onRespPatologiaChange(val){
+  const wrap = document.getElementById('fRespPatologiaOtroWrap');
+  if(wrap) wrap.style.display = val === 'Otro' ? '' : 'none';
+  if(val !== 'Otro'){ const el = document.getElementById('fRespPatologiaOtro'); if(el) el.value = ''; }
+}
+
+// Texto para informes: la patología, o el detalle si eligieron "Otro".
+function patologiaRespTexto(p){
+  const v = String(p?.grupoRespPatologia || '').trim();
+  if(!v) return '';
+  if(v === 'Otro'){
+    const otro = String(p?.grupoRespPatologiaOtro || '').trim();
+    return otro ? 'Otra: ' + otro : 'Otra (sin especificar)';
+  }
+  return v;
+}
+
 function onQxServicioChange(val){
   document.getElementById('fQxOtroBox').style.display = val==='otro' ? 'block' : 'none';
   document.getElementById('fQxTraumaBox').style.display = val==='traumatologia' ? 'block' : 'none';
@@ -14575,6 +14660,9 @@ function resetGrupoFields(){
     ['fCausaVM','fCausaVMOtro','fInicioARM'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
     const w=document.getElementById('fCausaVMOtroWrap'); if(w) w.style.display='none'; }
   const rO2=document.getElementById('fRespO2Dep'); if(rO2) rO2.value='';
+  // v3_252: patología respiratoria
+  ['fRespPatologia','fRespPatologiaOtro'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  { const w=document.getElementById('fRespPatologiaOtroWrap'); if(w) w.style.display='none'; }
   // Campos quemado
   ['fQuemSCQ','fQuemGrado'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   ['fQuemCara','fQuemCuello','fQuemToraxAnt','fQuemDorso','fQuemAbdomen','fQuemMMSS_der','fQuemMMSS_izq','fQuemMMII_der','fQuemMMII_izq','fQuemPerine','fQuemViaAerea'].forEach(id=>{
@@ -15279,7 +15367,7 @@ const CHARLSON_EXCLUYE = {
 
 // Antecedentes de la ficha que se corresponden con un ítem de Charlson
 const CHARLSON_DESDE_ANTECEDENTES = {
-  icc:'icc', irc:'renal', epoc:'epoc', acv:'acv', dbt:'dbt', oncologico:'tumor',
+  iam:'iam', icc:'icc', irc:'renal', epoc:'epoc', acv:'acv', dbt:'dbt', oncologico:'tumor',
 };
 
 function _charlsonChk(key){ return document.getElementById('ch_' + key); }
@@ -15418,6 +15506,74 @@ function guardarCharlson(){
   marcarModalSucio('modalPaciente');
   closeModal('modalCharlson', true);
   showToast(`Charlson: ${r.total} ${r.total === 1 ? 'punto' : 'puntos'}`, 'success');
+}
+
+
+// ════════════════════════════════════════════════════════
+//  v3_251 — ADECUACIÓN DEL ESFUERZO TERAPÉUTICO (ATP)
+// ════════════════════════════════════════════════════════
+// Clasificación del protocolo de adecuación terapéutica personalizada.
+// Es una decisión DEL EQUIPO TRATANTE tomada en el pase de sala, no del
+// profesional que está de guardia en ese momento: la app la registra y la
+// muestra, pero no la decide. Todo paciente arranca en Grupo I y el grado
+// puede cambiarse en cualquier momento de la internación.
+const ADECUACION_NIVELES = [
+  { key:'I', corto:'Grupo I', titulo:'Soporte total', color:'teal',
+    desc:'Recibe todas las medidas necesarias, monitorización o soporte activo, sin excepción.' },
+  { key:'II', corto:'Grupo II', titulo:'Soporte total, con consenso de NO RCP', color:'blue',
+    desc:'Mismo soporte que el Grupo I, pero por la inestabilidad del cuadro clínico actual se consensuó no iniciar maniobras de RCP.' },
+  { key:'IIIA', corto:'Grupo III A', titulo:'Soporte limitado — medidas invasivas condicionadas', color:'amber',
+    desc:'No RCP. Se pauta la temporalidad de las pruebas terapéuticas (diuréticos, prono, antibioticoterapia) y las medidas invasivas quedan condicionadas: ARM, hemodiálisis, cirugías.' },
+  { key:'IIIB', corto:'Grupo III B', titulo:'Soporte limitado — no instaurar medidas invasivas', color:'amber',
+    desc:'No RCP ni medidas invasivas diagnósticas o terapéuticas. Medidas aceptables: oxigenoterapia, VNI, fisioterapia respiratoria, acceso venoso central, diuréticos, vasopresores a dosis mínimas y diagnósticos no invasivos.' },
+  { key:'IIIC', corto:'Grupo III C', titulo:'Soporte limitado — no implementar medidas adicionales', color:'amber',
+    desc:'Se mantienen las medidas ya instauradas, pero no se agrega ninguna nueva, sea invasiva o no: antibióticos, transfusión de hemoderivados, nutrición enteral.' },
+  { key:'IIID', corto:'Grupo III D', titulo:'Retiro de soporte vital total', color:'red',
+    desc:'Se optimiza el tratamiento sintomático y los cuidados básicos. Se retiran todas las medidas, incluida la VM (gradual o retiro del TET) y la monitorización multiparamétrica continua. Evaluar sedación paliativa y priorizar el acompañamiento familiar.' },
+];
+
+// Vale para todos los grupos III, sea cual sea el subgrupo.
+const ADECUACION_NOTA_III = 'En todos los grupos III se mantienen siempre los procedimientos y medidas que maximicen el confort y alivien el sufrimiento: sedo-analgesia, higiene corporal y cuidados básicos de la piel y las mucosas.';
+
+function adecuacionInfo(key){
+  return ADECUACION_NIVELES.find(n => n.key === String(key || 'I')) || ADECUACION_NIVELES[0];
+}
+
+// El grado vigente del paciente. Las fichas anteriores a v3_251 no tienen el
+// campo: se consideran Grupo I, que es el estado por defecto.
+function adecuacionDe(p){
+  const k = String(p?.adecuacion || '').trim();
+  return ADECUACION_NIVELES.some(n => n.key === k) ? k : 'I';
+}
+
+function fmtAdecuacion(key){
+  const n = adecuacionInfo(key);
+  return `${n.corto} — ${n.titulo}`;
+}
+
+function poblarSelectAdecuacion(id){
+  const sel = document.getElementById(id);
+  if(!sel || sel.dataset.listo === '1') return;
+  sel.innerHTML = ADECUACION_NIVELES
+    .map(n => `<option value="${n.key}">${escapeHTML(n.corto + ' — ' + n.titulo)}</option>`).join('');
+  sel.dataset.listo = '1';
+}
+
+// Pinta el recuadro con la descripción del grado elegido.
+// pref: 'f' (ficha de ingreso) o 'e' (evolución).
+function onAdecuacionChange(pref){
+  const sel = document.getElementById(pref === 'f' ? 'fAdecuacion' : 'eAdecuacion');
+  const box = document.getElementById(pref === 'f' ? 'fAdecuacionDesc' : 'eAdecuacionDesc');
+  if(!sel || !box) return;
+  const n = adecuacionInfo(sel.value);
+  box.style.display = 'block';
+  box.style.background = `var(--${n.color}-50)`;
+  box.style.border = `1.5px solid var(--${n.color}-${n.color === 'blue' ? '200' : '100'})`;
+  box.style.color = 'var(--text)';
+  box.innerHTML =
+    `<strong style="color:var(--${n.color}-${n.color === 'teal' ? '600' : n.color === 'blue' ? '800' : '600'})">${escapeHTML(n.corto)} — ${escapeHTML(n.titulo)}.</strong> ` +
+    escapeHTML(n.desc) +
+    (n.key.startsWith('III') ? `<div style="margin-top:6px;font-size:11px;color:var(--text-muted)">${escapeHTML(ADECUACION_NOTA_III)}</div>` : '');
 }
 
 // ── Tablas LMS para percentilos pediátricos (v3_131) ──
@@ -20039,6 +20195,11 @@ function openNuevoPaciente(){
   resetGrupoFields();
   cerrarGuiaCFS();        // v3_221: la guía arranca cerrada en cada ficha
   onFragilidadChange();   // v3_219: limpia la descripción del nivel
+  // v3_251: la adecuación arranca siempre en Grupo I
+  poblarSelectAdecuacion('fAdecuacion');
+  { const ad = document.getElementById('fAdecuacion'); if(ad) ad.value = 'I'; }
+  { const af = document.getElementById('fAdecuacionFuente'); if(af) af.value = ''; }
+  onAdecuacionChange('f');
   // v3_250: procedencia del ingreso y scores de severidad arrancan vacíos
   { const o = document.getElementById('fOrigenIngreso'); if(o) o.value = ''; }
   onOrigenIngresoChange('');
@@ -20096,6 +20257,11 @@ function openEditPaciente(id){
   M('fFragilidad', p.fragilidad); M('fFragilidadFuente', p.fragilidadFuente);   // v3_219
   cerrarGuiaCFS();   // v3_221
   onFragilidadChange();
+  // v3_251: adecuación del esfuerzo terapéutico
+  poblarSelectAdecuacion('fAdecuacion');
+  M('fAdecuacion', adecuacionDe(p));
+  M('fAdecuacionFuente', p.adecuacionFuente);
+  onAdecuacionChange('f');
   // v3_250: procedencia del ingreso y scores de severidad
   M('fOrigenIngreso', p.origenIngreso);
   onOrigenIngresoChange(p.origenIngreso || '');
@@ -20117,7 +20283,14 @@ function openEditPaciente(id){
   M('fPercPeso',p.percPeso); M('fPercTalla',p.percTalla); M('fPercIMC',p.percIMC);
   if(esSalaPediatrica(p.sala)) calcEdadPediatrica();
   M('fRespARM', p.grupoRespARM||'');   // v3_128: aplica a todos los grupos
-  if(p.tipoKine==='respiratorio'){ M('fRespO2Dep',p.grupoRespO2Dep||''); }
+  if(p.tipoKine==='respiratorio'){
+    M('fRespO2Dep',p.grupoRespO2Dep||'');
+    // v3_252: la patología puede venir de una lista vieja, así que se fija con fallback
+    M('fRespPatologia', p.grupoRespPatologia||'');
+    fijarSelectConFallback('fRespPatologia', p.grupoRespPatologia||'');
+    onRespPatologiaChange(p.grupoRespPatologia||'');
+    M('fRespPatologiaOtro', p.grupoRespPatologiaOtro||'');
+  }
   if(p.tipoKine==='neurologico'){
     M('fNeuroFoco', p.grupoNeuroFoco||'');
     onFocoChange(p.grupoNeuroFoco||'');
@@ -20380,6 +20553,10 @@ async function guardarPaciente(){
     // Campos por grupo
     grupoRespARM: G('fRespARM')||null,
     grupoRespO2Dep: G('fRespO2Dep')||null,
+    // v3_252: patología respiratoria del grupo respiratorio
+    grupoRespPatologia: G('fTipoKine')==='respiratorio' ? (G('fRespPatologia')||null) : null,
+    grupoRespPatologiaOtro: (G('fTipoKine')==='respiratorio' && G('fRespPatologia')==='Otro')
+      ? (G('fRespPatologiaOtro')||null) : null,
     grupoNeuroFoco:G('fNeuroFoco')||null,
     grupoFocoTipo:G('fNeuroFocoTipo')||null, grupoFocoLado:G('fNeuroFocoLado')||null,
     grupoComprTipo:G('fNeuroComprTipo')||null, grupoComprExt:G('fNeuroComprExt')||null,
@@ -20420,6 +20597,16 @@ async function guardarPaciente(){
     // v3_219: fragilidad clínica al ingreso
     fragilidad: G('fFragilidad') ? parseInt(G('fFragilidad')) : null,
     fragilidadFuente: G('fFragilidadFuente') || null,
+    // v3_251: adecuación del esfuerzo terapéutico. Si el grado cambió respecto
+    // de lo que había, se vuelve a sellar quién y cuándo lo modificó.
+    adecuacion: G('fAdecuacion') || 'I',
+    adecuacionFuente: G('fAdecuacionFuente') || null,
+    ...(function(){
+      const nuevoG = G('fAdecuacion') || 'I';
+      const anterior = idEdicion ? adecuacionDe(patients.find(x => String(x.id) === idEdicion)) : 'I';
+      if(nuevoG === anterior) return {};
+      return { adecuacionFecha: nowISOLocal(), adecuacionKine: currentUser?.name || '' };
+    })(),
     // v3_250: cómo llegó el paciente al hospital
     origenIngreso: G('fOrigenIngreso') || null,
     instDerivante: G('fOrigenIngreso') === 'Derivado de otra institución' ? (G('fInstDerivante') || null) : null,
@@ -20930,6 +21117,17 @@ function openEvolucion(patientId){
   const mrF = document.getElementById('eMRflujo'); if(mrF) mrF.value = '';
   document.querySelectorAll('#eSubArmNo .dec-btn').forEach(b=>b.classList.remove('dec-sel','dec-sel-tqt'));
   document.querySelectorAll('#eSubArmSi .interfaz-btn').forEach(b=>b.className='interfaz-btn');
+
+  // ── v3_251: adecuación del esfuerzo terapéutico ──
+  // Arranca en el grado vigente del paciente. Cambiarlo acá cambia el grado
+  // del paciente, así que el aviso recuerda que es una decisión del equipo.
+  poblarSelectAdecuacion('eAdecuacion');
+  { const ad = document.getElementById('eAdecuacion'); if(ad) ad.value = adecuacionDe(p); }
+  onAdecuacionChange('e');
+  { const hint = document.getElementById('eAdecuacionHint');
+    if(hint) hint.textContent = p.adecuacionFecha
+      ? `Última modificación: ${fmtDate(String(p.adecuacionFecha).slice(0,10))}${p.adecuacionKine ? ' · ' + p.adecuacionKine : ''}. Cambialo solo si lo decidió el equipo tratante.`
+      : 'Solo se cambia si lo decidió el equipo tratante en el pase de sala.'; }
 
   // ── Calcular días automáticamente ──
   const diasHosp = p.fIHosp ? daysBetween(p.fIHosp, todayStr) : null;
@@ -22744,6 +22942,7 @@ async function guardarEvolucion(){
     // hizo realmente el trabajo.
     sala: (patients.find(x=>x.id===currentEvoPacId)?.sala) || currentSector || '',
     armDia:GN('eARM'), utiDia:GN('eUTI'),
+    adecuacion: G('eAdecuacion') || 'I',   // v3_251
     interfaz:G('eInterfazPrincipal') || G('eInterfaz'),
     interfazEsp:G('eInterfazEsp'),
     // v3_216: soporte no invasivo al terminar la sesión (null si no cambió)
@@ -22928,6 +23127,21 @@ async function guardarEvolucion(){
   // se limpia acá aunque el formulario haya dejado pasar algo.
   if(evoEnARMinvasiva(evo)){
     CLAVES_O2_NO_INVASIVO.forEach(k => { evo[k] = ''; });
+  }
+
+  // ── v3_251: si en esta evolución se registró un cambio de adecuación,
+  // el grado nuevo pasa a ser el vigente del paciente. Solo en cargas nuevas:
+  // editar una evolución vieja no debe cambiar el estado actual.
+  if(!editingEvoId){
+    const pAct = patients.find(x => x.id === currentEvoPacId);
+    const previa = adecuacionDe(pAct);
+    if(pAct && evo.adecuacion && evo.adecuacion !== previa){
+      evo.adecuacionPrevia = previa;
+      pAct.adecuacion = evo.adecuacion;
+      pAct.adecuacionFecha = date;
+      pAct.adecuacionKine = currentUser?.name || '';
+      addLog('edit', `Adecuación terapéutica de ${pAct.apellido}, ${pAct.nombre}: ${fmtAdecuacion(previa)} → ${fmtAdecuacion(evo.adecuacion)}`);
+    }
   }
 
   const editandoId = editingEvoId;
@@ -23215,6 +23429,19 @@ function renderIndDemografia(mesStr){
     indFila2('<strong>Con fragilidad establecida (CFS ≥ 5)</strong>', d.fragiles, pctTxt(d.fragiles, d.conFragilidad)) +
     indFila2('Evaluados', d.conFragilidad, pctTxt(d.conFragilidad, T)),
     ['Nivel','Pacientes','% sobre evaluados']) : ''}
+
+  ${d.respTotal ? indTabla('Patologías del grupo respiratorio','ti-lungs',
+    (d.patologiasResp.length
+      ? d.patologiasResp.map(([pat,n]) => indFila2(escapeHTML(pat), n, pctTxt(n, d.respConPatologia))).join('')
+      : indFila2('<em style="color:var(--text-muted)">Ninguna patología cargada todavía</em>','—','')) +
+    indFila2('<em style="color:var(--text-muted)">Con patología registrada</em>', d.respConPatologia, pctTxt(d.respConPatologia, d.respTotal)) +
+    indFila2('<strong>Pacientes del grupo respiratorio</strong>', d.respTotal, pctTxt(d.respTotal, T)),
+    ['Patología','Pacientes','%']) : ''}
+
+  ${indTabla('Adecuación del esfuerzo terapéutico','ti-shield-heart',
+    Object.entries(d.adecuacionCat).map(([k,v]) => indFila2(escapeHTML(k), v, pctTxt(v, T))).join('') +
+    indFila2('<strong>Con adecuación decidida (distinta de Grupo I)</strong>', d.conAdecuacion, pctTxt(d.conAdecuacion, T)),
+    ['Grado','Pacientes','%'])}
 
   ${(d.procedencia.conDato || d.derivantes.length) ? indTabla('Procedencia del ingreso','ti-ambulance',
     indFila2('Demanda espontánea / guardia', d.procedencia.espontanea, pctTxt(d.procedencia.espontanea, d.procedencia.conDato)) +
@@ -24208,6 +24435,30 @@ function calcDemografia(mesStr, sala){
   // denominador de la mortalidad la diluye artificialmente. El denominador
   // correcto son los egresos reales del servicio: altas + óbitos.
   const egresosReales = altas + obitos;
+  // ── v3_252: patologías del grupo respiratorio ──
+  // El denominador es el grupo respiratorio, no el total del servicio.
+  const psResp = ps.filter(p => p.tipoKine === 'respiratorio');
+  const patRespMap = {};
+  psResp.forEach(p => {
+    const t = patologiaRespTexto(p);
+    if(!t) return;
+    patRespMap[t] = (patRespMap[t] || 0) + 1;
+  });
+  const patologiasResp = Object.entries(patRespMap).sort((a,b) => b[1] - a[1]);
+  const respTotal = psResp.length;
+  const respConPatologia = psResp.filter(p => patologiaRespTexto(p)).length;
+
+  // ── v3_251: adecuación del esfuerzo terapéutico ──
+  // Se cuenta el grado vigente al momento de calcular. Los pacientes de fichas
+  // anteriores a v3_251 no tienen el campo y cuentan como Grupo I.
+  const adecuacionCat = {};
+  ADECUACION_NIVELES.forEach(n => { adecuacionCat[n.corto + ' — ' + n.titulo] = 0; });
+  ps.forEach(p => {
+    const n = adecuacionInfo(adecuacionDe(p));
+    adecuacionCat[n.corto + ' — ' + n.titulo]++;
+  });
+  const conAdecuacion = ps.filter(p => adecuacionDe(p) !== 'I').length;
+
   // ── v3_250: procedencia del ingreso e instituciones derivantes ──
   // Los pacientes sin el dato cargado no entran en el denominador de los
   // porcentajes: si no, una ficha vieja sin procedencia bajaría el % de
@@ -24262,6 +24513,8 @@ function calcDemografia(mesStr, sala){
              'CFS 7-8 — Severa':           fragilidadDelMes(mesStr, sala, n => n === 7 || n === 8),
              'CFS 9 — Enfermedad terminal':fragilidadDelMes(mesStr, sala, n => n === 9),
            },
+           patologiasResp, respTotal, respConPatologia,       // v3_252
+           adecuacionCat, conAdecuacion,                      // v3_251
            procedencia, derivantes, scoresIngreso,             // v3_250
            reingresos: reingresosDelMes(mesStr, sala),          // v3_215
            reingresos30: reingresosDelMes(mesStr, sala, true) };
@@ -24934,6 +25187,17 @@ async function exportarIndicadoresCompleto(mesStr){
     rows.push(['Con fragilidad establecida (CFS >= 5)', d.fragiles, d.conFragilidad?Math.round(d.fragiles/d.conFragilidad*1000)/10:0]);
     rows.push(['Evaluados', d.conFragilidad, pctN(d.conFragilidad)]);
   }
+  if(d.respTotal){
+    rows.push([]);
+    rows.push(['Patologias del grupo respiratorio','Cantidad','% del grupo con patologia']);
+    d.patologiasResp.forEach(([pat,n]) => rows.push([pat, n, d.respConPatologia ? Math.round(n/d.respConPatologia*1000)/10 : 0]));
+    rows.push(['Con patologia registrada', d.respConPatologia, d.respTotal ? Math.round(d.respConPatologia/d.respTotal*1000)/10 : 0]);
+    rows.push(['Pacientes del grupo respiratorio', d.respTotal, pctN(d.respTotal)]);
+  }
+  rows.push([]);
+  rows.push(['Adecuacion del esfuerzo terapeutico','Cantidad','%']);
+  Object.entries(d.adecuacionCat).forEach(([k,v]) => rows.push([k, v, pctN(v)]));
+  rows.push(['Con adecuacion decidida (distinta de Grupo I)', d.conAdecuacion, pctN(d.conAdecuacion)]);
   if(d.procedencia.conDato || d.derivantes.length){
     rows.push([]);
     rows.push(['Procedencia del ingreso','Cantidad','%']);
