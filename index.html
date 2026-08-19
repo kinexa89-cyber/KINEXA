@@ -85,6 +85,9 @@ body { font-family:var(--font); background:var(--bg); color:var(--text); font-si
 .form-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .form-row.three{ grid-template-columns:1fr 1fr 1fr; }
 .form-row.four{ grid-template-columns:1fr 1fr 1fr 1fr; }
+/* v3_259: los seis valores del EAB entran en dos filas de tres, también en el
+   celular. Son campos cortos, así que no se aprieta como una fila común. */
+.form-row.eab3{ grid-template-columns:1fr 1fr 1fr; }
 .form-section{ margin-bottom:1.2rem; }
 .form-section-title{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.7px;
   color:var(--blue-600); padding-bottom:6px; padding-left:8px; border-left:3px solid var(--blue-400);
@@ -794,6 +797,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
   .form-row{ grid-template-columns:1fr; }
   .form-row.three{ grid-template-columns:1fr 1fr; }
   .form-row.four{ grid-template-columns:1fr 1fr; }
+  .form-row.eab3{ grid-template-columns:1fr 1fr 1fr; gap:7px; }   /* v3_259 */
   .modal{ padding:1.2rem; }
   .kpi-row{ grid-template-columns:1fr 1fr; }
   .hide-mobile{ display:none; }
@@ -4012,14 +4016,20 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <span style="display:flex;align-items:center;gap:4px"><button type="button" class="btn-tend" title="Ver tendencias" onclick="event.stopPropagation();abrirTendencias('eab')"><i class="ti ti-chart-line"></i></button><i class="ti ti-chevron-down accordion-arrow" id="arrEAB"></i></span>
     </div>
     <div class="accordion-body" id="accEAB">
-      <div class="form-row four" style="margin-top:8px">
+      <!-- v3_259: pH · pCO₂ · pO₂ arriba, HCO₃ · EB · SpO₂ abajo. El EB no lleva
+           inputmode: con type="number" el teclado del celular trae el signo menos,
+           que hace falta porque el exceso de bases suele ser negativo. -->
+      <div class="form-row eab3" style="margin-top:8px">
         <div class="form-group"><label>pH</label><input type="number" id="ePH" inputmode="decimal" step="0.01" placeholder="7.35–7.45"></div>
         <div class="form-group"><label>pCO₂ (mmHg)</label><input type="number" id="ePCO2" inputmode="decimal" placeholder="35–45"></div>
         <div class="form-group"><label>pO₂ (mmHg)</label><input type="number" id="ePO2" inputmode="decimal"></div>
+      </div>
+      <div class="form-row eab3">
         <div class="form-group"><label>HCO₃ (mEq/L)</label><input type="number" id="eHCO3" inputmode="decimal" placeholder="22–26"></div>
+        <div class="form-group"><label>EB (mEq/L)</label><input type="number" id="eEB" step="0.1" placeholder="−2 a +2"></div>
+        <div class="form-group"><label>SpO₂ (%)</label><input type="number" id="eSpO2" inputmode="numeric" max="100" oninput="calcIndicesOxigenacion()"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>SpO₂ (%)</label><input type="number" id="eSpO2" inputmode="numeric" max="100" oninput="calcIndicesOxigenacion()"></div>
         <div class="form-group"><label>PAFI</label><input class="f-auto" type="number" id="ePAFI" inputmode="decimal"><div class="form-hint">PO₂ / FiO₂</div></div>
       </div>
       <!-- v3_236: referencia del contexto en que se sacó el EAB. Texto libre a
@@ -7474,7 +7484,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_258';
+const APP_VERSION = 'v3_259';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -11000,6 +11010,7 @@ const TEND_GRUPOS = {
     { k:'pco2',    label:'pCO₂',      unidad:'mmHg', banda:[35, 45] },
     { k:'po2',     label:'pO₂',       unidad:'mmHg', banda:[80, 100] },
     { k:'hco3',    label:'HCO₃',      unidad:'mEq/L', banda:[22, 26] },
+    { k:'eb',      label:'EB',        unidad:'mEq/L', banda:[-2, 2] },   // v3_259
     { k:'pafi',    label:'PAFI',      piso:300, mejorArriba:true },
     { k:'lactato', label:'Lactato',   unidad:'mmol/L', techo:2 },
     { k:'spo2',    label:'SpO₂ (EAB)', unidad:'%', piso:92, mejorArriba:true },
@@ -13496,6 +13507,7 @@ function construirTextoEvo(evo, p){
     add('Poder mecánico (J/min)', evo.mp); add('P0.1 (cmH2O)', evo.p01); add('Delta Pocc (cmH2O)', evo.deltaPocc);
     add('PMI - indice de presion muscular (cmH2O)', evo.pmi);
     add('pH', evo.ph); add('pCO2 (mmHg)', evo.pco2); add('pO2 (mmHg)', evo.po2); add('HCO3', evo.hco3);
+    add('EB - exceso de bases (mEq/L)', evo.eb);
     add('SpO2 (%)', evo.spo2); add('PAFI', evo.pafi); add('Lactato', evo.lactato);
     add('Referencia del EAB', evo.eabNota);
     add('FC (lpm)', evo.fc);
@@ -17895,14 +17907,18 @@ function agregarEAB(data){
         '<button type="button" onclick="this.closest(\'.eab-extra-card\').remove()" title="Quitar" style="background:none;border:none;color:var(--red-600);cursor:pointer;font-size:15px;line-height:1"><i class="ti ti-trash"></i></button>'+
       '</div>'+
     '</div>'+
-    '<div class="form-row four">'+
+    // v3_259: mismo orden que el EAB principal, y con EB
+    '<div class="form-row eab3">'+
       '<div class="form-group"><label>pH</label><input type="number" data-eab="ph" inputmode="decimal" step="0.01" value="'+val(data.ph)+'"></div>'+
       '<div class="form-group"><label>pCO₂</label><input type="number" data-eab="pco2" inputmode="decimal" value="'+val(data.pco2)+'"></div>'+
       '<div class="form-group"><label>pO₂</label><input type="number" data-eab="po2" inputmode="decimal" value="'+val(data.po2)+'"></div>'+
-      '<div class="form-group"><label>HCO₃</label><input type="number" data-eab="hco3" inputmode="decimal" value="'+val(data.hco3)+'"></div>'+
     '</div>'+
-    '<div class="form-row four">'+
+    '<div class="form-row eab3">'+
+      '<div class="form-group"><label>HCO₃</label><input type="number" data-eab="hco3" inputmode="decimal" value="'+val(data.hco3)+'"></div>'+
+      '<div class="form-group"><label>EB</label><input type="number" data-eab="eb" step="0.1" value="'+val(data.eb)+'"></div>'+
       '<div class="form-group"><label>SpO₂ (%)</label><input type="number" data-eab="spo2" inputmode="numeric" max="100" value="'+val(data.spo2)+'"></div>'+
+    '</div>'+
+    '<div class="form-row">'+
       '<div class="form-group"><label>PAFI</label><input type="number" data-eab="pafi" inputmode="decimal" value="'+val(data.pafi)+'"></div>'+
       '<div class="form-group"><label>Ác. láctico</label><input type="number" data-eab="lactato" inputmode="decimal" step="0.1" value="'+val(data.lactato)+'"></div>'+
     '</div>'+
@@ -19383,7 +19399,7 @@ const EVO_LABELS = {
   wobFr:'FR para el WOB (rpm)', wobMusculos:'Músculos accesorios', wob:'WOB score',
   vniModo:'VNI modo', vniPi:'VNI Pi', vniVt:'VNI Vt', vniFr:'VNI FR', vniPeep:'VNI PEEP', vniFio2:'VNI FiO₂ (%)', vniMascara:'VNI máscara',
   aerosolVia:'Aerosolterapia — vía', ti:'Ti (s)', pausaInsp:'Pausa inspiratoria (s)', pausaInsp2:'Pausa inspiratoria (s) (post-mod.)', pc:'Presión control', peept:'PEEP total', rinsp:'Resistencia insp.', flujo:'Flujo (L/min)',
-  mp:'Poder mecánico', p01:'P0.1', deltaPocc:'ΔPocc', hco3:'HCO₃', lactato:'Lactato',
+  mp:'Poder mecánico', p01:'P0.1', deltaPocc:'ΔPocc', hco3:'HCO₃', eb:'EB (exceso de bases)', lactato:'Lactato',
   vm:'Volumen minuto (L/min)', pmi:'PMI (Pplat − Ppico)',
   vm2:'Volumen minuto (L/min) (post-mod.)', pmi2:'PMI (post-mod.)',
   curvaFlujo:'Curva de flujo insp.', curvaFlujo2:'Curva de flujo insp. (post-mod.)',
@@ -19466,7 +19482,7 @@ const EVO_SKIP_CAMPOS = new Set([
   // Mecánica ventilatoria (setting inicial)
   'ti','pc','peept','rinsp','flujo','mp','p01','deltaPocc','vm','pmi',
   // EAB
-  'hco3','lactato',
+  'hco3','eb','lactato',
   // Secreciones
   'secTrqCant','secTrqCal','lof','secLOFcant','secLOFcal','secVAAcant','secVAAcal',
   // Movilización / AKM
@@ -19759,12 +19775,12 @@ function evoCardHTML(e, i){
   ]) : '';
   // 5) EAB
   const secEAB = evoSeccionGrid('EAB', [
-    [e.ph,'pH'], [e.pco2,'pCO₂'], [e.po2,'pO₂'], [e.hco3,'HCO₃'], [e.spo2,'SpO₂ %'],
+    [e.ph,'pH'], [e.pco2,'pCO₂'], [e.po2,'pO₂'], [e.hco3,'HCO₃'], [e.eb,'EB'], [e.spo2,'SpO₂ %'],
     [e.pafi,'PAFI'], [e.io,'IO'], [e.osi,'OSI'], [e.lactato,'Lactato'], [e.eabNota,'Referencia']
   ]);
   const secEABExtra = Array.isArray(e.eabExtra) ? e.eabExtra.map(x=>evoSeccionGrid(
     'EAB'+(x.hora?' · '+x.hora:'')+(x.nota?' · '+x.nota:''), [
-    [x.ph,'pH'],[x.pco2,'pCO₂'],[x.po2,'pO₂'],[x.hco3,'HCO₃'],[x.spo2,'SpO₂ %'],[x.pafi,'PAFI'],[x.lactato,'Lact']
+    [x.ph,'pH'],[x.pco2,'pCO₂'],[x.po2,'pO₂'],[x.hco3,'HCO₃'],[x.eb,'EB'],[x.spo2,'SpO₂ %'],[x.pafi,'PAFI'],[x.lactato,'Lact']
   ])).join('') : '';
   // 6) Secreciones
   const secSec = evoSeccionGrid('Secreciones', [
@@ -23255,7 +23271,7 @@ const EVO_FIELD_MAP = {
   p01:'eP01', deltaPocc:'eDeltaPocc', vm:'eVM', pmi:'ePMI',   // v3_211
   ppico:'ePpico', pplat:'ePplat', peept:'ePEEPt', dp:'eDP', crs:'eCrs',
   rinsp:'eRinsp', flujo:'eFlujo', mp:'eMP', er:'eER', ct:'eCT',
-  ph:'ePH', pco2:'ePCO2', po2:'ePO2', hco3:'eHCO3', spo2:'eSpO2', pafi:'ePAFI', eabNota:'eEABNota',
+  ph:'ePH', pco2:'ePCO2', po2:'ePO2', hco3:'eHCO3', eb:'eEB', spo2:'eSpO2', pafi:'ePAFI', eabNota:'eEABNota',
   diasHosp:'eDiasHosp',
   rass:'eRASS', cpot:'eCPOT', camicu:'eCAMICU', ventSed:'eVentSed',
   dolorAuto:'eDolorAuto', dolorEscala:'eDolorEscala', otrosFarmacos:'eOtrosFarmacos',
@@ -23755,7 +23771,7 @@ async function guardarEvolucion(){
     ppico:GN('ePpico'), pplat:GN('ePplat'), peept:GN('ePEEPt'),
     dp:GN('eDP'), crs:GN('eCrs'), rinsp:GN('eRinsp'), flujo:GN('eFlujo'),
     mp:GN('eMP'), er:GN('eER'), ct:GN('eCT'),
-    ph:GN('ePH'), pco2:GN('ePCO2'), po2:GN('ePO2'), hco3:GN('eHCO3'),
+    ph:GN('ePH'), pco2:GN('ePCO2'), po2:GN('ePO2'), hco3:GN('eHCO3'), eb:GN('eEB'),   // v3_259
     spo2:GN('eSpO2'), pafi:GN('ePAFI'), eabNota:G('eEABNota'), eabExtra:collectEABExtra(), diasHosp:GN('eDiasHosp'),
     rass:G('eRASS'), cpot:G('eCPOT'), camicu:G('eCAMICU'), ventSed:G('eVentSed'),
     dolorAuto:G('eDolorAuto'), dolorEscala:G('eDolorEscala'),
