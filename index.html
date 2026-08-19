@@ -2904,11 +2904,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <div id="eSubArmNo" style="display:none" class="dec-sublevel">
         <div class="dec-label">¿Cómo ventila?</div>
         <div class="dec-row">
-          <button type="button" class="dec-btn" id="eBtnVAN_AA" onclick="setInterfazEsp('VAN_AA')">
-            <i class="ti ti-plant"></i> VAN — Aire ambiente
-          </button>
-          <button type="button" class="dec-btn" id="eBtnVAN_O2" onclick="setInterfazEsp('VAN_O2')">
-            <i class="ti ti-air"></i> VAN con O₂
+          <!-- v3_255: un solo botón VAN. El dispositivo del sub-nivel define
+               si queda como aire ambiente (VAN_AA) o con oxígeno (VAN_O2). -->
+          <button type="button" class="dec-btn" id="eBtnVAN" onclick="setInterfazEsp('VAN')">
+            <i class="ti ti-lungs"></i> VAN
           </button>
           <button type="button" class="dec-btn" id="eBtnCNAF" onclick="setInterfazEsp('CNAF')">
             <i class="ti ti-wind"></i> CNAF
@@ -2920,11 +2919,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <button type="button" class="dec-btn" id="eBtnVNI_CNAF" onclick="setInterfazEsp('VNI_CNAF')">
             <i class="ti ti-arrows-shuffle"></i> VNI + CNAF alternado
           </button>
-          <button type="button" class="dec-btn" id="eBtnTQT_O2" onclick="setInterfazEsp('TQT_O2')">
-            <i class="ti ti-stethoscope"></i> TQT — Con O₂
-          </button>
-          <button type="button" class="dec-btn" id="eBtnTQT_AA" onclick="setInterfazEsp('TQT_AA')">
-            <i class="ti ti-stethoscope"></i> TQT — Sin O₂
+          <!-- v3_255: un solo botón TQT VE. En el sub-nivel se elige aire
+               ambiente (TQT_AA) o el flujo de oxígeno (TQT_O2). -->
+          <button type="button" class="dec-btn" id="eBtnTQT_VE" onclick="setInterfazEsp('TQT')">
+            <i class="ti ti-stethoscope"></i> TQT VE
           </button>
         </div>
 
@@ -2993,10 +2991,13 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           </div>
         </div>
 
-        <!-- Sub: VAN con O2 -->
+        <!-- Sub: VAN — aire ambiente o dispositivo de oxígeno (v3_255) -->
         <div id="eSubVANO2" style="display:none" class="dec-sublevel">
-          <div class="dec-label">Dispositivo</div>
+          <div class="dec-label">¿Con qué ventila?</div>
           <div class="dec-row">
+            <button type="button" class="dec-btn" id="eBtnAA" onclick="setVANO2tipo('AA')">
+              <i class="ti ti-plant"></i> A/A — Aire ambiente
+            </button>
             <button type="button" class="dec-btn" id="eBtnCN" onclick="setVANO2tipo('CN')">
               <i class="ti ti-air"></i> Cánula nasal
             </button>
@@ -3047,6 +3048,42 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
               <label>Flujo (L/min)</label>
               <select id="eMRflujo">
                 <option value="">-</option>
+                <option value="10">10 L/min</option>
+                <option value="11">11 L/min</option>
+                <option value="12">12 L/min</option>
+                <option value="13">13 L/min</option>
+                <option value="14">14 L/min</option>
+                <option value="15">15 L/min</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sub: TQT en ventilación espontánea (v3_255) -->
+        <div id="eSubTQT" style="display:none" class="dec-sublevel">
+          <div class="dec-label">¿Con qué ventila?</div>
+          <div class="dec-row">
+            <button type="button" class="dec-btn" id="eBtnTQT_AAsub" onclick="setTQTtipo('AA')">
+              <i class="ti ti-plant"></i> A/A — Aire ambiente
+            </button>
+            <button type="button" class="dec-btn" id="eBtnTQT_O2sub" onclick="setTQTtipo('O2')">
+              <i class="ti ti-air"></i> Con oxígeno
+            </button>
+          </div>
+          <div id="eSubTQTflujo" style="display:none;margin-top:10px" class="dec-sublevel">
+            <div class="form-group" style="max-width:200px">
+              <label>Flujo (L/min)</label>
+              <select id="eTQTflujo" onchange="actualizarResumenSoporteInicial()">
+                <option value="">-</option>
+                <option value="1">1 L/min</option>
+                <option value="2">2 L/min</option>
+                <option value="3">3 L/min</option>
+                <option value="4">4 L/min</option>
+                <option value="5">5 L/min</option>
+                <option value="6">6 L/min</option>
+                <option value="7">7 L/min</option>
+                <option value="8">8 L/min</option>
+                <option value="9">9 L/min</option>
                 <option value="10">10 L/min</option>
                 <option value="11">11 L/min</option>
                 <option value="12">12 L/min</option>
@@ -3124,8 +3161,10 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
             <div id="eSoporteInicialResumen" style="font-size:12px;color:var(--text-muted);margin-bottom:9px"></div>
             <div class="dec-label">¿Con qué quedó?</div>
             <div class="dec-row">
-              <button type="button" class="dec-btn" id="eBtnF_VAN_AA" onclick="setSoporteFinal('VAN_AA')"><i class="ti ti-plant"></i> VAN — Aire ambiente</button>
-              <button type="button" class="dec-btn" id="eBtnF_VAN_O2" onclick="setSoporteFinal('VAN_O2')"><i class="ti ti-air"></i> VAN con O₂</button>
+              <!-- v3_256: mismo criterio que el árbol de arriba — un solo VAN
+                   y un solo TQT VE, con el detalle en el sub-nivel. -->
+              <button type="button" class="dec-btn" id="eBtnF_VAN" onclick="setSoporteFinal('VAN')"><i class="ti ti-lungs"></i> VAN</button>
+              <button type="button" class="dec-btn" id="eBtnF_TQT" onclick="setSoporteFinal('TQT')"><i class="ti ti-stethoscope"></i> TQT VE</button>
               <button type="button" class="dec-btn" id="eBtnF_CNAF" onclick="setSoporteFinal('CNAF')"><i class="ti ti-wind"></i> CNAF</button>
               <button type="button" class="dec-btn" id="eBtnF_VNI" onclick="setSoporteFinal('VNI')"><i class="ti ti-mask"></i> VNI</button>
               <button type="button" class="dec-btn" id="eBtnF_VNI_CNAF" onclick="setSoporteFinal('VNI_CNAF')"><i class="ti ti-arrows-shuffle"></i> VNI + CNAF alternado</button>
@@ -3161,10 +3200,11 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
               </div>
             </div>
 
-            <!-- VAN con O2 final -->
+            <!-- VAN final: aire ambiente o dispositivo de oxígeno (v3_256) -->
             <div id="eSubF_VANO2" style="display:none;margin-top:10px" class="dec-sublevel">
-              <div class="dec-label">Dispositivo</div>
+              <div class="dec-label">¿Con qué quedó ventilando?</div>
               <div class="dec-row">
+                <button type="button" class="dec-btn" id="eBtnF_AA" onclick="setVANO2tipoFinal('AA')"><i class="ti ti-plant"></i> A/A — Aire ambiente</button>
                 <button type="button" class="dec-btn" id="eBtnF_CN" onclick="setVANO2tipoFinal('CN')"><i class="ti ti-air"></i> Cánula nasal</button>
                 <button type="button" class="dec-btn" id="eBtnF_MV" onclick="setVANO2tipoFinal('MV')"><i class="ti ti-circle-dashed"></i> Máscara Venturi</button>
                 <button type="button" class="dec-btn" id="eBtnF_MR" onclick="setVANO2tipoFinal('MR')"><i class="ti ti-circle-dashed"></i> Máscara reservorio</button>
@@ -3176,6 +3216,31 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
                   <select id="eF_MVfio2"><option value="">-</option><option value="24%">24%</option><option value="28%">28%</option><option value="35%">35%</option><option value="40%">40%</option><option value="50%">50%</option><option value="60%">60%</option></select></div>
                 <div class="form-group" id="eF_MRflujoWrap" style="display:none"><label>Flujo reservorio (L/min)</label>
                   <input type="number" id="eF_MRflujo" inputmode="numeric" placeholder="10–15"></div>
+              </div>
+            </div>
+
+            <!-- TQT en ventilación espontánea final (v3_256) -->
+            <div id="eSubF_TQT" style="display:none;margin-top:10px" class="dec-sublevel">
+              <div class="dec-label">¿Con qué quedó ventilando?</div>
+              <div class="dec-row">
+                <button type="button" class="dec-btn" id="eBtnF_TQT_AA" onclick="setTQTtipoFinal('AA')"><i class="ti ti-plant"></i> A/A — Aire ambiente</button>
+                <button type="button" class="dec-btn" id="eBtnF_TQT_O2" onclick="setTQTtipoFinal('O2')"><i class="ti ti-air"></i> Con oxígeno</button>
+              </div>
+              <div class="form-row" id="eF_TQTflujoWrap" style="display:none;margin-top:10px">
+                <div class="form-group" style="max-width:200px">
+                  <label>Flujo (L/min)</label>
+                  <select id="eF_TQTflujo">
+                    <option value="">-</option>
+                    <option value="1">1 L/min</option><option value="2">2 L/min</option>
+                    <option value="3">3 L/min</option><option value="4">4 L/min</option>
+                    <option value="5">5 L/min</option><option value="6">6 L/min</option>
+                    <option value="7">7 L/min</option><option value="8">8 L/min</option>
+                    <option value="9">9 L/min</option><option value="10">10 L/min</option>
+                    <option value="11">11 L/min</option><option value="12">12 L/min</option>
+                    <option value="13">13 L/min</option><option value="14">14 L/min</option>
+                    <option value="15">15 L/min</option>
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -5603,6 +5668,37 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     </div>
     <div class="modal-body">
 
+      <!-- v3_258: el score se puede calcular acá o cargar ya resuelto -->
+      <div class="dec-row" style="margin-bottom:10px">
+        <button type="button" class="dec-btn dec-sel" id="apBtnCalc" onclick="setModoScore('ap','calculado')">
+          <i class="ti ti-calculator"></i> Calcularlo acá
+        </button>
+        <button type="button" class="dec-btn" id="apBtnManual" onclick="setModoScore('ap','manual')">
+          <i class="ti ti-edit"></i> Ya lo tengo calculado
+        </button>
+      </div>
+      <input type="hidden" id="apModo" value="calculado">
+
+      <div id="apManualBox" style="display:none">
+        <div class="form-hint" style="margin-bottom:9px;line-height:1.5">
+          Para cuando el APACHE II ya viene calculado por el equipo médico. Se guarda igual que
+          el calculado acá y entra en los indicadores, pero queda marcado como cargado a mano.
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Puntaje total (0 a 71)</label>
+            <input type="number" inputmode="numeric" id="apManualTotal" min="0" max="71" oninput="setModoScore('ap','manual')">
+          </div>
+          <div class="form-group">
+            <label>¿Quién lo calculó?</label>
+            <input type="text" id="apManualFuente" placeholder="Ej: equipo médico, pase de sala">
+          </div>
+        </div>
+      </div>
+
+      <div id="apCalcBox">
+
+
       <div class="score-sub">Signos vitales</div>
       <div class="form-row three">
         <div class="form-group"><label>Temperatura (°C)</label>
@@ -5676,7 +5772,9 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         </div>
       </div>
 
-      <div id="apResultBox" class="score-box" style="display:none">
+            </div><!-- /apCalcBox -->
+
+<div id="apResultBox" class="score-box" style="display:none">
         <div>
           <div class="sb-val" id="apTotalDisp">—</div>
           <div class="sb-sub">/ 71</div>
@@ -5712,6 +5810,37 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <button class="modal-close" onclick="closeModal('modalSaps')">✕</button>
     </div>
     <div class="modal-body">
+
+      <!-- v3_258: el score se puede calcular acá o cargar ya resuelto -->
+      <div class="dec-row" style="margin-bottom:10px">
+        <button type="button" class="dec-btn dec-sel" id="spBtnCalc" onclick="setModoScore('sp','calculado')">
+          <i class="ti ti-calculator"></i> Calcularlo acá
+        </button>
+        <button type="button" class="dec-btn" id="spBtnManual" onclick="setModoScore('sp','manual')">
+          <i class="ti ti-edit"></i> Ya lo tengo calculado
+        </button>
+      </div>
+      <input type="hidden" id="spModo" value="calculado">
+
+      <div id="spManualBox" style="display:none">
+        <div class="form-hint" style="margin-bottom:9px;line-height:1.5">
+          Para cuando el SAPS II ya viene calculado por el equipo médico. Se guarda igual que
+          el calculado acá y entra en los indicadores, pero queda marcado como cargado a mano.
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Puntaje total (0 a 163)</label>
+            <input type="number" inputmode="numeric" id="spManualTotal" min="0" max="163" oninput="setModoScore('sp','manual')">
+          </div>
+          <div class="form-group">
+            <label>¿Quién lo calculó?</label>
+            <input type="text" id="spManualFuente" placeholder="Ej: equipo médico, pase de sala">
+          </div>
+        </div>
+      </div>
+
+      <div id="spCalcBox">
+
 
       <div class="score-sub">Signos vitales</div>
       <div class="form-row three">
@@ -5796,7 +5925,9 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         </div>
       </div>
 
-      <div id="spResultBox" class="score-box" style="display:none">
+            </div><!-- /spCalcBox -->
+
+<div id="spResultBox" class="score-box" style="display:none">
         <div>
           <div class="sb-val" id="spTotalDisp">—</div>
           <div class="sb-sub">/ 163</div>
@@ -5833,6 +5964,37 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     </div>
     <div class="modal-body">
 
+      <!-- v3_258: el score se puede calcular acá o cargar ya resuelto -->
+      <div class="dec-row" style="margin-bottom:10px">
+        <button type="button" class="dec-btn dec-sel" id="chBtnCalc" onclick="setModoScore('ch','calculado')">
+          <i class="ti ti-calculator"></i> Calcularlo acá
+        </button>
+        <button type="button" class="dec-btn" id="chBtnManual" onclick="setModoScore('ch','manual')">
+          <i class="ti ti-edit"></i> Ya lo tengo calculado
+        </button>
+      </div>
+      <input type="hidden" id="chModo" value="calculado">
+
+      <div id="chManualBox" style="display:none">
+        <div class="form-hint" style="margin-bottom:9px;line-height:1.5">
+          Para cuando el Charlson ya viene calculado por el equipo médico. Se guarda igual que
+          el calculado acá y entra en los indicadores, pero queda marcado como cargado a mano.
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Puntaje total (0 a 40)</label>
+            <input type="number" inputmode="numeric" id="chManualTotal" min="0" max="40" oninput="setModoScore('ch','manual')">
+          </div>
+          <div class="form-group">
+            <label>¿Quién lo calculó?</label>
+            <input type="text" id="chManualFuente" placeholder="Ej: equipo médico, pase de sala">
+          </div>
+        </div>
+      </div>
+
+      <div id="chCalcBox">
+
+
       <div class="form-hint" style="line-height:1.5;margin-bottom:4px">
         Se marcan las enfermedades que el paciente <strong>ya tenía antes de internarse</strong>, no lo que le
         pasó en esta internación. Algunas se excluyen entre sí y se destildan solas.
@@ -5851,7 +6013,9 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <div class="form-hint">1 punto por cada década a partir de los 50 años</div></div>
       </div>
 
-      <div id="chResultBox" class="score-box" style="display:none">
+            </div><!-- /chCalcBox -->
+
+<div id="chResultBox" class="score-box" style="display:none">
         <div>
           <div class="sb-val" id="chTotalDisp">—</div>
           <div class="sb-sub" id="chTotalSub">puntos</div>
@@ -5861,6 +6025,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <div style="font-size:11.5px;color:var(--text-muted);margin-top:3px;line-height:1.45" id="chDetalle">—</div>
         </div>
       </div>
+      <div id="chFaltan" class="score-falta"></div>
       <div class="score-nota">
         La supervivencia estimada a 10 años viene del modelo original de Charlson (1987), hecho en población
         general. En un paciente crítico es orientativa: describe la carga de comorbilidad, no el pronóstico
@@ -7309,7 +7474,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_254';
+const APP_VERSION = 'v3_258';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -15124,7 +15289,8 @@ function pintarResumenScore(campo){
     `<div style="flex:1;min-width:0">` +
       `<div class="sr-nom">${escapeHTML(cfg.nom)}${cfg.max ? ' · sobre ' + cfg.max : ''}</div>` +
       `<div class="sr-det">${escapeHTML(d.cat || '')}${d.detalle ? ' — ' + escapeHTML(d.detalle) : ''}</div>` +
-      `<div class="sr-det" style="font-size:10.5px">Cargado el ${fmtDate(d.fecha)}${d.kine ? ' · ' + escapeHTML(d.kine) : ''}</div>` +
+      `<div class="sr-det" style="font-size:10.5px">Cargado el ${fmtDate(d.fecha)}${d.kine ? ' · ' + escapeHTML(d.kine) : ''}` +
+        (d.origen === 'manual' ? ` · resultado cargado a mano${d.fuente ? ' (' + escapeHTML(d.fuente) + ')' : ''}` : '') + `</div>` +
     `</div>` +
     `<button type="button" class="sr-x" title="Borrar" onclick="borrarScore('${campo}')">&times;</button>`;
 }
@@ -15168,6 +15334,129 @@ function scoresIngresoTexto(p){
 }
 
 
+
+// ════════════════════════════════════════════════════════
+//  v3_258 — SCORES YA CALCULADOS POR EL EQUIPO MÉDICO
+// ════════════════════════════════════════════════════════
+// En varios servicios el APACHE II y el SAPS II los calcula el equipo médico
+// y llegan al pase ya resueltos. En esos casos volver a completar las 14
+// variables es trabajo repetido, así que cada score se puede cargar de dos
+// formas: calculándolo con la tabla (como hasta ahora) o anotando directamente
+// el resultado final. Lo que se guarda queda marcado con su origen, para que
+// después se sepa de dónde salió cada número.
+
+// Categoría, color y detalle de cada score. Se usan tanto al calcular con la
+// tabla como al cargar el resultado a mano, así los dos caminos describen
+// igual el mismo puntaje.
+function catApache(total){
+  const m = mortalidadApache(total);
+  const c = total <= 9  ? { cat:'Gravedad baja',     color:'var(--teal-600)',  bg:'var(--teal-50)' }
+          : total <= 19 ? { cat:'Gravedad moderada', color:'var(--blue-800)',  bg:'var(--blue-50)' }
+          : total <= 29 ? { cat:'Gravedad alta',     color:'var(--amber-600)', bg:'var(--amber-50)' }
+          :               { cat:'Gravedad muy alta', color:'var(--red-600)',   bg:'var(--red-50)' };
+  c.mort = m;
+  c.detalleCorto = `mortalidad estimada ~${m.noqx} % (clínicos) / ~${m.post} % (postoperatorios)`;
+  c.detalle = `Mortalidad hospitalaria estimada: ~${m.noqx} % en pacientes clínicos y ~${m.post} % en postoperatorios.`;
+  return c;
+}
+
+function catSaps(total){
+  const mort = mortalidadSaps(total);
+  const c = total <= 29 ? { cat:'Gravedad baja',     color:'var(--teal-600)',  bg:'var(--teal-50)' }
+          : total <= 44 ? { cat:'Gravedad moderada', color:'var(--blue-800)',  bg:'var(--blue-50)' }
+          : total <= 59 ? { cat:'Gravedad alta',     color:'var(--amber-600)', bg:'var(--amber-50)' }
+          :               { cat:'Gravedad muy alta', color:'var(--red-600)',   bg:'var(--red-50)' };
+  c.mort = +mort.toFixed(1);
+  c.detalleCorto = `mortalidad estimada ~${c.mort} %`;
+  c.detalle = `Mortalidad hospitalaria estimada: ~${c.mort} %.`;
+  return c;
+}
+
+function catCharlson(total){
+  const superv = Math.pow(0.983, Math.exp(total * 0.9)) * 100;
+  const c = total === 0 ? { cat:'Sin comorbilidad',       color:'var(--teal-600)',  bg:'var(--teal-50)' }
+          : total <= 2  ? { cat:'Comorbilidad baja',      color:'var(--blue-800)',  bg:'var(--blue-50)' }
+          : total <= 4  ? { cat:'Comorbilidad moderada',  color:'var(--amber-600)', bg:'var(--amber-50)' }
+          :               { cat:'Comorbilidad alta',      color:'var(--red-600)',   bg:'var(--red-50)' };
+  c.superv = +superv.toFixed(1);
+  c.detalleCorto = `supervivencia estimada a 10 años ~${superv.toFixed(0)} %`;
+  c.detalle = `Supervivencia estimada a 10 años: ~${superv.toFixed(0)} %.`;
+  return c;
+}
+
+// Configuración por score. El prefijo es el que llevan los ids del modal.
+const SCORE_MODAL_CFG = {
+  ap: { campo:'apache',   nom:'APACHE II', max:71,   cat:catApache,
+        box:'apResultBox', val:'apTotalDisp', catEl:'apCategoria', detEl:'apDetalle', faltaEl:'apFaltan' },
+  sp: { campo:'saps',     nom:'SAPS II',   max:163,  cat:catSaps,
+        box:'spResultBox', val:'spTotalDisp', catEl:'spCategoria', detEl:'spDetalle', faltaEl:'spFaltan' },
+  ch: { campo:'charlson', nom:'Índice de Charlson', max:40, cat:catCharlson,
+        box:'chResultBox', val:'chTotalDisp', catEl:'chCategoria', detEl:'chDetalle', faltaEl:'chFaltan', subEl:'chTotalSub' },
+};
+
+function modoScore(pref){
+  return document.getElementById(pref + 'Modo')?.value === 'manual' ? 'manual' : 'calculado';
+}
+
+function setModoScore(pref, modo){
+  const h = document.getElementById(pref + 'Modo'); if(h) h.value = modo;
+  const bc = document.getElementById(pref + 'BtnCalc');
+  const bm = document.getElementById(pref + 'BtnManual');
+  if(bc) bc.classList.toggle('dec-sel', modo === 'calculado');
+  if(bm) bm.classList.toggle('dec-sel', modo === 'manual');
+  const cb = document.getElementById(pref + 'CalcBox');   if(cb) cb.style.display = modo === 'calculado' ? '' : 'none';
+  const mb = document.getElementById(pref + 'ManualBox'); if(mb) mb.style.display = modo === 'manual' ? '' : 'none';
+  const recalc = { ap:calcAPACHE, sp:calcSAPS, ch:calcCharlson }[pref];
+  if(recalc) recalc();
+}
+
+// Pinta el recuadro del resultado con el puntaje cargado a mano.
+// Devuelve el total si es válido, o null si todavía no se puede mostrar nada.
+function pintarScoreManual(pref){
+  const cfg = SCORE_MODAL_CFG[pref];
+  const box = document.getElementById(cfg.box);
+  const falta = cfg.faltaEl ? document.getElementById(cfg.faltaEl) : null;
+  const raw = (document.getElementById(pref + 'ManualTotal')?.value || '').trim();
+  const total = raw === '' ? null : parseInt(raw);
+
+  if(total === null || !isFinite(total) || total < 0 || total > cfg.max){
+    if(box) box.style.display = 'none';
+    if(falta) falta.textContent = raw === ''
+      ? `Cargá el puntaje total del ${cfg.nom}.`
+      : `El puntaje del ${cfg.nom} tiene que estar entre 0 y ${cfg.max}.`;
+    return null;
+  }
+  if(falta) falta.textContent = '';
+  const c = cfg.cat(total);
+  if(box){
+    box.style.display = 'flex';
+    box.style.background = c.bg;
+    const v = document.getElementById(cfg.val);   if(v){ v.textContent = total; v.style.color = c.color; }
+    const k = document.getElementById(cfg.catEl); if(k){ k.textContent = c.cat; k.style.color = c.color; }
+    const d = document.getElementById(cfg.detEl); if(d) d.textContent = c.detalle;
+    if(cfg.subEl){ const su = document.getElementById(cfg.subEl); if(su) su.textContent = total === 1 ? 'punto' : 'puntos'; }
+  }
+  return total;
+}
+
+// Objeto que se guarda cuando el score vino calculado de afuera
+function datosScoreManual(pref){
+  const cfg = SCORE_MODAL_CFG[pref];
+  const total = pintarScoreManual(pref);
+  if(total === null) return null;
+  const c = cfg.cat(total);
+  const data = {
+    total, cat: c.cat, detalle: c.detalleCorto,
+    origen: 'manual',
+    fuente: (document.getElementById(pref + 'ManualFuente')?.value || '').trim() || null,
+    fecha: today(), kine: currentUser?.name || '',
+  };
+  if(pref === 'ap'){ data.mortalidadClinicos = c.mort.noqx; data.mortalidadPostqx = c.mort.post; }
+  if(pref === 'sp') data.mortalidad = c.mort;
+  if(pref === 'ch') data.supervivencia10 = c.superv;
+  return data;
+}
+
 // ════════════════════════════════════════════════════════
 //  APACHE II
 // ════════════════════════════════════════════════════════
@@ -15175,6 +15464,17 @@ const APACHE_CAMPOS = ['apTemp','apTAS','apTAD','apTAM','apFC','apFR','apFiO2','
   'apPH','apNa','apK','apCreat','apHto','apGB','apGCS','apEdad'];
 
 function abrirAPACHE(){
+  // v3_258: se reabre en el modo con el que se había guardado
+  { const campo = SCORE_MODAL_CFG['ap'].campo;
+    const prev = scoreGuardado(campo);
+    ['apManualTotal','apManualFuente'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    if(prev && prev.origen === 'manual'){
+      const t = document.getElementById('apManualTotal'); if(t) t.value = prev.total;
+      const f = document.getElementById('apManualFuente'); if(f) f.value = prev.fuente || '';
+      setModoScore('ap','manual');
+    } else {
+      setModoScore('ap','calculado');
+    } }
   APACHE_CAMPOS.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   const ira = document.getElementById('apIRA');
   if(ira){ ira.checked = false; ira.closest('.ant-chip')?.classList.remove('is-checked'); }
@@ -15284,6 +15584,7 @@ function mortalidadApache(t){
 }
 
 function calcAPACHE(){
+  if(modoScore('ap') === 'manual'){ pintarScoreManual('ap'); return; }
   const r = calcularAPACHE();
   const box = document.getElementById('apResultBox');
   const aa  = document.getElementById('apAaDO2');
@@ -15298,40 +15599,43 @@ function calcAPACHE(){
   if(!box) return;
   if(r.faltan.length){ box.style.display = 'none'; return; }
 
-  const m = mortalidadApache(r.total);
-  let cat, bg, color;
-  if(r.total <= 9)       { cat = 'Gravedad baja';      bg = 'var(--teal-50)';  color = 'var(--teal-600)'; }
-  else if(r.total <= 19) { cat = 'Gravedad moderada';  bg = 'var(--blue-50)';  color = 'var(--blue-800)'; }
-  else if(r.total <= 29) { cat = 'Gravedad alta';      bg = 'var(--amber-50)'; color = 'var(--amber-600)'; }
-  else                   { cat = 'Gravedad muy alta';  bg = 'var(--red-50)';   color = 'var(--red-600)'; }
-
+  const c = catApache(r.total);
   box.style.display = 'flex';
-  box.style.background = bg;
+  box.style.background = c.bg;
   const disp = document.getElementById('apTotalDisp');
   disp.textContent = r.total;
-  disp.style.color = color;
+  disp.style.color = c.color;
   const catEl = document.getElementById('apCategoria');
-  catEl.textContent = cat;
-  catEl.style.color = color;
+  catEl.textContent = c.cat;
+  catEl.style.color = c.color;
   document.getElementById('apDetalle').textContent =
-    `Fisiología aguda ${r.aps} + edad ${r.ptsEdad} + salud crónica ${r.ptsCron}. ` +
-    `Mortalidad hospitalaria estimada: ~${m.noqx} % en pacientes clínicos y ~${m.post} % en postoperatorios.`;
+    `Fisiología aguda ${r.aps} + edad ${r.ptsEdad} + salud crónica ${r.ptsCron}. ` + c.detalle;
 }
 
 function guardarAPACHE(){
+  // v3_258: si vino calculado de afuera, solo se guarda el resultado
+  if(modoScore('ap') === 'manual'){
+    const d = datosScoreManual('ap');
+    if(!d){ showToast('Cargá un puntaje válido de APACHE II (0 a 71)', 'error'); return; }
+    const h = document.getElementById('fApacheData'); if(h) h.value = JSON.stringify(d);
+    pintarResumenScore('apache');
+    marcarModalSucio('modalPaciente');
+    closeModal('modalApache', true);
+    showToast(`APACHE II: ${d.total} puntos`, 'success');
+    return;
+  }
   const r = calcularAPACHE();
   if(r.faltan.length){
     showToast(`Falta cargar: ${r.faltan.slice(0,3).join(', ')}${r.faltan.length > 3 ? '…' : ''}`, 'error');
     return;
   }
-  const m = mortalidadApache(r.total);
-  const cat = r.total <= 9 ? 'Gravedad baja' : r.total <= 19 ? 'Gravedad moderada'
-            : r.total <= 29 ? 'Gravedad alta' : 'Gravedad muy alta';
+  const c = catApache(r.total);
   const data = {
     total: r.total, aps: r.aps, ptsEdad: r.ptsEdad, ptsCronico: r.ptsCron,
     cronico: r.cronico, ira: r.ira, aado2: r.aado2 !== null ? Math.round(r.aado2) : null,
-    cat, detalle: `mortalidad estimada ~${m.noqx} % (clínicos) / ~${m.post} % (postoperatorios)`,
-    mortalidadClinicos: m.noqx, mortalidadPostqx: m.post,
+    cat: c.cat, detalle: c.detalleCorto,
+    mortalidadClinicos: c.mort.noqx, mortalidadPostqx: c.mort.post,
+    origen: 'calculado',
     campos: r.campos, fecha: today(), kine: currentUser?.name || '',
   };
   const h = document.getElementById('fApacheData');
@@ -15350,6 +15654,17 @@ const SAPS_CAMPOS = ['spEdad','spFC','spTAS','spTemp','spDiuresis','spGCS','spVM
   'spUrea','spUreaUnidad','spGB','spNa','spK','spHCO3','spBili','spCronica','spIngreso'];
 
 function abrirSAPS(){
+  // v3_258: se reabre en el modo con el que se había guardado
+  { const campo = SCORE_MODAL_CFG['sp'].campo;
+    const prev = scoreGuardado(campo);
+    ['spManualTotal','spManualFuente'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    if(prev && prev.origen === 'manual'){
+      const t = document.getElementById('spManualTotal'); if(t) t.value = prev.total;
+      const f = document.getElementById('spManualFuente'); if(f) f.value = prev.fuente || '';
+      setModoScore('sp','manual');
+    } else {
+      setModoScore('sp','calculado');
+    } }
   SAPS_CAMPOS.forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
   const un = document.getElementById('spUreaUnidad'); if(un) un.value = 'urea';
   const cr = document.getElementById('spCronica');    if(cr) cr.value = '0';
@@ -15452,6 +15767,7 @@ function mortalidadSaps(t){
 }
 
 function calcSAPS(){
+  if(modoScore('sp') === 'manual'){ pintarScoreManual('sp'); return; }
   const r = calcularSAPS();
   const pf = document.getElementById('spPafi');
   if(pf) pf.value = r.pafi !== null ? Math.round(r.pafi) : '';
@@ -15466,38 +15782,41 @@ function calcSAPS(){
   if(!box) return;
   if(r.faltan.length){ box.style.display = 'none'; return; }
 
-  const mort = mortalidadSaps(r.total);
-  let cat, bg, color;
-  if(r.total <= 29)      { cat = 'Gravedad baja';      bg = 'var(--teal-50)';  color = 'var(--teal-600)'; }
-  else if(r.total <= 44) { cat = 'Gravedad moderada';  bg = 'var(--blue-50)';  color = 'var(--blue-800)'; }
-  else if(r.total <= 59) { cat = 'Gravedad alta';      bg = 'var(--amber-50)'; color = 'var(--amber-600)'; }
-  else                   { cat = 'Gravedad muy alta';  bg = 'var(--red-50)';   color = 'var(--red-600)'; }
-
+  const c = catSaps(r.total);
   box.style.display = 'flex';
-  box.style.background = bg;
+  box.style.background = c.bg;
   const disp = document.getElementById('spTotalDisp');
   disp.textContent = r.total;
-  disp.style.color = color;
+  disp.style.color = c.color;
   const catEl = document.getElementById('spCategoria');
-  catEl.textContent = cat;
-  catEl.style.color = color;
+  catEl.textContent = c.cat;
+  catEl.style.color = c.color;
   document.getElementById('spDetalle').textContent =
-    `Mortalidad hospitalaria estimada: ~${mort.toFixed(1)} %.` +
-    (r.pafi !== null ? ` PaFi ${Math.round(r.pafi)}.` : '');
+    c.detalle + (r.pafi !== null ? ` PaFi ${Math.round(r.pafi)}.` : '');
 }
 
 function guardarSAPS(){
+  // v3_258: si vino calculado de afuera, solo se guarda el resultado
+  if(modoScore('sp') === 'manual'){
+    const d = datosScoreManual('sp');
+    if(!d){ showToast('Cargá un puntaje válido de SAPS II (0 a 163)', 'error'); return; }
+    const h = document.getElementById('fSapsData'); if(h) h.value = JSON.stringify(d);
+    pintarResumenScore('saps');
+    marcarModalSucio('modalPaciente');
+    closeModal('modalSaps', true);
+    showToast(`SAPS II: ${d.total} puntos`, 'success');
+    return;
+  }
   const r = calcularSAPS();
   if(r.faltan.length){
     showToast(`Falta cargar: ${r.faltan.slice(0,3).join(', ')}${r.faltan.length > 3 ? '…' : ''}`, 'error');
     return;
   }
-  const mort = mortalidadSaps(r.total);
-  const cat = r.total <= 29 ? 'Gravedad baja' : r.total <= 44 ? 'Gravedad moderada'
-            : r.total <= 59 ? 'Gravedad alta' : 'Gravedad muy alta';
+  const c = catSaps(r.total);
   const data = {
-    total: r.total, cat, mortalidad: +mort.toFixed(1),
-    detalle: `mortalidad estimada ~${mort.toFixed(1)} %`,
+    total: r.total, cat: c.cat, mortalidad: c.mort,
+    detalle: c.detalleCorto,
+    origen: 'calculado',
     pafi: r.pafi !== null ? Math.round(r.pafi) : null,
     campos: r.campos, fecha: today(), kine: currentUser?.name || '',
   };
@@ -15583,6 +15902,17 @@ function onCharlsonItem(key){
 }
 
 function abrirCharlson(){
+  // v3_258: se reabre en el modo con el que se había guardado
+  { const campo = SCORE_MODAL_CFG['ch'].campo;
+    const prev = scoreGuardado(campo);
+    ['chManualTotal','chManualFuente'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    if(prev && prev.origen === 'manual'){
+      const t = document.getElementById('chManualTotal'); if(t) t.value = prev.total;
+      const f = document.getElementById('chManualFuente'); if(f) f.value = prev.fuente || '';
+      setModoScore('ch','manual');
+    } else {
+      setModoScore('ch','calculado');
+    } }
   armarGrillaCharlson();
   CHARLSON_ITEMS.forEach(i => {
     const el = _charlsonChk(i.key);
@@ -15642,38 +15972,45 @@ function calcularCharlson(){
 }
 
 function calcCharlson(){
+  if(modoScore('ch') === 'manual'){ pintarScoreManual('ch'); return; }
   const r = calcularCharlson();
   const ptsEl = document.getElementById('chEdadPts');
   if(ptsEl) ptsEl.value = r.edad === null ? '' : `${r.ptsEdad} ${r.ptsEdad === 1 ? 'punto' : 'puntos'}`;
 
   const box = document.getElementById('chResultBox');
   if(!box) return;
-  let bg, color;
-  if(r.total === 0)      { bg = 'var(--teal-50)';  color = 'var(--teal-600)'; }
-  else if(r.total <= 2)  { bg = 'var(--blue-50)';  color = 'var(--blue-800)'; }
-  else if(r.total <= 4)  { bg = 'var(--amber-50)'; color = 'var(--amber-600)'; }
-  else                   { bg = 'var(--red-50)';   color = 'var(--red-600)'; }
-
+  const c = catCharlson(r.total);
   box.style.display = 'flex';
-  box.style.background = bg;
+  box.style.background = c.bg;
   const disp = document.getElementById('chTotalDisp');
   disp.textContent = r.total;
-  disp.style.color = color;
+  disp.style.color = c.color;
   document.getElementById('chTotalSub').textContent = r.total === 1 ? 'punto' : 'puntos';
   const catEl = document.getElementById('chCategoria');
-  catEl.textContent = r.cat;
-  catEl.style.color = color;
+  catEl.textContent = c.cat;
+  catEl.style.color = c.color;
   document.getElementById('chDetalle').textContent =
-    `Comorbilidades ${r.ptsCom} + edad ${r.ptsEdad}. Supervivencia estimada a 10 años: ~${r.superv.toFixed(0)} %.`;
+    `Comorbilidades ${r.ptsCom} + edad ${r.ptsEdad}. ` + c.detalle;
 }
 
 function guardarCharlson(){
+  // v3_258: si vino calculado de afuera, solo se guarda el resultado
+  if(modoScore('ch') === 'manual'){
+    const d = datosScoreManual('ch');
+    if(!d){ showToast('Cargá un puntaje válido de Charlson', 'error'); return; }
+    const h = document.getElementById('fCharlsonData'); if(h) h.value = JSON.stringify(d);
+    pintarResumenScore('charlson');
+    marcarModalSucio('modalPaciente');
+    closeModal('modalCharlson', true);
+    showToast(`Charlson: ${d.total} ${d.total === 1 ? 'punto' : 'puntos'}`, 'success');
+    return;
+  }
   const r = calcularCharlson();
   if(r.edad === null && !confirm('No cargaste la edad, así que el índice va sin el ajuste por edad.\n\n¿Guardar igual?')) return;
   const data = {
     total: r.total, ptsComorbilidades: r.ptsCom, ptsEdad: r.ptsEdad, edad: r.edad,
     cat: r.cat, detalle: `supervivencia estimada a 10 años ~${r.superv.toFixed(0)} %`,
-    supervivencia10: +r.superv.toFixed(1),
+    supervivencia10: +r.superv.toFixed(1), origen: 'calculado',
     items: r.items, labels: r.labels,
     fecha: today(), kine: currentUser?.name || '',
   };
@@ -16245,6 +16582,11 @@ function precargarVentilacionUltimaEvo(patientId){
         if(disp === 'MV' && ult.mvFio2){ const el=document.getElementById('eMVfio2'); if(el) el.value = ult.mvFio2; }
         if(disp === 'MR' && ult.mrFlujo){ const el=document.getElementById('eMRflujo'); if(el) el.value = ult.mrFlujo; }
       }
+    }
+    // v3_255: el flujo del TQT espontáneo también se hereda
+    if(esp === 'TQT_O2'){
+      setTQTtipo('O2');
+      if(ult.tqtFlujo){ const el=document.getElementById('eTQTflujo'); if(el) el.value = ult.tqtFlujo; }
     }
     if(esp === 'CNAF'){
       if(ult.cnafFlujo != null){ const el=document.getElementById('eCNAFflujo'); if(el) el.value = ult.cnafFlujo; }
@@ -17354,13 +17696,23 @@ function actualizarAerosol(){
 }
 
 function setInterfazEsp(tipo){
+  // v3_255: 'VAN' y 'TQT' son los botones agrupadores. No son estados
+  // ventilatorios en sí: abren el sub-nivel y, si el paciente no venía ya de
+  // ese grupo, arrancan en aire ambiente, que es lo que el sub-nivel muestra
+  // preseleccionado. El valor real que se guarda lo define el sub-nivel.
+  const previo = document.getElementById('eInterfazEsp')?.value || '';
+  if(tipo === 'VAN') tipo = (previo === 'VAN_O2') ? 'VAN_O2' : 'VAN_AA';
+  if(tipo === 'TQT') tipo = (previo === 'TQT_O2') ? 'TQT_O2' : 'TQT_AA';
+
   // Limpiar selección anterior
   document.querySelectorAll('#eSubArmNo .dec-btn').forEach(b=>{ b.classList.remove('dec-sel','dec-sel-tqt'); });
   const esTQT = tipo === 'TQT_O2' || tipo === 'TQT_AA';
-  const btnId = { VAN_AA:'eBtnVAN_AA', VAN_O2:'eBtnVAN_O2', CNAF:'eBtnCNAF', VNI:'eBtnVNI', VNI_CNAF:'eBtnVNI_CNAF', TQT_O2:'eBtnTQT_O2', TQT_AA:'eBtnTQT_AA' }[tipo];
+  const esVAN = tipo === 'VAN_AA' || tipo === 'VAN_O2';
+  const btnId = { VAN_AA:'eBtnVAN', VAN_O2:'eBtnVAN', CNAF:'eBtnCNAF', VNI:'eBtnVNI', VNI_CNAF:'eBtnVNI_CNAF', TQT_O2:'eBtnTQT_VE', TQT_AA:'eBtnTQT_VE' }[tipo];
   if(btnId){ document.getElementById(btnId).classList.add(esTQT ? 'dec-sel-tqt' : 'dec-sel'); }
   // v3_216: 'VNI_CNAF' abre los dos settings, porque en la sesión se usan los dos
-  document.getElementById('eSubVANO2').style.display = tipo === 'VAN_O2' ? 'block' : 'none';
+  document.getElementById('eSubVANO2').style.display = esVAN ? 'block' : 'none';
+  { const st = document.getElementById('eSubTQT'); if(st) st.style.display = esTQT ? 'block' : 'none'; }
   document.getElementById('eSubVNI').style.display  = (tipo === 'VNI' || tipo === 'VNI_CNAF') ? 'block' : 'none';
   document.getElementById('eSubCNAF').style.display = (tipo === 'CNAF' || tipo === 'VNI_CNAF') ? 'block' : 'none';
   calcROX();
@@ -17377,8 +17729,28 @@ function setInterfazEsp(tipo){
   // Mapear a un valor de interfaz legible
   const mapaInterfaz = { VAN_AA:'Aire ambiente', VAN_O2:'VAN con O₂', CNAF:'CNAF', VNI:'VNI', VNI_CNAF:'VNI + CNAF alternado', TQT_O2:'TQT espontáneo + O₂', TQT_AA:'TQT espontáneo' };
   document.getElementById('eInterfazPrincipal').value = mapaInterfaz[tipo] || tipo;
-  if(!esTQT){
+  // v3_255: la selección del sub-nivel solo se borra al salir del grupo.
+  // Si el paciente sigue en VAN o en TQT, se repinta lo que corresponde.
+  if(!esVAN){
     document.querySelectorAll('#eSubVANO2 .dec-btn').forEach(b=>b.classList.remove('dec-sel'));
+    ['eCNflujo','eMVfio2','eMRflujo'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  } else if(tipo === 'VAN_AA'){
+    _pintarVANtipo('AA');
+  } else if(!document.querySelector('#eSubVANO2 .dec-btn.dec-sel')){
+    // VAN_O2 sin dispositivo pintado: se deduce del campo que tenga valor
+    // (pasa al volver a tocar el botón VAN, que repinta todo el sub-nivel).
+    const disp = document.getElementById('eCNflujo')?.value ? 'CN'
+               : document.getElementById('eMVfio2')?.value ? 'MV'
+               : document.getElementById('eMRflujo')?.value ? 'MR' : '';
+    if(disp) _pintarVANtipo(disp);
+    else ['eSubCNflujo','eSubMVfio2','eSubMRflujo'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display='none'; });
+  }
+  if(esTQT){
+    _pintarTQTtipo(tipo === 'TQT_O2' ? 'O2' : 'AA');
+  } else {
+    const f = document.getElementById('eTQTflujo'); if(f) f.value = '';
+    ['eBtnTQT_AAsub','eBtnTQT_O2sub'].forEach(id=>document.getElementById(id)?.classList.remove('dec-sel'));
+    const box = document.getElementById('eSubTQTflujo'); if(box) box.style.display = 'none';
   }
   actualizarCuidadosVAA();
   actualizarBloquesRespiratorios();   // v3_171
@@ -17600,6 +17972,9 @@ function textoSoporteInicial(){
     if(pr === 'Máscara reservorio')return `Máscara reservorio${G('eMRflujo') ? ' '+G('eMRflujo')+' L/min' : ''}`;
     return 'VAN con O₂';
   }
+  // v3_256: el TQT espontáneo no estaba contemplado y el resumen mostraba "—"
+  if(esp === 'TQT_AA')   return 'TQT espontáneo (aire ambiente)';
+  if(esp === 'TQT_O2')   return `TQT espontáneo${G('eTQTflujo') ? ' · O₂ '+G('eTQTflujo')+' L/min' : ' con O₂'}`;
   if(esp === 'CNAF')     return `CNAF${G('eCNAFflujo') ? ' '+G('eCNAFflujo')+' L/min' : ''}${G('eCNAFfio2') ? ' · FiO₂ '+G('eCNAFfio2')+'%' : ''}`;
   if(esp === 'VNI')      return `VNI${G('eVNIModo') ? ' '+G('eVNIModo') : ''}${G('eVNIPi') ? ' · Pi '+G('eVNIPi') : ''}${G('eVNIPeep') ? ' · PEEP '+G('eVNIPeep') : ''}${G('eVNIFio2') ? ' · FiO₂ '+G('eVNIFio2')+'%' : ''}`;
   if(esp === 'VNI_CNAF') return 'VNI + CNAF alternado';
@@ -17621,12 +17996,13 @@ function toggleModSoporte(el){
 
 function limpiarSoporteFinal(){
   ['eSoporteFinalTipo','eSoporteFinalVANO2','eSoporteFinalMotivo',
-   'eF_CNflujo','eF_MVfio2','eF_MRflujo','eF_CNAFflujo','eF_CNAFfio2',
+   'eF_CNflujo','eF_MVfio2','eF_MRflujo','eF_TQTflujo','eF_CNAFflujo','eF_CNAFfio2',
    'eF_VNIModo','eF_VNIPi','eF_VNIPeep','eF_VNIFr','eF_VNIFio2','eF_VNIMascara']
     .forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
-  ['eBtnF_VAN_AA','eBtnF_VAN_O2','eBtnF_CNAF','eBtnF_VNI','eBtnF_VNI_CNAF','eBtnF_CN','eBtnF_MV','eBtnF_MR']
+  ['eBtnF_VAN','eBtnF_TQT','eBtnF_CNAF','eBtnF_VNI','eBtnF_VNI_CNAF','eBtnF_ARM',
+   'eBtnF_AA','eBtnF_CN','eBtnF_MV','eBtnF_MR','eBtnF_TQT_AA','eBtnF_TQT_O2']
     .forEach(id => { const b = document.getElementById(id); if(b) b.classList.remove('dec-sel'); });
-  ['eSubF_VANO2','eSubF_CNAF','eSubF_VNI','eF_CNflujoWrap','eF_MVfio2Wrap','eF_MRflujoWrap','eSoporteFinalBox']
+  ['eSubF_VANO2','eSubF_TQT','eSubF_CNAF','eSubF_VNI','eF_CNflujoWrap','eF_MVfio2Wrap','eF_MRflujoWrap','eF_TQTflujoWrap','eSoporteFinalBox']
     .forEach(id => { const e = document.getElementById(id); if(e) e.style.display = 'none'; });
   const t = document.getElementById('tagModSoporte');
   if(t) t.classList.remove('active');
@@ -17635,30 +18011,90 @@ function limpiarSoporteFinal(){
 }
 
 function setSoporteFinal(tipo){
-  ['eBtnF_VAN_AA','eBtnF_VAN_O2','eBtnF_CNAF','eBtnF_VNI','eBtnF_VNI_CNAF','eBtnF_ARM'].forEach(id => {
+  // v3_256: 'VAN' y 'TQT' son agrupadores, igual que en el árbol de arriba.
+  // El valor que se guarda (VAN_AA/VAN_O2, TQT_AA/TQT_O2) lo define el sub-nivel.
+  const previo = document.getElementById('eSoporteFinalTipo')?.value || '';
+  if(tipo === 'VAN') tipo = (previo === 'VAN_O2') ? 'VAN_O2' : 'VAN_AA';
+  if(tipo === 'TQT') tipo = (previo === 'TQT_O2') ? 'TQT_O2' : 'TQT_AA';
+  const esVAN = tipo === 'VAN_AA' || tipo === 'VAN_O2';
+  const esTQT = tipo === 'TQT_AA' || tipo === 'TQT_O2';
+
+  ['eBtnF_VAN','eBtnF_TQT','eBtnF_CNAF','eBtnF_VNI','eBtnF_VNI_CNAF','eBtnF_ARM'].forEach(id => {
     const b = document.getElementById(id); if(b) b.classList.remove('dec-sel');
   });
-  const btn = document.getElementById({ VAN_AA:'eBtnF_VAN_AA', VAN_O2:'eBtnF_VAN_O2', CNAF:'eBtnF_CNAF', VNI:'eBtnF_VNI', VNI_CNAF:'eBtnF_VNI_CNAF', ARM:'eBtnF_ARM' }[tipo]);
+  const btn = document.getElementById({ VAN_AA:'eBtnF_VAN', VAN_O2:'eBtnF_VAN', TQT_AA:'eBtnF_TQT', TQT_O2:'eBtnF_TQT', CNAF:'eBtnF_CNAF', VNI:'eBtnF_VNI', VNI_CNAF:'eBtnF_VNI_CNAF', ARM:'eBtnF_ARM' }[tipo]);
   if(btn) btn.classList.add('dec-sel');
   const h = document.getElementById('eSoporteFinalTipo'); if(h) h.value = tipo;
-  document.getElementById('eSubF_VANO2').style.display = tipo === 'VAN_O2' ? 'block' : 'none';
+  document.getElementById('eSubF_VANO2').style.display = esVAN ? 'block' : 'none';
+  { const st = document.getElementById('eSubF_TQT'); if(st) st.style.display = esTQT ? 'block' : 'none'; }
   document.getElementById('eSubF_CNAF').style.display  = (tipo === 'CNAF' || tipo === 'VNI_CNAF') ? 'block' : 'none';
   document.getElementById('eSubF_VNI').style.display   = (tipo === 'VNI'  || tipo === 'VNI_CNAF') ? 'block' : 'none';
   document.getElementById('eSubF_ARM').style.display   = tipo === 'ARM' ? 'block' : 'none';
+
+  // Sincronizar los sub-niveles: al salir del grupo se limpia lo que quedó
+  if(!esVAN){
+    ['eBtnF_AA','eBtnF_CN','eBtnF_MV','eBtnF_MR'].forEach(id => document.getElementById(id)?.classList.remove('dec-sel'));
+    ['eF_CNflujo','eF_MVfio2','eF_MRflujo'].forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
+    { const hv = document.getElementById('eSoporteFinalVANO2'); if(hv) hv.value = ''; }
+    ['eF_CNflujoWrap','eF_MVfio2Wrap','eF_MRflujoWrap'].forEach(id => { const e = document.getElementById(id); if(e) e.style.display = 'none'; });
+  } else if(tipo === 'VAN_AA'){
+    _pintarVANtipoFinal('AA');
+  } else if(!['eBtnF_AA','eBtnF_CN','eBtnF_MV','eBtnF_MR'].some(id => document.getElementById(id)?.classList.contains('dec-sel'))){
+    const disp = document.getElementById('eF_CNflujo')?.value ? 'CN'
+               : document.getElementById('eF_MVfio2')?.value ? 'MV'
+               : document.getElementById('eF_MRflujo')?.value ? 'MR' : '';
+    if(disp) _pintarVANtipoFinal(disp);
+  }
+  if(esTQT){
+    _pintarTQTtipoFinal(tipo === 'TQT_O2' ? 'O2' : 'AA');
+  } else {
+    ['eBtnF_TQT_AA','eBtnF_TQT_O2'].forEach(id => document.getElementById(id)?.classList.remove('dec-sel'));
+    { const f = document.getElementById('eF_TQTflujo'); if(f) f.value = ''; }
+    { const w = document.getElementById('eF_TQTflujoWrap'); if(w) w.style.display = 'none'; }
+  }
   actualizarBloquesRespiratorios();   // v3_224: la intubación abre los bloques de ARM
   actualizarScoresNoInvasivos();      // v3_245
   actualizarSOFA();                   // v3_248
   marcarModalSucio('modalEvo');
 }
 
-function setVANO2tipoFinal(tipo){
-  ['eBtnF_CN','eBtnF_MV','eBtnF_MR'].forEach(id => { const b = document.getElementById(id); if(b) b.classList.remove('dec-sel'); });
-  const btn = document.getElementById({ CN:'eBtnF_CN', MV:'eBtnF_MV', MR:'eBtnF_MR' }[tipo]);
+// v3_256: solo pinta el sub-nivel del VAN final, sin tocar el tipo guardado
+function _pintarVANtipoFinal(tipo){
+  ['eBtnF_AA','eBtnF_CN','eBtnF_MV','eBtnF_MR'].forEach(id => { const b = document.getElementById(id); if(b) b.classList.remove('dec-sel'); });
+  const btn = document.getElementById({ AA:'eBtnF_AA', CN:'eBtnF_CN', MV:'eBtnF_MV', MR:'eBtnF_MR' }[tipo]);
   if(btn) btn.classList.add('dec-sel');
-  const h = document.getElementById('eSoporteFinalVANO2'); if(h) h.value = tipo;
+  // El dispositivo solo tiene sentido si hay oxígeno
+  const h = document.getElementById('eSoporteFinalVANO2'); if(h) h.value = tipo === 'AA' ? '' : tipo;
   document.getElementById('eF_CNflujoWrap').style.display = tipo === 'CN' ? 'block' : 'none';
   document.getElementById('eF_MVfio2Wrap').style.display  = tipo === 'MV' ? 'block' : 'none';
   document.getElementById('eF_MRflujoWrap').style.display = tipo === 'MR' ? 'block' : 'none';
+  if(tipo === 'AA'){
+    ['eF_CNflujo','eF_MVfio2','eF_MRflujo'].forEach(id => { const e = document.getElementById(id); if(e) e.value = ''; });
+  }
+}
+
+function setVANO2tipoFinal(tipo){
+  const destino = tipo === 'AA' ? 'VAN_AA' : 'VAN_O2';
+  if((document.getElementById('eSoporteFinalTipo')?.value || '') !== destino) setSoporteFinal(destino);
+  _pintarVANtipoFinal(tipo);
+  marcarModalSucio('modalEvo');
+}
+
+// v3_256: mismo esquema para el TQT en ventilación espontánea
+function _pintarTQTtipoFinal(tipo){
+  ['eBtnF_TQT_AA','eBtnF_TQT_O2'].forEach(id => { const b = document.getElementById(id); if(b) b.classList.remove('dec-sel'); });
+  const btn = document.getElementById(tipo === 'O2' ? 'eBtnF_TQT_O2' : 'eBtnF_TQT_AA');
+  if(btn) btn.classList.add('dec-sel');
+  const w = document.getElementById('eF_TQTflujoWrap');
+  if(w) w.style.display = tipo === 'O2' ? 'flex' : 'none';
+  if(tipo === 'AA'){ const f = document.getElementById('eF_TQTflujo'); if(f) f.value = ''; }
+}
+
+function setTQTtipoFinal(tipo){
+  const destino = tipo === 'O2' ? 'TQT_O2' : 'TQT_AA';
+  if((document.getElementById('eSoporteFinalTipo')?.value || '') !== destino) setSoporteFinal(destino);
+  _pintarTQTtipoFinal(tipo);
+  marcarModalSucio('modalEvo');
 }
 
 // Objeto que se guarda en la evolución (null si no hubo cambio)
@@ -17673,6 +18109,7 @@ function leerSoporteFinal(){
     if(o.dispositivo === 'MV') o.fio2  = G('eF_MVfio2');
     if(o.dispositivo === 'MR') o.flujo = G('eF_MRflujo');
   }
+  if(tipo === 'TQT_O2') o.tqtFlujo = G('eF_TQTflujo');   // v3_256
   if(tipo === 'CNAF' || tipo === 'VNI_CNAF'){
     o.cnafFlujo = G('eF_CNAFflujo'); o.cnafFio2 = G('eF_CNAFfio2');
   }
@@ -17704,6 +18141,7 @@ function precargarSoporteFinal(sf){
     M('eF_MVfio2',  sf.dispositivo === 'MV' ? sf.fio2  : '');
     M('eF_MRflujo', sf.dispositivo === 'MR' ? sf.flujo : '');
   }
+  if(sf.tqtFlujo){ setTQTtipoFinal('O2'); M('eF_TQTflujo', sf.tqtFlujo); }   // v3_256
   M('eF_CNAFflujo', sf.cnafFlujo); M('eF_CNAFfio2', sf.cnafFio2);
   M('eF_VNIModo', sf.vniModo); M('eF_VNIPi', sf.vniPi); M('eF_VNIPeep', sf.vniPeep);
   M('eF_VNIFr', sf.vniFr); M('eF_VNIFio2', sf.vniFio2); M('eF_VNIMascara', sf.vniMascara);
@@ -17724,6 +18162,9 @@ function textoSoporteFinal(sf){
     if(sf.dispositivo === 'MV') return `${d}${sf.fio2 ? ' '+sf.fio2 : ''}`;
     return `${d}${sf.flujo ? ' '+sf.flujo+' L/min' : ''}`;
   }
+  // v3_256: TQT en ventilación espontánea
+  if(t === 'TQT_AA') return 'TQT espontáneo (aire ambiente)';
+  if(t === 'TQT_O2') return `TQT espontáneo${sf.tqtFlujo ? ' · O₂ '+sf.tqtFlujo+' L/min' : ' con O₂'}`;
   const cnaf = `CNAF${sf.cnafFlujo ? ' '+sf.cnafFlujo+' L/min' : ''}${sf.cnafFio2 ? ' · FiO₂ '+sf.cnafFio2+'%' : ''}`;
   const vni  = `VNI${sf.vniModo ? ' '+sf.vniModo : ''}${sf.vniPi ? ' · Pi '+sf.vniPi : ''}${sf.vniPeep ? ' · PEEP '+sf.vniPeep : ''}${sf.vniFio2 ? ' · FiO₂ '+sf.vniFio2+'%' : ''}`;
   if(t === 'CNAF') return cnaf;
@@ -17742,17 +18183,47 @@ function textoSoporteFinal(sf){
   return SOPORTE_LABEL[t] || t;
 }
 
-function setVANO2tipo(tipo){
+// v3_255: solo pinta el sub-nivel del VAN. No toca el estado ventilatorio,
+// así que se puede llamar desde setInterfazEsp sin volver a entrar en bucle.
+function _pintarVANtipo(tipo){
   document.querySelectorAll('#eSubVANO2 .dec-btn').forEach(b=>b.classList.remove('dec-sel'));
-  const btnId = { CN:'eBtnCN', MV:'eBtnMV', MR:'eBtnMR' }[tipo];
-  if(btnId) document.getElementById(btnId).classList.add('dec-sel');
+  const btnId = { AA:'eBtnAA', CN:'eBtnCN', MV:'eBtnMV', MR:'eBtnMR' }[tipo];
+  if(btnId) document.getElementById(btnId)?.classList.add('dec-sel');
   // Mostrar solo el sub-campo del dispositivo elegido
   document.getElementById('eSubCNflujo').style.display = tipo === 'CN' ? 'block' : 'none';
   document.getElementById('eSubMVfio2').style.display  = tipo === 'MV' ? 'block' : 'none';
   document.getElementById('eSubMRflujo').style.display = tipo === 'MR' ? 'block' : 'none';
-  const mapaInterfaz = { CN:'Cánula nasal', MV:'Máscara Venturi', MR:'Máscara reservorio' };
+  // Al pasar a aire ambiente no puede quedar un flujo del dispositivo anterior
+  if(tipo === 'AA'){
+    ['eCNflujo','eMVfio2','eMRflujo'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  }
+  const mapaInterfaz = { AA:'Aire ambiente', CN:'Cánula nasal', MV:'Máscara Venturi', MR:'Máscara reservorio' };
   document.getElementById('eInterfazPrincipal').value = mapaInterfaz[tipo] || tipo;
+}
+
+// El dispositivo elegido es el que define si el VAN va con oxígeno o sin él.
+function setVANO2tipo(tipo){
+  const destino = tipo === 'AA' ? 'VAN_AA' : 'VAN_O2';
+  if((document.getElementById('eInterfazEsp')?.value || '') !== destino) setInterfazEsp(destino);
+  _pintarVANtipo(tipo);
   actualizarCuffLeak();   // v3_207
+  actualizarResumenSoporteInicial();   // v3_216
+}
+
+// v3_255: mismo esquema para el TQT en ventilación espontánea
+function _pintarTQTtipo(tipo){
+  ['eBtnTQT_AAsub','eBtnTQT_O2sub'].forEach(id=>document.getElementById(id)?.classList.remove('dec-sel'));
+  const btnId = tipo === 'O2' ? 'eBtnTQT_O2sub' : 'eBtnTQT_AAsub';
+  document.getElementById(btnId)?.classList.add('dec-sel');
+  const box = document.getElementById('eSubTQTflujo');
+  if(box) box.style.display = tipo === 'O2' ? 'block' : 'none';
+  if(tipo === 'AA'){ const f = document.getElementById('eTQTflujo'); if(f) f.value = ''; }
+}
+
+function setTQTtipo(tipo){
+  const destino = tipo === 'O2' ? 'TQT_O2' : 'TQT_AA';
+  if((document.getElementById('eInterfazEsp')?.value || '') !== destino) setInterfazEsp(destino);
+  _pintarTQTtipo(tipo);
   actualizarResumenSoporteInicial();   // v3_216
 }
 
@@ -18906,6 +19377,7 @@ const EVO_LABELS = {
   humidificacion:'Humidificación', humidMotivo:'Motivo de humidificación activa', humidMotivoOtro:'Motivo (otro)',
   humidMotivoPasiva:'Motivo de humidificación pasiva',   // v3_223
   cnFlujo:'Cánula nasal (L/min)', mvFio2:'Máscara Venturi FiO₂ (%)', mrFlujo:'Máscara reservorio (L/min)',
+  tqtFlujo:'TQT — flujo de O₂ (L/min)',   // v3_255
   cnafFlujo:'CNAF flujo (L/min)', cnafFio2:'CNAF FiO₂ (%)',
   roxSpo2:'SpO₂ con CNAF (%)', roxFr:'FR con CNAF (rpm)', rox:'Índice ROX',
   wobFr:'FR para el WOB (rpm)', wobMusculos:'Músculos accesorios', wob:'WOB score',
@@ -22768,6 +23240,7 @@ const EVO_FIELD_MAP = {
   humidMotivo:'eHumidMotivo', humidMotivoOtro:'eHumidMotivoOtro',   // v3_209
   humidMotivoPasiva:'eHumidMotivoPasiva',   // v3_223
   cnFlujo:'eCNflujo', mvFio2:'eMVfio2', mrFlujo:'eMRflujo',
+  tqtFlujo:'eTQTflujo',   // v3_255
   cnafFlujo:'eCNAFflujo', cnafFio2:'eCNAFfio2',
   roxSpo2:'eROXSpo2', roxFr:'eROXFr',   // v3_217
   wobFr:'eWOBFr',                       // v3_244
@@ -22871,6 +23344,47 @@ function precargarCamposEvolucion(evo){
     const el = document.getElementById(EVO_FIELD_MAP[key]);
     if(el) el.value = val;
   });
+
+  // ── v3_257: repintar el árbol ventilatorio con lo de ESTA evolución ──
+  // El mapa de campos escribe los valores ocultos, pero los botones y los
+  // sub-niveles los venía pintando openEvolucion con el estado heredado de la
+  // ÚLTIMA evolución del paciente, que puede ser otra distinta de la que se
+  // está editando. El dato guardado siempre estuvo bien; lo que engañaba era
+  // la pantalla. Se repinta acá, al final, y después se reponen los valores
+  // que el repintado deja en blanco.
+  {
+    const M = (id, v) => { const el = document.getElementById(id); if(el && v !== undefined && v !== null && v !== '') el.value = v; };
+    const espEdit = evo.interfazEsp || '';
+    const enARMEdit = !espEdit && (evo.interfaz === 'TET' || evo.interfaz === 'TQT');
+    if(enARMEdit){
+      setARMStatus(true);
+      selectInterfaz(evo.interfaz, false);
+      M('eARMdiametro', evo.armDiametro);
+      if(evo.interfaz === 'TET') M('eTETads', evo.tetADS);
+    } else if(espEdit){
+      setARMStatus(false);
+      setInterfazEsp(espEdit);
+      if(espEdit === 'VAN_AA') setVANO2tipo('AA');
+      if(espEdit === 'VAN_O2'){
+        const itf = evo.interfaz || '';
+        const disp = evo.cnFlujo ? 'CN' : evo.mvFio2 ? 'MV' : evo.mrFlujo ? 'MR'
+                   : itf.includes('nasal') ? 'CN'
+                   : itf.includes('Venturi') ? 'MV'
+                   : itf.includes('reservorio') ? 'MR' : '';
+        if(disp) setVANO2tipo(disp);
+      }
+      if(espEdit === 'TQT_AA') setTQTtipo('AA');
+      if(espEdit === 'TQT_O2') setTQTtipo('O2');
+      M('eCNflujo', evo.cnFlujo); M('eMVfio2', evo.mvFio2); M('eMRflujo', evo.mrFlujo);
+      M('eTQTflujo', evo.tqtFlujo);
+      M('eCNAFflujo', evo.cnafFlujo); M('eCNAFfio2', evo.cnafFio2);
+    }
+    // La interfaz legible que quedó guardada manda por sobre la que repintan
+    // setInterfazEsp y selectInterfaz.
+    M('eInterfazPrincipal', evo.interfaz);
+    actualizarCuidadosVAA();
+    actualizarBloquesRespiratorios();
+  }
 
   // v3_216: soporte no invasivo final y HACOR. Van después del mapa de campos
   // porque hay que pintar botones y abrir paneles según lo guardado.
@@ -23225,6 +23739,8 @@ async function guardarEvolucion(){
     pronoCiclo:G('ePronoCiclo')||null,
     cuffLeak:G('eCuffLeak')||null,
     cnFlujo:G('eCNflujo'), mvFio2:G('eMVfio2'), mrFlujo:G('eMRflujo'),
+    // v3_255: flujo de O₂ del TQT en ventilación espontánea
+    tqtFlujo: G('eInterfazEsp') === 'TQT_O2' ? G('eTQTflujo') : '',
     cnafFlujo:GN('eCNAFflujo'), cnafFio2:GN('eCNAFfio2'),
     // v3_217: SpO₂ y FR medidas con la CNAF puesta, y el ROX que sale de ellas
     roxSpo2:GN('eROXSpo2'), roxFr:GN('eROXFr'), rox: _roxCalculado(),
