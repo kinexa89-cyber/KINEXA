@@ -5098,43 +5098,43 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
         <div class="guss-item">
           <label>1. RASS entre 0 y +2</label>
           <div class="guss-opts">
-            <button class="guss-opt" id="g_rass_si" onclick="setGuss('rass',1)">Sí +1</button>
-            <button class="guss-opt" id="g_rass_no" onclick="setGuss('rass',0)">No 0</button>
+            <button class="guss-opt" id="g_rass_si" onclick="setGuss('rass','si',1)">Sí +1</button>
+            <button class="guss-opt" id="g_rass_no" onclick="setGuss('rass','no',0)">No 0</button>
           </div>
         </div>
         <div class="guss-item">
           <label>2. Presencia de estridor</label>
           <div class="guss-opts">
-            <button class="guss-opt" id="g_estridor_si" onclick="setGuss('estridor',0)">Sí 0</button>
-            <button class="guss-opt" id="g_estridor_no" onclick="setGuss('estridor',1)">No +1</button>
+            <button class="guss-opt" id="g_estridor_si" onclick="setGuss('estridor','si',0)">Sí 0</button>
+            <button class="guss-opt" id="g_estridor_no" onclick="setGuss('estridor','no',1)">No +1</button>
           </div>
         </div>
         <div class="guss-item">
           <label>3. Tose y/o carraspea de manera eficaz</label>
           <div class="guss-opts">
-            <button class="guss-opt" id="g_tos_si" onclick="setGuss('tos',1)">Sí +1</button>
-            <button class="guss-opt" id="g_tos_no" onclick="setGuss('tos',0)">No 0</button>
+            <button class="guss-opt" id="g_tos_si" onclick="setGuss('tos','si',1)">Sí +1</button>
+            <button class="guss-opt" id="g_tos_no" onclick="setGuss('tos','no',0)">No 0</button>
           </div>
         </div>
         <div class="guss-item">
           <label>4. Puede deglutir saliva</label>
           <div class="guss-opts">
-            <button class="guss-opt" id="g_saliva_si" onclick="setGuss('saliva',1)">Sí +1</button>
-            <button class="guss-opt" id="g_saliva_no" onclick="setGuss('saliva',0)">No 0</button>
+            <button class="guss-opt" id="g_saliva_si" onclick="setGuss('saliva','si',1)">Sí +1</button>
+            <button class="guss-opt" id="g_saliva_no" onclick="setGuss('saliva','no',0)">No 0</button>
           </div>
         </div>
         <div class="guss-item">
           <label>5. Babeo (sialorrea)</label>
           <div class="guss-opts">
-            <button class="guss-opt" id="g_babeo_si" onclick="setGuss('babeo',0)">Sí 0</button>
-            <button class="guss-opt" id="g_babeo_no" onclick="setGuss('babeo',1)">No +1</button>
+            <button class="guss-opt" id="g_babeo_si" onclick="setGuss('babeo','si',0)">Sí 0</button>
+            <button class="guss-opt" id="g_babeo_no" onclick="setGuss('babeo','no',1)">No +1</button>
           </div>
         </div>
         <div class="guss-item">
           <label>6. Cambio de voz después de deglutir saliva</label>
           <div class="guss-opts">
-            <button class="guss-opt" id="g_voz_si" onclick="setGuss('voz',0)">Sí 0</button>
-            <button class="guss-opt" id="g_voz_no" onclick="setGuss('voz',1)">No +1</button>
+            <button class="guss-opt" id="g_voz_si" onclick="setGuss('voz','si',0)">Sí 0</button>
+            <button class="guss-opt" id="g_voz_no" onclick="setGuss('voz','no',1)">No +1</button>
           </div>
         </div>
 
@@ -5150,29 +5150,29 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
           <div class="guss-item">
             <label>1. Semisólido — 3 a 5 cucharaditas de agua espesada (IDDSI 3)</label>
             <div class="guss-opts">
-              <button class="guss-opt" id="g_semi_si" onclick="setGuss('semi',1)">Pasa +1</button>
-              <button class="guss-opt" id="g_semi_no" onclick="setGuss('semi',0)">Falla 0</button>
+              <button class="guss-opt" id="g_semi_si" onclick="setGuss('semi','si',1)">Pasa +1</button>
+              <button class="guss-opt" id="g_semi_no" onclick="setGuss('semi','no',0)">Falla 0</button>
             </div>
           </div>
           <div class="guss-item" id="gussItemLiq" style="display:none">
             <label>2. Líquidos — 3, 5, 10, 20 y 50 ml de agua (IDDSI 0)</label>
             <div class="guss-opts">
-              <button class="guss-opt" id="g_liq_si" onclick="setGuss('liq',1)">Pasa +1</button>
-              <button class="guss-opt" id="g_liq_no" onclick="setGuss('liq',0)">Falla 0</button>
+              <button class="guss-opt" id="g_liq_si" onclick="setGuss('liq','si',1)">Pasa +1</button>
+              <button class="guss-opt" id="g_liq_no" onclick="setGuss('liq','no',0)">Falla 0</button>
             </div>
           </div>
           <div class="guss-item" id="gussItemSol" style="display:none">
             <label>3. Sólidos — un trozo de pan (1,5 x 1,5 cm)</label>
             <div class="guss-opts">
-              <button class="guss-opt" id="g_sol_si" onclick="setGuss('sol',1)">Pasa +1</button>
-              <button class="guss-opt" id="g_sol_no" onclick="setGuss('sol',0)">Falla 0</button>
+              <button class="guss-opt" id="g_sol_si" onclick="setGuss('sol','si',1)">Pasa +1</button>
+              <button class="guss-opt" id="g_sol_no" onclick="setGuss('sol','no',0)">Falla 0</button>
             </div>
           </div>
           <div class="guss-item" id="gussItemLiqSol" style="display:none">
             <label>4. Líquidos y sólidos — un trozo de pan (1,5 x 1,5 cm) y un sorbo de agua tras la mitad del tiempo de masticación</label>
             <div class="guss-opts">
-              <button class="guss-opt" id="g_liqsol_si" onclick="setGuss('liqsol',1)">Pasa +1</button>
-              <button class="guss-opt" id="g_liqsol_no" onclick="setGuss('liqsol',0)">Falla 0</button>
+              <button class="guss-opt" id="g_liqsol_si" onclick="setGuss('liqsol','si',1)">Pasa +1</button>
+              <button class="guss-opt" id="g_liqsol_no" onclick="setGuss('liqsol','no',0)">Falla 0</button>
             </div>
           </div>
         </div>
@@ -7484,7 +7484,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_259';
+const APP_VERSION = 'v3_260';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -26198,6 +26198,7 @@ function abrirEvalDeglusion(){
   document.getElementById('degFooter').style.display = 'none';
   // Reset GUSS
   Object.keys(gussState).forEach(k=>gussState[k]=null);
+  Object.keys(gussElegido).forEach(k=>delete gussElegido[k]);   // v3_260
   document.querySelectorAll('.guss-opt').forEach(b=>b.className='guss-opt');
   document.getElementById('gussPreScore').style.display='none';
   document.getElementById('degSecADirecta').style.display='none';
@@ -26231,61 +26232,145 @@ function setTipoDeg(tipo){
   document.getElementById('degFooter').style.display = 'block';
 }
 
-function setGuss(campo, val){
+// ── v3_260: ítems del GUSS-ICU ──────────────────────────
+// Cada ítem declara qué puntaje da cada botón. En estridor, babeo y voz el
+// "Sí" es el hallazgo patológico y vale 0; en el resto el "Sí" vale +1. Tener
+// la tabla explícita evita justamente el error que tenía la versión anterior:
+// pintar el botón según el puntaje y no según cuál se tocó.
+const GUSS_ITEMS = {
+  rass:     { fase:'pre',     si:1, no:0 },
+  estridor: { fase:'pre',     si:0, no:1 },
+  tos:      { fase:'pre',     si:1, no:0 },
+  saliva:   { fase:'pre',     si:1, no:0 },
+  babeo:    { fase:'pre',     si:0, no:1 },
+  voz:      { fase:'pre',     si:0, no:1 },
+  semi:     { fase:'directa', si:1, no:0 },
+  liq:      { fase:'directa', si:1, no:0 },
+  sol:      { fase:'directa', si:1, no:0 },
+  liqsol:   { fase:'directa', si:1, no:0 },
+};
+const GUSS_PRE     = ['rass','estridor','tos','saliva','babeo','voz'];
+const GUSS_DIRECTA = ['semi','liq','sol','liqsol'];
+
+// Qué botón está elegido en cada ítem. Se guarda aparte del puntaje porque en
+// los ítems invertidos el puntaje no alcanza para saber cuál se tocó.
+const gussElegido = {};
+
+function setGuss(campo, opcion, val){
+  // v3_260: compatibilidad con llamadas viejas setGuss(campo, val)
+  if(typeof opcion === 'number'){
+    val = opcion;
+    const it = GUSS_ITEMS[campo];
+    opcion = (it && it.si === val) ? 'si' : 'no';
+  }
   gussState[campo] = val;
-  // Actualizar botones visuales
-  const si = document.getElementById(`g_${campo}_si`);
-  const no = document.getElementById(`g_${campo}_no`);
-  if(si) si.className = 'guss-opt' + (val===1?' sel-si':'');
-  if(no) no.className = 'guss-opt' + (val===0?' sel-no':'');
+  gussElegido[campo] = opcion;
+  pintarBotonesGuss(campo);
   calcGUSS();
 }
 
+// Pinta los dos botones de un ítem según CUÁL se eligió.
+function pintarBotonesGuss(campo){
+  const elegido = gussElegido[campo] || null;
+  [['si','sel-si'], ['no','sel-no']].forEach(([op, cls]) => {
+    const b = document.getElementById(`g_${campo}_${op}`);
+    if(b) b.className = 'guss-opt' + (elegido === op ? ' ' + cls : '');
+  });
+}
+
+// Borra un ítem y su botón. Se usa al invalidar los subtests de más abajo.
+function limpiarItemGuss(campo){
+  if(gussState[campo] === null && !gussElegido[campo]) return false;
+  gussState[campo] = null;
+  delete gussElegido[campo];
+  pintarBotonesGuss(campo);
+  return true;
+}
+
+// v3_260: la prueba directa es una escalera. Si un escalón se falla o se
+// cambia, todo lo que estaba abajo deja de ser válido y hay que borrarlo.
+// Antes quedaba guardado y seguía sumando: fallar el semisólido con el líquido
+// ya contestado daba 7 puntos ("semisólidos superados") en vez de 6.
+function depurarCadenaGuss(pasoPre){
+  let cambio = false;
+  if(!pasoPre){
+    GUSS_DIRECTA.forEach(k => { if(limpiarItemGuss(k)) cambio = true; });
+    return cambio;
+  }
+  if(gussState.semi !== 1) ['liq','sol','liqsol'].forEach(k => { if(limpiarItemGuss(k)) cambio = true; });
+  else if(gussState.liq !== 1) ['sol','liqsol'].forEach(k => { if(limpiarItemGuss(k)) cambio = true; });
+  else if(gussState.sol !== 1) { if(limpiarItemGuss('liqsol')) cambio = true; }
+  return cambio;
+}
+
+// Estado completo del cribado, sin tocar el DOM. Es lo que se puede testear.
+function estadoGUSS(){
+  const preRespondidos = GUSS_PRE.filter(k => gussState[k] !== null);
+  const preScore    = preRespondidos.reduce((a,k) => a + gussState[k], 0);
+  const preCompleto = preRespondidos.length === GUSS_PRE.length;
+  const pasoPre     = preCompleto && preScore === 6;
+
+  const directa = GUSS_DIRECTA.reduce((a,k) => a + (pasoPre && gussState[k] !== null ? gussState[k] : 0), 0);
+  const total   = preScore + directa;
+
+  // La prueba directa termina cuando se falla un escalón o cuando se contestó
+  // el último. Recién ahí el puntaje es definitivo.
+  const directaCerrada = pasoPre && (
+       gussState.semi === 0
+    || (gussState.semi === 1 && gussState.liq === 0)
+    || (gussState.semi === 1 && gussState.liq === 1 && gussState.sol === 0)
+    || (gussState.semi === 1 && gussState.liq === 1 && gussState.sol === 1 && gussState.liqsol !== null)
+  );
+
+  return {
+    preScore, preCompleto, pasoPre, total,
+    preFaltan: GUSS_PRE.length - preRespondidos.length,
+    directaCerrada,
+    // El cribado está terminado si la preliminar no se superó (corta ahí) o si
+    // la prueba directa llegó a su fin.
+    completo: (preCompleto && !pasoPre) || directaCerrada,
+    cortadoEnPreliminar: preCompleto && !pasoPre,
+  };
+}
+
 function calcGUSS(){
-  const PRE = ['rass','estridor','tos','saliva','babeo','voz'];
-  const preScore  = PRE.reduce((a,k)=> gussState[k]!==null ? a+gussState[k] : a, 0);
-  const preLlenos = PRE.filter(k=>gussState[k]!==null).length;
-  const preCompleto = preLlenos === 6;
+  // Primero se depura la cadena; si algo se borró, el estado cambia
+  const previo = estadoGUSS();
+  depurarCadenaGuss(previo.pasoPre);
+  const e = estadoGUSS();
 
   const preBox = document.getElementById('gussPreScore');
   const preVal = document.getElementById('gussPreVal');
   const preMsg = document.getElementById('gussPreMsg');
-  if(preLlenos > 0){
-    preBox.style.display = 'block';
-    preVal.textContent = preScore + (preCompleto ? '' : ' (incompleto)');
+  if(e.preFaltan < GUSS_PRE.length){
+    if(preBox) preBox.style.display = 'block';
+    if(preVal) preVal.textContent = e.preScore;
     if(preMsg){
-      if(!preCompleto) preMsg.textContent = '';
-      else if(preScore === 6)
+      if(!e.preCompleto)
+        preMsg.innerHTML = `<span style="color:var(--text-muted)">Falta${e.preFaltan === 1 ? '' : 'n'} ${e.preFaltan} ítem${e.preFaltan === 1 ? '' : 's'} para cerrar la investigación preliminar.</span>`;
+      else if(e.pasoPre)
         preMsg.innerHTML = '<span style="color:var(--teal-700);font-weight:600">6/6 — continúa con la prueba directa de deglución.</span>';
       else
         preMsg.innerHTML = '<span style="color:var(--red-700);font-weight:600">Menos de 6/6 — se interrumpe el cribado. Corresponde una evaluación funcional objetiva (FEES o videodeglución) y derivación a fonoaudiología.</span>';
     }
-  } else preBox.style.display = 'none';
+  } else if(preBox) preBox.style.display = 'none';
 
-  const pasoPre = preCompleto && preScore === 6;
-  document.getElementById('degSecADirecta').style.display = pasoPre ? 'block' : 'none';
-
-  if(preCompleto && !pasoPre){ mostrarResultadoGUSS(preScore, true); return; }
-  if(!pasoPre){ document.getElementById('gussResultado').style.display = 'none'; return; }
+  const secDirecta = document.getElementById('degSecADirecta');
+  if(secDirecta) secDirecta.style.display = e.pasoPre ? 'block' : 'none';
 
   // Cada subtest habilita el siguiente sólo si lo pasó
   const habilitar = (id, ver) => { const el = document.getElementById(id); if(el) el.style.display = ver ? 'flex' : 'none'; };
-  habilitar('gussItemLiq',    gussState.semi === 1);
-  habilitar('gussItemSol',    gussState.semi === 1 && gussState.liq === 1);
-  habilitar('gussItemLiqSol', gussState.semi === 1 && gussState.liq === 1 && gussState.sol === 1);
+  habilitar('gussItemLiq',    e.pasoPre && gussState.semi === 1);
+  habilitar('gussItemSol',    e.pasoPre && gussState.semi === 1 && gussState.liq === 1);
+  habilitar('gussItemLiqSol', e.pasoPre && gussState.semi === 1 && gussState.liq === 1 && gussState.sol === 1);
 
-  const total = preScore + (gussState.semi||0) + (gussState.liq||0) + (gussState.sol||0) + (gussState.liqsol||0);
-
-  const corta = gussState.semi === 0
-             || (gussState.semi === 1 && gussState.liq === 0)
-             || (gussState.semi === 1 && gussState.liq === 1 && gussState.sol === 0)
-             || (gussState.semi === 1 && gussState.liq === 1 && gussState.sol === 1 && gussState.liqsol !== null);
-  if(corta) mostrarResultadoGUSS(total, false);
-  else document.getElementById('gussResultado').style.display = 'none';
+  if(e.completo) mostrarResultadoGUSS(e.total, e.cortadoEnPreliminar);
+  else { const r = document.getElementById('gussResultado'); if(r) r.style.display = 'none'; }
 }
 
 function mostrarResultadoGUSS(total, cortadoEnPreliminar){
   const resBox = document.getElementById('gussResultado');
+  if(!resBox) return;
   resBox.style.display = 'block';
   document.getElementById('gussTotalDisp').textContent = total;
   const r = categoriaGUSS(total, cortadoEnPreliminar);
@@ -26322,16 +26407,13 @@ function categoriaGUSS(total, cortadoEnPreliminar){
     bg: 'var(--teal-50)', color: 'var(--teal-700)', codigo: 'todo' };
 }
 
+// v3_260: devuelve además si el cribado quedó terminado. Antes contaba los
+// ítems sin contestar como 0, así que un GUSS a medio llenar se guardaba como
+// disfagia grave sin que nadie lo notara.
 function clasificarGUSS(){
-  const PRE = ['rass','estridor','tos','saliva','babeo','voz'];
-  const preScore = PRE.reduce((a,k)=>a+(gussState[k]||0),0);
-  if(preScore < 6){
-    const r = categoriaGUSS(preScore, true);
-    return { score: preScore, cat: r.codigo, txt: r.cat };
-  }
-  const total = preScore + (gussState.semi||0) + (gussState.liq||0) + (gussState.sol||0) + (gussState.liqsol||0);
-  const r = categoriaGUSS(total, false);
-  return { score: total, cat: r.codigo, txt: r.cat };
+  const e = estadoGUSS();
+  const r = categoriaGUSS(e.total, e.cortadoEnPreliminar);
+  return { score: e.total, cat: r.codigo, txt: r.cat, completo: e.completo, estado: e };
 }
 
 async function guardarEvalDeglusion(){
@@ -26343,6 +26425,14 @@ async function guardarEvalDeglusion(){
   let resultado, resultadoTxt, score;
   if(degTipo==='A'){
     const r = clasificarGUSS();
+    // v3_260: un cribado incompleto no se guarda. Antes los ítems sin contestar
+    // valían 0 y la evaluación quedaba archivada como disfagia grave.
+    if(!r.completo){
+      showToast(r.estado.preCompleto
+        ? 'Completá la prueba directa de deglución para cerrar el GUSS'
+        : `Faltan ${r.estado.preFaltan} ítem${r.estado.preFaltan === 1 ? '' : 's'} de la investigación preliminar`, 'error');
+      return;
+    }
     resultado = r.cat; resultadoTxt = r.txt; score = r.score;
   } else {
     resultado = G('degResultadoFormal');
@@ -26362,7 +26452,7 @@ async function guardarEvalDeglusion(){
     fecha: today(), kine: G('degKine'), tipo: degTipo,
     resultado, resultadoTxt, score,
     // GUSS
-    guss: degTipo==='A' ? { ...gussState, obs:G('degGussObs') } : null,
+    guss: degTipo==='A' ? { ...gussState, elegido:{ ...gussElegido }, obs:G('degGussObs') } : null,   // v3_260
     // Formal
     formal: degTipo==='B' ? {
       fc:G('degFC'),fr:G('degFR'),spo2:G('degSpO2'),ta:G('degTA'),temp:G('degTemp'),gcs:G('degGCS'),rass:G('degRASS'),
@@ -26444,12 +26534,33 @@ const DEG_SECCIONES_FORMAL = [
   ['Tolerancia alimentaria',
     ['alimSemi','alimLiq','alimSol']],
 ];
+// v3_260: los rótulos usaban claves que no existen en el estado del GUSS
+// (vozHumeda, semisolido, liquido, solido). En el informe salían los nombres
+// internos crudos: "voz", "semi", "liq", "sol", "liqsol". Ahora coinciden con
+// las claves reales y repiten la pregunta tal cual figura en el formulario.
 const GUSS_ROTULOS = {
-  rass:'Vigil y colaborador (RASS ≥ -1)', estridor:'Ausencia de estridor',
-  tos:'Tos voluntaria o refleja presente', saliva:'Deglute saliva',
-  babeo:'Sin babeo', vozHumeda:'Sin voz húmeda',
-  semisolido:'Prueba de semisólido', liquido:'Prueba de líquido', solido:'Prueba de sólido',
+  rass:'RASS entre 0 y +2',
+  estridor:'Presencia de estridor',
+  tos:'Tose o carraspea de manera eficaz',
+  saliva:'Puede deglutir saliva',
+  babeo:'Babeo (sialorrea)',
+  voz:'Cambio de voz después de deglutir saliva',
+  semi:'Prueba directa — semisólido',
+  liq:'Prueba directa — líquidos',
+  sol:'Prueba directa — sólidos',
+  liqsol:'Prueba directa — líquidos y sólidos',
 };
+
+// Cómo se lee la respuesta en el informe. Mostrar sólo el número confundía:
+// en estridor, babeo y voz un 1 significa que el hallazgo NO está.
+const GUSS_RESPUESTA = { pre:{ si:'Sí', no:'No' }, directa:{ si:'Pasa', no:'Falla' } };
+
+function gussTextoRespuesta(k, v, elegido){
+  const it = GUSS_ITEMS[k];
+  if(!it || v === null || v === undefined || v === '') return null;
+  const op = elegido || (it.si === v ? 'si' : 'no');
+  return `${GUSS_RESPUESTA[it.fase][op]} (${v > 0 ? '+' : ''}${v})`;
+}
 
 async function descargarPDFDeglusion(evalId){
   const ev = (evalDeglusion || []).find(e => String(e.id) === String(evalId));
@@ -26544,10 +26655,14 @@ async function descargarPDFDeglusion(evalId){
   };
 
   if(esGUSS && ev.guss){
+    // v3_260: se saltea 'elegido' (es un objeto interno) y los ítems que
+    // quedaron sin contestar porque el cribado cortó antes.
+    const elegidos = ev.guss.elegido || {};
     seccion('Ítems evaluados', Object.entries(ev.guss)
-      .filter(([k]) => k !== 'obs')
+      .filter(([k, v]) => k !== 'obs' && k !== 'elegido' && v !== null && v !== undefined && v !== '')
       .map(([k, v]) => [GUSS_ROTULOS[k] || k.replace(/_/g,' '),
-        typeof v === 'boolean' ? (v ? 'Sí' : 'No') : v]));
+        gussTextoRespuesta(k, v, elegidos[k]) ?? (typeof v === 'boolean' ? (v ? 'Sí' : 'No') : v)])
+      .filter(([, v]) => v !== null));
     if(ev.guss.obs) seccion('Observaciones', [['', ev.guss.obs]]);
   } else if(ev.formal){
     DEG_SECCIONES_FORMAL.forEach(([rot, claves]) => {
@@ -26580,10 +26695,12 @@ function _degDetalleHTML(ev){
   const filas = [];
   const push = (rot, val) => { if(val !== '' && val != null) filas.push([rot, val]); };
   if(ev.tipo === 'A' && ev.guss){
+    const elegidos = ev.guss.elegido || {};   // v3_260
     Object.entries(ev.guss).forEach(([k,v]) => {
-      if(k === 'obs') return;
+      if(k === 'obs' || k === 'elegido') return;
       if(v === '' || v == null) return;
-      push(k.replace(/_/g,' '), typeof v === 'boolean' ? (v?'Sí':'No') : v);
+      push(GUSS_ROTULOS[k] || k.replace(/_/g,' '),
+           gussTextoRespuesta(k, v, elegidos[k]) ?? (typeof v === 'boolean' ? (v?'Sí':'No') : v));
     });
     if(ev.guss.obs) push('Observaciones', ev.guss.obs);
   } else if(ev.formal){
