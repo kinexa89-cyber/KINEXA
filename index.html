@@ -7486,7 +7486,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_262';
+const APP_VERSION = 'v3_263';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -24568,7 +24568,22 @@ function atajoPeriodo(clave){
 // 31 días del mes. Ahora todo pasa por un rango de fechas explícito, que además
 // nunca se extiende más allá de hoy.
 // El selector acepta un mes ('2026-08') o un rango ('2026-06..2026-08').
+// v3_263: rangoDe se llama millones de veces por cada render de Indicadores
+// (una por evolución, por celda de la tabla). Armaba un Date y parseaba texto
+// en cada llamada. El resultado depende solo del período y del día de hoy, así
+// que se memoriza con esa clave: si cambia el día, la clave cambia sola.
+const _rangoCache = new Map();
 function rangoDe(periodo){
+  const _clave = String(periodo || '') + '|' + today();
+  const _hit = _rangoCache.get(_clave);
+  if(_hit) return _hit;
+  const _r = _rangoDeCalc(periodo);
+  if(_rangoCache.size > 200) _rangoCache.clear();
+  _rangoCache.set(_clave, _r);
+  return _r;
+}
+
+function _rangoDeCalc(periodo){
   const hoy = today();
   periodo = periodo || hoy.slice(0,7);
   const finDeMes = ym => {
@@ -25874,18 +25889,31 @@ function catalogoIndicadores(mesStr){
 }
 
 // Valor formateado de una fila
-function _valorFilaInd(fila, s){
+// v3_263: cada celda de la tabla recorre TODAS las evoluciones. La columna
+// TOTAL volvía a llamar a fila.f(sector) para cada sector, así que todo el
+// trabajo se hacía dos veces. Se memoriza por fila y sector.
+// catalogoIndicadores() devuelve objetos nuevos en cada render, así que el
+// cache nace y muere con el render: no puede quedar viejo.
+function _calcFilaInd(fila, s){
+  const k = s || '';
+  if(!fila._memo) fila._memo = Object.create(null);
+  if(k in fila._memo) return fila._memo[k];
   const v = fila.f(s);
+  return (fila._memo[k] = v);
+}
+
+function _valorFilaInd(fila, s){
+  const v = _calcFilaInd(fila, s);
   const n = (v === null || v === undefined || isNaN(v)) ? 0 : v;
   return fila.unidad ? n + fila.unidad : n;
 }
 // TOTAL de una fila: suma de columnas, o recálculo propio sobre la institución
 function _totalFilaInd(fila){
   if(fila.tot === 'propio' || fila.unidad === '%'){
-    const v = fila.f(indSectorSel);
+    const v = _calcFilaInd(fila, indSectorSel);
     return fila.unidad ? ((v||0) + fila.unidad) : (v || 0);
   }
-  const t = sectoresVisibles().reduce((acc, s) => acc + (Number(fila.f(s)) || 0), 0);
+  const t = sectoresVisibles().reduce((acc, s) => acc + (Number(_calcFilaInd(fila, s)) || 0), 0);
   return fila.unidad ? (Math.round(t*10)/10 + fila.unidad) : t;
 }
 // ── Vista mensual ──────────────────────────────────────────
