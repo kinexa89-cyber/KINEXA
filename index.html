@@ -7110,6 +7110,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
     <div class="modal-footer">
       <button class="btn btn-ghost" onclick="closeModal('modalInstituciones')">Cerrar</button>
       <button class="btn btn-ghost" onclick="olvidarClaveMaestra()" title="Volver a pedir la clave"><i class="ti ti-key"></i></button>
+      <button class="btn btn-ghost" onclick="diagnosticoSuscripcion()" title="Ver qué devuelve la base"><i class="ti ti-stethoscope"></i></button>
       <button class="btn btn-ghost" onclick="marcarInstitucionesVistas()"><i class="ti ti-checks"></i>Marcar todo como visto</button>
       <button class="btn btn-ghost" onclick="marcarTodasSinCargo()"><i class="ti ti-gift"></i>Todas sin cargo</button>
       <button class="btn btn-primary" onclick="cargarPanelInstituciones()"><i class="ti ti-refresh"></i>Actualizar</button>
@@ -7485,7 +7486,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_261';
+const APP_VERSION = 'v3_262';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -12212,6 +12213,7 @@ async function crearSuscripcionPrueba(){
   try {
     const desde = today();
     const datos = {
+      id: 'actual',   // v3_262
       plan: 'Prueba gratuita',
       estado: 'prueba',
       desde,
@@ -12267,6 +12269,7 @@ async function informarPago(){
   const base = (SUSCRIPCION?.hasta && SUSCRIPCION.hasta >= today()) ? SUSCRIPCION.hasta : today();
   const datos = {
     ...(SUSCRIPCION || {}),
+    id: 'actual',   // v3_262
     estado: 'activa',
     hasta: sumarDias(base, SUSC_EXT_PROVISORIA),
     informados: [ ...(SUSCRIPCION?.informados || []), informe ]
@@ -12292,6 +12295,7 @@ async function confirmarPagoInformado(idx){
   const informados = (SUSCRIPCION.informados || []).map((x,i) => i===idx ? { ...x, estado:'confirmado', confirmado: new Date().toISOString() } : x);
   const datos = {
     ...SUSCRIPCION,
+    id: 'actual',   // v3_262
     estado: 'activa',
     plan: 'Institucional ' + pl.nombre.toLowerCase(),
     precio: fmtPesos(pl.precio) + ' / ' + (pl.meses===1?'mes':'año'),
@@ -12321,11 +12325,19 @@ async function guardarSuscripcion(datos){
   await rpc('kinexa_registro_guardar', {
     p_token: TOKEN, p_tipo:'suscripcion', p_id:'actual', p_data: datos
   });
-  const g = await leerSuscripcionCon(TOKEN);
-  if(!g) throw new Error('la base no devolvió el registro después de guardarlo');
-  if(g.estado !== datos.estado)
-    throw new Error(`la base quedó en "${g.estado}" en vez de "${datos.estado}"`);
-  SUSCRIPCION = g;
+  // v3_262: si la relectura no confirma, se avisa pero NO se bloquea. La
+  // escritura no falló; lo que no se pudo es verificarla, y dejar al usuario
+  // sin poder guardar por eso es peor que guardar y avisar.
+  let g = null;
+  try { g = await leerSuscripcionCon(TOKEN); }
+  catch(err){ console.error('No se pudo releer la suscripción', err); }
+  if(g && g.estado === datos.estado){
+    SUSCRIPCION = g;
+  } else {
+    SUSCRIPCION = datos;
+    console.warn('Suscripción guardada sin confirmar. La base devolvió:', g);
+    showToast('Guardado, pero la base todavía no lo devuelve. Verificalo con Actualizar.', 'error');
+  }
   renderAvisoSuscripcion();
 }
 
@@ -12333,8 +12345,27 @@ async function guardarSuscripcion(datos){
 // de otra institución obtenido con el ingreso maestro).
 async function leerSuscripcionCon(token){
   const regs = await rpc('kinexa_registros', { p_token: token, p_tipo:'suscripcion' });
-  const r = (regs || []).find(x => String(x.id) === 'actual');
-  return (r && (r.data || r)) || null;
+  return _elegirSuscripcion(regs);
+}
+
+// v3_262: elegir el registro de suscripción de lo que devuelve la base.
+// Se contemplan las tres formas posibles porque conviven registros viejos:
+//   1. El objeto con su id adentro (id:'actual'), que es como se guarda ahora.
+//   2. Un envoltorio { id, data }, por si la función de Supabase cambiara.
+//   3. Registros viejos sin ningún id: se toma el más reciente.
+function _elegirSuscripcion(regs){
+  if(!Array.isArray(regs) || !regs.length) return null;
+  const datos = r => (r && typeof r === 'object' && r.data && typeof r.data === 'object') ? r.data : r;
+  const idDe  = r => String((r && (r.id ?? r.registro_id)) ?? (r?.data?.id ?? ''));
+
+  const actual = regs.find(r => idDe(r) === 'actual');
+  if(actual) return datos(actual);
+
+  // Sin id reconocible: el más reciente por fecha de actualización
+  const utiles = regs.map(datos).filter(d => d && typeof d === 'object' && !d._borrada);
+  if(!utiles.length) return null;
+  utiles.sort((a, b) => String(b.actualizado || b.creado || '').localeCompare(String(a.actualizado || a.creado || '')));
+  return utiles[0];
 }
 
 // ── Aviso en pantalla ───────────────────────────────────────────
@@ -12492,6 +12523,7 @@ async function guardarDatosSuscripcion(){
   // los pagos informados sin verificar se borraban en cada guardado.
   const datos = {
     ...(SUSCRIPCION || {}),
+    id: 'actual',   // v3_262: sin esto, al releer no se encuentra el registro
     plan: G('suscPlan'),
     estado: G('suscEstado'),
     desde: G('suscDesde'),
@@ -12548,6 +12580,7 @@ async function registrarPagoSuscripcion(){
   };
   const datos = {
     ...(SUSCRIPCION || {}),
+    id: 'actual',   // v3_262
     estado: 'activa',
     hasta,
     pagos: [ ...(SUSCRIPCION?.pagos || []), pago ],
@@ -12687,7 +12720,13 @@ function _estadoDeFila(f){
   // de nombres antes que nada, así que las cuatro instituciones que están en esa
   // lista figuraban "Sin cargo" aunque no tuvieran nada guardado, y no había
   // forma de darse cuenta de que el cambio no se había persistido.
-  if(s?.estado === 'cortesia') return { cod:'cortesia', txt:'Sin cargo', color:'var(--teal-600)', orden:4, guardado:true };
+  if(s?.estado === 'cortesia'){
+    // v3_262: guardado pero sin poder releerlo. Se distingue para que no
+    // parezca confirmado algo que la base todavía no devuelve.
+    if(f.sinConfirmar) return { cod:'cortesia', txt:'Sin cargo · sin confirmar, actualizá para verificar',
+                                color:'var(--amber-600)', orden:4, guardado:true };
+    return { cod:'cortesia', txt:'Sin cargo', color:'var(--teal-600)', orden:4, guardado:true };
+  }
   const nom = _normTxt(f.nombre || '');
   if(INST_SIN_CARGO.some(k => nom.includes(k))){
     // El nombre está en la lista fija, así que la app no le va a cobrar nunca,
@@ -12768,6 +12807,7 @@ async function ponerInstitucionSinCargo(id){
   const base = f?.susc || {};
   const datos = {
     ...base,
+    id: 'actual',   // v3_262
     plan: base.plan || 'Uso sin cargo',
     estado: 'cortesia',
     hasta: '',                       // la cortesía no vence
@@ -12780,12 +12820,16 @@ async function ponerInstitucionSinCargo(id){
   await rpc('kinexa_registro_guardar', {
     p_token: sm.token, p_tipo:'suscripcion', p_id:'actual', p_data: datos });
 
-  // Releer con el mismo token: si la base no lo aceptó, hay que enterarse acá
-  const g = await leerSuscripcionCon(sm.token);
-  if(!g) throw new Error('se guardó pero la base no devuelve el registro');
-  if(g.estado !== 'cortesia') throw new Error(`la base quedó en "${g.estado}"`);
-
-  if(f) f.susc = g;
+  // Releer con el mismo token para confirmar. Si no se puede confirmar, se
+  // deja igual y la fila queda marcada como sin confirmar (v3_262).
+  let g = null;
+  try { g = await leerSuscripcionCon(sm.token); }
+  catch(err){ console.error('No se pudo releer —', f?.nombre, err); }
+  if(f){
+    f.susc = (g && g.estado === 'cortesia') ? g : datos;
+    f.sinConfirmar = !(g && g.estado === 'cortesia');
+    if(f.sinConfirmar) console.warn('Sin confirmar —', f.nombre, 'la base devolvió:', g);
+  }
   // Si es la institución en la que estoy parado, actualizar también la sesión
   if(Number(id) === Number(currentUser?.institucion_id)){
     SUSCRIPCION = g;
@@ -12831,6 +12875,27 @@ async function marcarTodasSinCargo(){
     alert('No se pudo con:\n\n' + errores.join('\n'));
   } else {
     showToast(`${hechas} institución${hechas===1?'':'es'} sin cargo ✓`, 'success');
+  }
+}
+
+// v3_262: qué devuelve realmente la base para una institución. Sirve para
+// diagnosticar sin tener que abrir la consola del navegador en el celular.
+async function diagnosticoSuscripcion(){
+  const f = PANEL_INST[0];
+  if(!f){ showToast('Primero cargá el panel','error'); return; }
+  try {
+    const rm = await rpc('kinexa_maestro_entrar', {
+      p_dni: currentUser.user, p_clave: _maestroClave, p_institucion_id: Number(f.id) });
+    const sm = Array.isArray(rm) ? rm[0] : rm;
+    const regs = await rpc('kinexa_registros', { p_token: sm.token, p_tipo:'suscripcion' });
+    const txt =
+      `Institución: ${f.nombre}\n` +
+      `Registros de suscripción: ${Array.isArray(regs) ? regs.length : typeof regs}\n\n` +
+      JSON.stringify(regs, null, 1).slice(0, 1500);
+    console.log('Diagnóstico suscripción —', f.nombre, regs);
+    alert(txt);
+  } catch(err){
+    alert('Falló el diagnóstico:\n\n' + (err.message || err));
   }
 }
 
