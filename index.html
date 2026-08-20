@@ -7111,6 +7111,7 @@ input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; }
       <button class="btn btn-ghost" onclick="closeModal('modalInstituciones')">Cerrar</button>
       <button class="btn btn-ghost" onclick="olvidarClaveMaestra()" title="Volver a pedir la clave"><i class="ti ti-key"></i></button>
       <button class="btn btn-ghost" onclick="marcarInstitucionesVistas()"><i class="ti ti-checks"></i>Marcar todo como visto</button>
+      <button class="btn btn-ghost" onclick="marcarTodasSinCargo()"><i class="ti ti-gift"></i>Todas sin cargo</button>
       <button class="btn btn-primary" onclick="cargarPanelInstituciones()"><i class="ti ti-refresh"></i>Actualizar</button>
     </div>
   </div>
@@ -7484,7 +7485,7 @@ const LS = {
 const KX_URL = 'https://maelwlpswshjqglkuxon.supabase.co';
 const KX_KEY = 'sb_publishable_TTpUzACOs4HKIijl2Cotkg_folBERd1';
 const KX_HEADERS = { 'apikey':KX_KEY, 'Content-Type':'application/json' };
-const APP_VERSION = 'v3_260';
+const APP_VERSION = 'v3_261';
 
 // v3_178: el tag "¿Hiciste modificaciones en el setting ventilatorio?" es un
 // disparador de formulario, NO una prestación. Se excluye al guardar y también
@@ -12302,18 +12303,38 @@ async function confirmarPagoInformado(idx){
       hasta: sumarMeses(base, pl.meses), registradoPor: currentUser?.name || ''
     }]
   };
-  await guardarSuscripcion(datos);
-  addLog('edit', `Confirmó el pago informado (op. ${inf.operacion})`);
-  showToast('Pago confirmado ✓','success');
+  try {
+    await guardarSuscripcion(datos);
+    addLog('edit', `Confirmó el pago informado (op. ${inf.operacion})`);
+    showToast('Pago confirmado ✓','success');
+  } catch(err){
+    console.error(err);
+    showToast('No se pudo confirmar: ' + (err.message||'').slice(0,70),'error');
+  }
   renderPagosSuscripcion();
 }
 
+// v3_261: guardar y RELEER para confirmar. Antes se daba por guardado apenas
+// la llamada no tiraba error, así que si la base no dejaba escribir el registro
+// la app decía "actualizada ✓" igual y el cambio no quedaba en ningún lado.
 async function guardarSuscripcion(datos){
   await rpc('kinexa_registro_guardar', {
     p_token: TOKEN, p_tipo:'suscripcion', p_id:'actual', p_data: datos
   });
-  SUSCRIPCION = datos;
+  const g = await leerSuscripcionCon(TOKEN);
+  if(!g) throw new Error('la base no devolvió el registro después de guardarlo');
+  if(g.estado !== datos.estado)
+    throw new Error(`la base quedó en "${g.estado}" en vez de "${datos.estado}"`);
+  SUSCRIPCION = g;
   renderAvisoSuscripcion();
+}
+
+// Lee el registro de suscripción con un token cualquiera (el de la sesión o el
+// de otra institución obtenido con el ingreso maestro).
+async function leerSuscripcionCon(token){
+  const regs = await rpc('kinexa_registros', { p_token: token, p_tipo:'suscripcion' });
+  const r = (regs || []).find(x => String(x.id) === 'actual');
+  return (r && (r.data || r)) || null;
 }
 
 // ── Aviso en pantalla ───────────────────────────────────────────
@@ -12467,7 +12488,10 @@ function renderPagosSuscripcion(){
 
 async function guardarDatosSuscripcion(){
   const G = id => document.getElementById(id)?.value?.trim() || '';
+  // v3_261: se parte de lo que ya había. Antes se armaba el objeto de cero y
+  // los pagos informados sin verificar se borraban en cada guardado.
   const datos = {
+    ...(SUSCRIPCION || {}),
     plan: G('suscPlan'),
     estado: G('suscEstado'),
     desde: G('suscDesde'),
@@ -12475,6 +12499,7 @@ async function guardarDatosSuscripcion(){
     precio: G('suscPrecio'),
     notas: G('suscNotas'),
     pagos: SUSCRIPCION?.pagos || [],
+    informados: SUSCRIPCION?.informados || [],
     actualizado: new Date().toISOString(),
     actualizadoPor: currentUser?.name || ''
   };
@@ -12657,11 +12682,22 @@ async function cargarPanelInstituciones(){
 
 // Estado comercial de una institución del listado (no de la sesión actual)
 function _estadoDeFila(f){
-  const n = _normTxt(f.nombre || '');
-  if(INST_SIN_CARGO.some(k => n.includes(k))) return { cod:'cortesia', txt:'Sin cargo', color:'var(--teal-600)', orden:4 };
   const s = f.susc;
+  // v3_261: primero el estado REALMENTE guardado. Antes se miraba la lista fija
+  // de nombres antes que nada, así que las cuatro instituciones que están en esa
+  // lista figuraban "Sin cargo" aunque no tuvieran nada guardado, y no había
+  // forma de darse cuenta de que el cambio no se había persistido.
+  if(s?.estado === 'cortesia') return { cod:'cortesia', txt:'Sin cargo', color:'var(--teal-600)', orden:4, guardado:true };
+  const nom = _normTxt(f.nombre || '');
+  if(INST_SIN_CARGO.some(k => nom.includes(k))){
+    // El nombre está en la lista fija, así que la app no le va a cobrar nunca,
+    // pero eso no es lo mismo que tener la cortesía guardada. Se avisa, y si
+    // además hay otro estado cargado se muestra para no esconderlo.
+    const otro = s?.estado ? ` · guardado: ${SUSC_ESTADOS[s.estado]?.label || s.estado}` : '';
+    return { cod:'cortesia_lista', txt:'Sin cargo por lista fija, no guardado' + otro,
+             color:'var(--amber-600)', orden:4, guardado:false, estadoGuardado: s?.estado || null };
+  }
   if(!s) return { cod:'sin_datos', txt:'Sin suscripción', color:'var(--text-muted)', orden:3 };
-  if(s.estado === 'cortesia') return { cod:'cortesia', txt:'Sin cargo', color:'var(--teal-600)', orden:4 };
   if(s.estado === 'suspendida') return { cod:'suspendida', txt:'Suspendida', color:'var(--red-600)', orden:0 };
   const dias = s.hasta ? Math.round((new Date(s.hasta+'T00:00:00') - new Date(today()+'T00:00:00')) / 86400000) : null;
   if(dias === null) return { cod:'activa', txt:'Al día', color:'var(--teal-600)', orden:5 };
@@ -12703,7 +12739,10 @@ function renderPanelInstituciones(filas, total){
         </div>
         ${f.susc?.plan ? `<div style="font-size:11px;color:var(--text-muted)">${escapeHTML(f.susc.plan)}${f.susc.hasta ? ' · hasta '+fmtDate(f.susc.hasta) : ''}</div>` : ''}
       </div>
-      <button class="btn btn-ghost btn-sm" style="flex-shrink:0" onclick="entrarComoInstitucion(${f.id})"><i class="ti ti-login"></i>Entrar</button>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        ${e.guardado ? '' : `<button class="btn btn-ghost btn-sm" title="Dejarla sin cargo" onclick="marcarSinCargo(${f.id})"><i class="ti ti-gift"></i>Sin cargo</button>`}
+        <button class="btn btn-ghost btn-sm" onclick="entrarComoInstitucion(${f.id})"><i class="ti ti-login"></i>Entrar</button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -12713,6 +12752,86 @@ function marcarInstitucionesVistas(){
   PANEL_INST.forEach(f => f.nueva = false);
   renderPanelInstituciones(PANEL_INST, PANEL_INST.length);
   showToast('Listo, ya no figuran como nuevas','success');
+}
+
+// ── v3_261: dejar una institución sin cargo desde el panel ──────
+// Antes había que entrar a cada institución una por una (lo que cierra la
+// sesión maestra), abrir la suscripción y guardar. Acá se hace con el token
+// que devuelve el ingreso maestro, sin salir del panel ni cambiar de sesión.
+async function ponerInstitucionSinCargo(id){
+  const f = PANEL_INST.find(x => String(x.id) === String(id));
+  const rm = await rpc('kinexa_maestro_entrar', {
+    p_dni: currentUser.user, p_clave: _maestroClave, p_institucion_id: Number(id) });
+  const sm = Array.isArray(rm) ? rm[0] : rm;
+  if(!sm?.token) throw new Error('la base rechazó el ingreso maestro');
+
+  const base = f?.susc || {};
+  const datos = {
+    ...base,
+    plan: base.plan || 'Uso sin cargo',
+    estado: 'cortesia',
+    hasta: '',                       // la cortesía no vence
+    pagos: base.pagos || [],
+    informados: base.informados || [],
+    notas: base.notas || 'Acceso de cortesía',
+    actualizado: new Date().toISOString(),
+    actualizadoPor: currentUser?.name || ''
+  };
+  await rpc('kinexa_registro_guardar', {
+    p_token: sm.token, p_tipo:'suscripcion', p_id:'actual', p_data: datos });
+
+  // Releer con el mismo token: si la base no lo aceptó, hay que enterarse acá
+  const g = await leerSuscripcionCon(sm.token);
+  if(!g) throw new Error('se guardó pero la base no devuelve el registro');
+  if(g.estado !== 'cortesia') throw new Error(`la base quedó en "${g.estado}"`);
+
+  if(f) f.susc = g;
+  // Si es la institución en la que estoy parado, actualizar también la sesión
+  if(Number(id) === Number(currentUser?.institucion_id)){
+    SUSCRIPCION = g;
+    renderAvisoSuscripcion();
+  }
+  return g;
+}
+
+async function marcarSinCargo(id){
+  const f = PANEL_INST.find(x => String(x.id) === String(id));
+  try {
+    await ponerInstitucionSinCargo(id);
+    addLog('edit', `Dejó sin cargo a ${f?.nombre || 'la institución ' + id}`);
+    showToast(`${f?.nombre || 'Institución'}: sin cargo ✓`, 'success');
+  } catch(err){
+    console.error('Sin cargo —', f?.nombre, err);
+    showToast('No se pudo: ' + (err.message||'').slice(0,70), 'error');
+  }
+  renderPanelInstituciones(PANEL_INST, PANEL_INST.length);
+}
+
+async function marcarTodasSinCargo(){
+  const pend = PANEL_INST.filter(f => !f.error && _estadoDeFila(f).cod !== 'cortesia');
+  if(!pend.length){ showToast('Ya están todas sin cargo','success'); return; }
+  if(!confirm(`Vas a dejar sin cargo a ${pend.length} institución${pend.length===1?'':'es'}:\n\n` +
+              pend.map(f => '· ' + f.nombre).join('\n') +
+              '\n\nLas que ya están sin cargo no se tocan. ¿Continuar?')) return;
+
+  const lista = document.getElementById('panelInstLista');
+  let hechas = 0;
+  const errores = [];
+  for(const f of pend){
+    if(lista) lista.innerHTML =
+      `<div style="padding:22px;text-align:center;color:var(--text-muted);font-size:13px">` +
+      `<span class="ocr-spinner"></span> ${hechas + 1} de ${pend.length} — ${escapeHTML(f.nombre)}…</div>`;
+    try { await ponerInstitucionSinCargo(f.id); hechas++; }
+    catch(err){ console.error('Sin cargo —', f.nombre, err); errores.push(`${f.nombre}: ${(err.message||'').slice(0,50)}`); }
+  }
+  renderPanelInstituciones(PANEL_INST, PANEL_INST.length);
+  if(hechas) addLog('edit', `Dejó sin cargo a ${hechas} institución${hechas===1?'':'es'}`);
+  if(errores.length){
+    showToast(`${hechas} listas · ${errores.length} con error`, 'error');
+    alert('No se pudo con:\n\n' + errores.join('\n'));
+  } else {
+    showToast(`${hechas} institución${hechas===1?'':'es'} sin cargo ✓`, 'success');
+  }
 }
 
 // Entrar directo a una institución desde el panel
